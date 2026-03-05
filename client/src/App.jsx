@@ -26,22 +26,26 @@ import DataProtectionPolicy from './pages/site/Dpp';
 
 // App Layout (共通ヘッダー+ナビゲーション)
 function AppLayout() {
-    const { user, tenant, userRole, signOut, credits, isFreePlan, isTrialExpired, trialDaysLeft, isProfileLoaded } = useAuth();
+    const { user, tenant, userRole, signOut, credits, isFreePlan,
+        isExpired,
+        trialTimeLeft,
+        isProfileLoaded,
+    } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
 
-    // Force redirect to billing if trial is expired
+    // Force redirect to billing if trial/subscription is expired
     useEffect(() => {
-        if (isFreePlan && isTrialExpired) {
+        if (isExpired) {
             // Check if user is already on the billing page or logout
             const isBillingPath = location.pathname.startsWith('/admin') && location.search.includes('tab=billing');
             if (!isBillingPath) {
                 navigate('/admin?tab=billing', { replace: true });
             }
         }
-    }, [isFreePlan, isTrialExpired, location, navigate]);
+    }, [isExpired, location, navigate]);
     const navItems = [];
 
     // 一般ユーザー用のメニュー
@@ -213,14 +217,14 @@ function AppLayout() {
 
             {/* Trial Banner */}
             {isFreePlan && (
-                <div className={`${isTrialExpired ? 'bg-red-900/40 border-red-500/30' : 'bg-amber-900/30 border-amber-500/20'} border-b backdrop-blur-sm`}>
+                <div className={`${isExpired ? 'bg-red-900/40 border-red-500/30' : 'bg-amber-900/30 border-amber-500/20'} border-b backdrop-blur-sm`}>
                     <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm">
-                            <AlertTriangle className={`w-4 h-4 ${isTrialExpired ? 'text-red-400' : 'text-amber-400'}`} />
-                            {isTrialExpired ? (
+                            <AlertTriangle className={`w-4 h-4 ${isExpired ? 'text-red-400' : 'text-amber-400'}`} />
+                            {isExpired ? (
                                 <span className="text-red-300 font-medium">無料トライアルが終了しました。AI解析機能を継続するにはプランを選択してください。</span>
                             ) : (
-                                <span className="text-amber-300 font-medium">無料トライアル: 残り <strong>{trialDaysLeft}日</strong></span>
+                                <span className="text-amber-300 font-medium">無料トライアル: <strong>{trialTimeLeft}</strong></span>
                             )}
                         </div>
                         <Link
@@ -229,6 +233,38 @@ function AppLayout() {
                         >
                             プランを選択
                         </Link>
+                    </div>
+                </div>
+            )}
+
+            {/* Expired Hard Block Modal (Free/Paid共通) */}
+            {isExpired && !location.search.includes('tab=billing') && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-500">
+                    <div className="max-w-md w-full bg-slate-900 border border-red-500/30 rounded-[2rem] p-8 shadow-2xl shadow-red-900/20 text-center animate-in zoom-in-95 duration-300">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertTriangle className="w-10 h-10 text-red-500" />
+                        </div>
+                        <h2 className="text-2xl font-black text-white mb-2">{isFreePlan ? '無料トライアル期限終了' : 'サブスクリプション期限終了'}</h2>
+                        <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+                            {isFreePlan
+                                ? '7日間の無料トライアル期間が終了しました。引き続きAI解析や案件管理をご利用いただくには、有料プランへの移行が必要です。'
+                                : 'サブスクリプションの有効期限が終了しました。引き続きご利用いただくには、お支払い情報の更新または再契約が必要です。'
+                            }
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <Link
+                                to="/admin?tab=billing"
+                                className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-cyan-500 transition-all shadow-lg shadow-blue-500/20"
+                            >
+                                プランを選択する
+                            </Link>
+                            <button
+                                onClick={signOut}
+                                className="w-full py-3 bg-white/5 text-slate-400 font-bold rounded-xl hover:bg-white/10 transition-all"
+                            >
+                                ログアウト
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

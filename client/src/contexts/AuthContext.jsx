@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
     const [tenant, setTenant] = useState(null);
+    const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
@@ -54,6 +55,7 @@ export function AuthProvider({ children }) {
                 } else {
                     setUser(null);
                     setTenant(null);
+                    setSubscription(null);
                     setLoading(false);
                     setIsProfileLoaded(false);
                 }
@@ -79,6 +81,7 @@ export function AuthProvider({ children }) {
 
             const profileData = profileRes.data.user;
             setTenant(profileRes.data.tenant);
+            setSubscription(profileRes.data.subscription);
             setCredits(creditsRes.data);
 
             setUser(prev => {
@@ -131,6 +134,7 @@ export function AuthProvider({ children }) {
         setUser(null);
         setSession(null);
         setTenant(null);
+        setSubscription(null);
         setIsProfileLoaded(false);
     }
 
@@ -138,13 +142,51 @@ export function AuthProvider({ children }) {
         await api.post('/api/auth/reset-password', { email });
     }
 
-    // トライアル状態の計算
+    // トライアル状態の計算と定期更新
+    const [currentTime, setCurrentTime] = useState(new Date());
     const isFreePlan = tenant?.plan === 'free';
     const trialEndsAt = tenant?.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
-    const isTrialExpired = isFreePlan && trialEndsAt && new Date() > trialEndsAt;
-    const trialDaysLeft = trialEndsAt
-        ? Math.max(0, Math.ceil((trialEndsAt - new Date()) / (1000 * 60 * 60 * 24)))
-        : null;
+
+    useEffect(() => {
+        // 無料プランのトライアル期限、または有料プランの有効期限がある場合にタイマーを回す
+        const hasExpiry = (isFreePlan && trialEndsAt) || (subscription?.current_period_end);
+        if (!hasExpiry) return;
+
+        const interval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000); // 1分ごとに更新
+        return () => clearInterval(interval);
+    }, [isFreePlan, trialEndsAt, subscription?.current_period_end]);
+
+    const getExpiryStatus = () => {
+        // 1. 無料プランの場合は trial_ends_at をチェック
+        if (isFreePlan) {
+            if (!trialEndsAt) return { isExpired: false, label: '' };
+            const diffMs = trialEndsAt - currentTime;
+            if (diffMs <= 0) return { isExpired: true, label: '終了' };
+
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffHours >= 24) return { isExpired: false, label: `残り ${diffDays}日` };
+            if (diffHours >= 1) return { isExpired: false, label: `残り ${diffHours}時間` };
+            return { isExpired: false, label: `残り ${diffMins}分` };
+        }
+
+        // 2. 有料プランの場合は current_period_end をチェック
+        if (subscription?.current_period_end) {
+            const periodEnd = new Date(subscription.current_period_end);
+            const diffMs = periodEnd - currentTime;
+            if (diffMs <= 0) return { isExpired: true, label: '終了' };
+            // 有料プランの場合は詳細なカウントダウンを出す必要性は低いが、整合性のために同様に返す
+            return { isExpired: false, label: '有効' };
+        }
+
+        return { isExpired: false, label: '' };
+    };
+
+    const { isExpired, label: trialTimeLeft } = getExpiryStatus();
 
     // プロフィール情報が読み込まれるまでは、JWT（app_metadata）の情報も利用することで
     // リフレッシュ時のロールのチラつきとリダイレクトループ（白画面）を防止する助
@@ -169,9 +211,10 @@ export function AuthProvider({ children }) {
         resetPassword,
         fetchProfile,
         isFreePlan,
-        isTrialExpired,
-        trialDaysLeft,
+        isExpired,
+        trialTimeLeft,
         isProfileLoaded,
+        subscription,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

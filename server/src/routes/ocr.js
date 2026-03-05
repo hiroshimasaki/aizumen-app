@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth');
+const { checkTrialLimit } = require('../middleware/trialMiddleware');
 const { checkCredits } = require('../middleware/credits');
 const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
@@ -22,7 +23,7 @@ const upload = multer({
  * OCR解析（1クレジット消費）
  * 実際のファイルを FormData で受け取り、Gemini APIで解析して構造化データを返します。
  */
-router.post('/analyze', authMiddleware, checkCredits(1), upload.single('file'), async (req, res, next) => {
+router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload.single('file'), async (req, res, next) => {
     try {
         if (!req.file) {
             throw new AppError('No file provided for analysis', 400, 'NO_FILE');
@@ -78,7 +79,7 @@ router.post('/analyze', authMiddleware, checkCredits(1), upload.single('file'), 
  * 一括OCR登録（ファイル数分クレジット消費）
  * ストレージ上のファイルを順次解析し、結果のリストを返します。
  */
-router.post('/bulk-register', authMiddleware, async (req, res, next) => {
+router.post('/bulk-register', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { fileIds = [] } = req.body;
         if (fileIds.length === 0) {

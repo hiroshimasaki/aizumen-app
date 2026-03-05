@@ -117,7 +117,7 @@ export default function SignUpPage() {
             label: 'Pro',
             desc: '大容量・多人数向け',
             price: '¥50,000 / 月',
-            users: '50名まで',
+            users: '20名まで',
             ai: '毎月1,000回'
         },
     ];

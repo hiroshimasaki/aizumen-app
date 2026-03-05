@@ -80,6 +80,7 @@ async function handleCheckoutCompleted(session) {
                 plan,
                 max_users: planConfig.maxUsers,
                 status: 'active',
+                cancel_at_period_end: subscription.cancel_at_period_end || false,
                 current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             }, { onConflict: 'tenant_id' });
@@ -156,6 +157,7 @@ async function handleSubscriptionUpdated(subscription) {
     const updates = {
         status,
         plan: newPlan,
+        cancel_at_period_end: subscription.cancel_at_period_end,
         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
         updated_at: new Date().toISOString(),
@@ -225,13 +227,30 @@ async function handleSubscriptionUpdated(subscription) {
  * サブスクリプション解約時の処理
  */
 async function handleSubscriptionDeleted(subscription) {
-    await supabaseAdmin
+    console.log(`[Webhook] Subscription deleted/canceled: ${subscription.id}`);
+
+    // DBのサブスクステータスを更新
+    const { data: sub } = await supabaseAdmin
         .from('subscriptions')
         .update({
             status: 'canceled',
             updated_at: new Date().toISOString(),
         })
-        .eq('stripe_subscription_id', subscription.id);
+        .eq('stripe_subscription_id', subscription.id)
+        .select('tenant_id')
+        .single();
+
+    if (sub?.tenant_id) {
+        // テナントをフリープランへ戻す
+        await supabaseAdmin
+            .from('tenants')
+            .update({
+                plan: 'free',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', sub.tenant_id);
+        console.log(`[Webhook] Tenant ${sub.tenant_id} reverted to free plan.`);
+    }
 }
 
 /**

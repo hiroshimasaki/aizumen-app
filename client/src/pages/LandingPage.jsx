@@ -413,7 +413,7 @@ export default function LandingPage() {
                             </div>
                             <div className="w-full h-px bg-slate-700/50 mb-6"></div>
                             <ul className="space-y-4 mb-8 flex-1">
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 最大50ユーザー利用可能</li>
+                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 最大20ユーザー利用可能</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 毎月1,000 AIクレジット付与</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> バックアップ 30日間保持</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> フル機能・高度な分析レポート</li>
@@ -445,7 +445,7 @@ export default function LandingPage() {
                                     <td className="p-6 text-slate-300 font-medium">最大ユーザー数</td>
                                     <td className="p-6 text-white text-center font-bold">2 名</td>
                                     <td className="p-6 text-white text-center font-bold">10 名</td>
-                                    <td className="p-6 text-white text-center font-bold">50 名</td>
+                                    <td className="p-6 text-white text-center font-bold">20 名</td>
                                 </tr>
                                 <tr>
                                     <td className="p-6 text-slate-300 font-medium">月間AIクレジット</td>

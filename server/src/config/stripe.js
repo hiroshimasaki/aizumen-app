@@ -34,7 +34,7 @@ const PLAN_CONFIG = {
     },
     pro: {
         name: 'Pro',
-        maxUsers: 50,
+        maxUsers: 20,
         monthlyCredits: 1000,
         priceId: process.env.STRIPE_PRICE_PRO,
         amount: 50000,

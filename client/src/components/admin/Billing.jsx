@@ -9,7 +9,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 const PLANS = [
     { id: 'lite', name: 'Lite', price: '10,000', users: 2, credits: 100, features: ['2ユーザーまで', '毎月100クレジット付与', 'AI抽出条件カスタム', 'バックアップ7日間保持'] },
     { id: 'plus', name: 'Plus', price: '30,000', users: 10, credits: 500, features: ['10ユーザーまで', '毎月500クレジット付与', 'AI抽出条件カスタム', 'バックアップ7日間保持'] },
-    { id: 'pro', name: 'Pro', price: '50,000', users: 50, credits: 1000, features: ['50ユーザーまで', '毎月1,000クレジット付与', 'AI抽出条件カスタム', '高度な分析レポート', 'バックアップ30日間保持'] },
+    { id: 'pro', name: 'Pro', price: '50,000', users: 20, credits: 1000, features: ['20ユーザーまで', '毎月1,000クレジット付与', 'AI抽出条件カスタム', '高度な分析レポート', 'バックアップ30日間保持'] },
 ];
 
 const CREDIT_PACKS = [
@@ -19,7 +19,7 @@ const CREDIT_PACKS = [
 ];
 
 export default function Billing() {
-    const { credits, setCredits, tenant, isFreePlan, isTrialExpired, fetchProfile } = useAuth();
+    const { credits, setCredits, tenant, isFreePlan, isExpired, fetchProfile } = useAuth();
     const { showAlert, showConfirm } = useNotification();
     const navigate = useNavigate();
     const [subscription, setSubscription] = useState(null);
@@ -187,7 +187,7 @@ export default function Billing() {
     );
 
     const currentPlanId = tenant?.plan || 'lite';
-    const showTrialExpiredWarning = isFreePlan && isTrialExpired;
+    const showTrialExpiredWarning = isFreePlan && isExpired;
 
     return (
         <div className="space-y-8">
@@ -244,13 +244,24 @@ export default function Billing() {
                     </div>
                     {subscription?.subscription?.current_period_end && subscription?.subscription?.status === 'active' && (
                         <div className="mt-3 pt-3 border-t border-slate-700/50 flex items-center gap-2">
-                            <Calendar size={14} className={subscription?.subscription?.cancel_at_period_end ? 'text-red-400' : 'text-slate-400'} />
-                            <span className={`text-xs ${subscription?.subscription?.cancel_at_period_end ? 'text-red-400' : 'text-slate-400'}`}>
-                                {subscription?.subscription?.cancel_at_period_end
-                                    ? `${new Date(subscription.subscription.current_period_end).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })} で終了予定`
-                                    : `次回更新: ${new Date(subscription.subscription.current_period_end).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}`
-                                }
-                            </span>
+                            {(() => {
+                                // Stripeの詳細情報が読み込まれている場合はそれを優先、そうでなければDBの値を参照
+                                const isExpiring = !loadingStripe
+                                    ? stripeDetails?.cancel_at_period_end
+                                    : subscription?.subscription?.cancel_at_period_end;
+
+                                return (
+                                    <>
+                                        <Calendar size={14} className={isExpiring ? 'text-red-400' : 'text-slate-400'} />
+                                        <span className={`text-xs ${isExpiring ? 'text-red-400' : 'text-slate-400'}`}>
+                                            {isExpiring
+                                                ? `${new Date(subscription.subscription.current_period_end).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })} で終了予定`
+                                                : `次回更新: ${new Date(subscription.subscription.current_period_end).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                                            }
+                                        </span>
+                                    </>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>
@@ -420,9 +431,10 @@ export default function Billing() {
                 <div className="space-y-1">
                     <p className="font-bold">サブスクリプションについて</p>
                     <ul className="list-disc list-inside space-y-0.5 text-indigo-300/80">
-                        <li>プランの変更は即時に反映され、当月の残日分は日割りで計算されます。</li>
-                        <li>解約はいつでも可能ですが、契約期間終了までは全ての機能を利用いただけます。</li>
-                        <li>AIクレジットは毎月1日にプランに応じた枚数が自動的に付与されます。</li>
+                        <li>アップグレードは即時に適用され、日割りで計算されます。ダウングレードは次回更新時に適用されます。</li>
+                        <li>解約はいつでも可能ですが、現在の契約期間終了までは全ての機能をご利用いただけます。</li>
+                        <li>AIクレジットは毎月の更新日（契約応当日）にリセットされ、新しくプラン付帯分が付与されます。</li>
+                        <li>月間の付与クレジットは次月へ繰り越されませんが、別途購入した追加クレジットに有効期限はありません。</li>
                     </ul>
                 </div>
             </div>

@@ -317,9 +317,16 @@ router.get('/me', authMiddleware, async (req, res, next) => {
         }
         console.log('[Auth/Me] Fetched tenant:', tenant);
 
+        const { data: subscription } = await supabaseAdmin
+            .from('subscriptions')
+            .select('status, current_period_end, cancel_at_period_end')
+            .eq('tenant_id', req.tenantId)
+            .maybeSingle();
+
         res.json({
             user: profile,
             tenant,
+            subscription,
         });
     } catch (err) {
         next(err);

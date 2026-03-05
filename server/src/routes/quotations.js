@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth');
+const { checkTrialLimit } = require('../middleware/trialMiddleware');
 const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
 const { generateQuotationId, parsePrice } = require('../utils/helpers');
@@ -12,7 +13,7 @@ const PAGE_SIZE = 20;
  * GET /api/quotations
  * 見積一覧（ページネーション・フィルタ対応、論理削除は除外）
  */
-router.get('/', authMiddleware, async (req, res, next) => {
+router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         console.log(`[Quotations] GET / - tenantId: ${req.tenantId}`);
 
@@ -150,7 +151,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
  * GET /api/quotations/check-duplicate
  * 重複チェック（注文番号・工事番号）
  */
-router.get('/check-duplicate', authMiddleware, async (req, res, next) => {
+router.get('/check-duplicate', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { orderNumber, constructionNumber, excludeId } = req.query;
         if (!orderNumber && !constructionNumber) {
@@ -201,7 +202,7 @@ router.get('/check-duplicate', authMiddleware, async (req, res, next) => {
  * DELETE /api/quotations/:id
  * 論理削除 (ゴミ箱へ移動)
  */
-router.delete('/:id', authMiddleware, async (req, res, next) => {
+router.delete('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { id } = req.params;
         const { error } = await supabaseAdmin
@@ -231,7 +232,7 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
  * POST /api/quotations/:id/restore
  * 復元処理
  */
-router.post('/:id/restore', authMiddleware, async (req, res, next) => {
+router.post('/:id/restore', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { id } = req.params;
         const { error } = await supabaseAdmin
@@ -261,7 +262,7 @@ router.post('/:id/restore', authMiddleware, async (req, res, next) => {
  * DELETE /api/quotations/:id/permanent
  * 完全削除
  */
-router.delete('/:id/permanent', authMiddleware, async (req, res, next) => {
+router.delete('/:id/permanent', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         // 管理者チェックを入れるのが望ましい
         if (error) throw new AppError('Failed to permanently delete quotation', 500, 'DELETE_FAILED');
@@ -285,7 +286,7 @@ router.delete('/:id/permanent', authMiddleware, async (req, res, next) => {
  * GET /api/quotations/items/search
  * 過去の案件明細を品名で検索
  */
-router.get('/items/search', authMiddleware, async (req, res, next) => {
+router.get('/items/search', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { q, limit = 20 } = req.query;
         if (!q) return res.json([]);
@@ -330,7 +331,7 @@ router.get('/items/search', authMiddleware, async (req, res, next) => {
  * GET /api/quotations/:id
  * 見積詳細
  */
-router.get('/:id', authMiddleware, async (req, res, next) => {
+router.get('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { data, error } = await supabaseAdmin
             .from('quotations')
@@ -350,7 +351,7 @@ router.get('/:id', authMiddleware, async (req, res, next) => {
  * POST /api/quotations
  * 見積新規作成
  */
-router.post('/', authMiddleware, async (req, res, next) => {
+router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const {
             companyName, contactPerson, emailLink, notes,
@@ -488,7 +489,7 @@ router.post('/', authMiddleware, async (req, res, next) => {
  * PUT /api/quotations/:id
  * 見積更新
  */
-router.put('/:id', authMiddleware, async (req, res, next) => {
+router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { id } = req.params;
         const {

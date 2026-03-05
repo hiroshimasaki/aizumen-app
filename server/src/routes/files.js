@@ -4,6 +4,7 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const { authMiddleware } = require('../middleware/auth');
+const { checkTrialLimit } = require('../middleware/trialMiddleware');
 const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
 
@@ -27,7 +28,7 @@ const upload = multer({
  * POST /api/files/upload
  * 複数ファイルアップロード
  */
-router.post('/upload', authMiddleware, upload.array('files', 10), async (req, res, next) => {
+router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10), async (req, res, next) => {
     try {
         if (!req.files || req.files.length === 0) {
             throw new AppError('No files provided', 400, 'NO_FILES');
@@ -107,7 +108,7 @@ router.post('/upload', authMiddleware, upload.array('files', 10), async (req, re
  * GET /api/files/:id
  * ファイル取得（署名付きURL）
  */
-router.get('/:id', authMiddleware, async (req, res, next) => {
+router.get('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { data: fileMeta, error } = await supabaseAdmin
             .from('quotation_files')
@@ -140,7 +141,7 @@ router.get('/:id', authMiddleware, async (req, res, next) => {
  * DELETE /api/files/:id
  * ファイル削除
  */
-router.delete('/:id', authMiddleware, async (req, res, next) => {
+router.delete('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         // メタデータ取得
         const { data: fileMeta } = await supabaseAdmin

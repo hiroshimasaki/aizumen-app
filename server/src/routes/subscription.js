@@ -60,21 +60,54 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
             .eq('tenant_id', req.tenantId)
             .single();
 
-        if (!sub) return res.json({ paymentMethod: null, pending_plan: null });
-
         const results = {
             paymentMethod: null,
-            pending_plan: null
+            pending_plan: null,
+            cancel_at_period_end: false
         };
 
         // 並列でStripeに問い合わせ
         const stripePromises = [];
 
-        // 1. ダウングレード予約（pending_plan）の確認
+        // 1. サブスクリプション詳細（キャンセル予約等）の確認
         if (sub.stripe_subscription_id) {
             stripePromises.push(
                 stripe.subscriptions.retrieve(sub.stripe_subscription_id)
                     .then(async (stripeSub) => {
+                        results.cancel_at_period_end = stripeSub.cancel_at_period_end;
+
+                        if (sub) {
+                            let updated = false;
+                            const updates = {};
+
+                            // 1. cancel_at_period_end の同期
+                            if (sub.cancel_at_period_end !== stripeSub.cancel_at_period_end) {
+                                updates.cancel_at_period_end = stripeSub.cancel_at_period_end;
+                                updated = true;
+                            }
+
+                            // 2. 修復ロジック（ステータスが canceled/expired の場合にフリープランへ強制移行）
+                            if ((stripeSub.status === 'canceled' || stripeSub.status === 'incomplete_expired') && sub.status === 'active') {
+                                console.log(`[StripeDetails] Self-healing: Subscription ${stripeSub.id} is ${stripeSub.status}. Reverting DB and Tenant to free.`);
+                                updates.status = 'canceled';
+                                updated = true;
+
+                                // テナント側もフリープランへ
+                                await supabaseAdmin
+                                    .from('tenants')
+                                    .update({ plan: 'free', updated_at: new Date().toISOString() })
+                                    .eq('id', req.tenantId);
+                            }
+
+                            if (updated) {
+                                console.log(`[StripeDetails] Syncing subscriptions table for ${stripeSub.id}:`, updates);
+                                await supabaseAdmin
+                                    .from('subscriptions')
+                                    .update({ ...updates, updated_at: new Date().toISOString() })
+                                    .eq('stripe_subscription_id', stripeSub.id);
+                            }
+                        }
+
                         if (stripeSub.schedule) {
                             const schedule = await stripe.subscriptionSchedules.retrieve(stripeSub.schedule);
                             results.pending_plan = schedule.metadata?.pending_plan || null;
@@ -251,6 +284,7 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
                 .update({
                     plan,
                     max_users: planConfig.maxUsers,
+                    cancel_at_period_end: updatedSubscription.cancel_at_period_end || false,
                     current_period_start: new Date(updatedSubscription.current_period_start * 1000).toISOString(),
                     current_period_end: new Date(updatedSubscription.current_period_end * 1000).toISOString(),
                     updated_at: new Date().toISOString(),
@@ -368,6 +402,7 @@ router.post('/checkout/verify', authMiddleware, requireRole('system_admin'), asy
                 plan,
                 max_users: planConfig.maxUsers,
                 status: 'active',
+                cancel_at_period_end: subscription.cancel_at_period_end || false,
                 current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             }, { onConflict: 'tenant_id' });
