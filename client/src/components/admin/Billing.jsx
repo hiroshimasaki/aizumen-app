@@ -191,7 +191,7 @@ export default function Billing() {
 
     return (
         <div className="space-y-8">
-            {showTrialExpiredWarning && (
+            {isExpired && (
                 <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-6 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
                     <div className="flex items-start gap-4">
@@ -199,10 +199,12 @@ export default function Billing() {
                             <AlertCircle className="w-6 h-6 text-red-400" />
                         </div>
                         <div>
-                            <h3 className="text-xl font-bold text-white mb-2">無料トライアル期間が終了しました</h3>
+                            <h3 className="text-xl font-bold text-white mb-2">{isFreePlan ? '無料トライアル期間が終了しました' : 'サブスクリプション有効期限が終了しました'}</h3>
                             <p className="text-red-200 text-sm leading-relaxed mb-4">
-                                アカウントの全機能（案件の閲覧・作成を含む）が一時的に制限されています。<br />
-                                引き続き AiZumen をご利用いただくには、以下のいずれかの有料プランを選択してサブスクリプションを開始してください。
+                                {isFreePlan
+                                    ? 'アカウントの全機能（案件の閲覧・作成を含む）が一時的に制限されています。引き続き AiZumen をご利用いただくには、以下のいずれかの有料プランを選択してサブスクリプションを開始してください。'
+                                    : 'サブスクリプションの有効期限が切れたため、機能が制限されています。引き続きご利用いただくには、お支払い情報の更新または再契約を行ってください。'
+                                }
                             </p>
                         </div>
                     </div>

@@ -152,9 +152,10 @@ export function AuthProvider({ children }) {
         const hasExpiry = (isFreePlan && trialEndsAt) || (subscription?.current_period_end);
         if (!hasExpiry) return;
 
+        console.log('[AuthContext] Starting expiry monitor timer (10s)...');
         const interval = setInterval(() => {
             setCurrentTime(new Date());
-        }, 60000); // 1分ごとに更新
+        }, 10000); // 10秒ごとに更新してリアルタイム性を高める助
         return () => clearInterval(interval);
     }, [isFreePlan, trialEndsAt, subscription?.current_period_end]);
 
@@ -174,16 +175,25 @@ export function AuthProvider({ children }) {
             return { isExpired: false, label: `残り ${diffMins}分` };
         }
 
-        // 2. 有料プランの場合は current_period_end をチェック
-        if (subscription?.current_period_end) {
-            const periodEnd = new Date(subscription.current_period_end);
-            const diffMs = periodEnd - currentTime;
-            if (diffMs <= 0) return { isExpired: true, label: '終了' };
-            // 有料プランの場合は詳細なカウントダウンを出す必要性は低いが、整合性のために同様に返す
-            return { isExpired: false, label: '有効' };
+        // 2. 有料プランの場合はステータスと期限の両方をチェック
+        if (subscription) {
+            // ステータスが canceled または incomplete_expired なら即座に終了助
+            if (['canceled', 'incomplete_expired'].includes(subscription.status)) {
+                return { isExpired: true, label: '終了' };
+            }
+
+            // 解約予約中（cancel_at_period_end = true）で、期限を過ぎている場合も終了助
+            // ※ status が active でも、手動テスト等で期限を過去にした場合に確実に止めるため助
+            if (subscription.current_period_end) {
+                const periodEnd = new Date(subscription.current_period_end);
+                // 比較を確実にするためミリ秒単位で。助
+                if (periodEnd.getTime() <= currentTime.getTime()) {
+                    return { isExpired: true, label: '終了' };
+                }
+            }
         }
 
-        return { isExpired: false, label: '' };
+        return { isExpired: false, label: '有効' };
     };
 
     const { isExpired, label: trialTimeLeft } = getExpiryStatus();
