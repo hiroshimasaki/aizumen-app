@@ -40,9 +40,17 @@ const checkTrialLimit = async (req, res, next) => {
                 .maybeSingle();
 
             if (sub) {
+                // ステータスによる明示的なブロック
+                if (['canceled', 'unpaid', 'incomplete_expired'].includes(sub.status)) {
+                    return res.status(402).json({
+                        error: 'Subscription inactive',
+                        code: 'SUBSCRIPTION_INACTIVE',
+                        message: 'サブスクリプションが無効です。お支払い情報の更新が必要です。'
+                    });
+                }
+
                 const periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : null;
-                // ステータスが active または past_due でも、日付が過ぎていればブロック
-                // (Stripeのバッファによらず、DBの日付を絶対とする助)
+                // 有効ステータス（active, past_due等）であっても、日付が過ぎていればブロック
                 if (periodEnd && new Date() > periodEnd) {
                     return res.status(402).json({
                         error: 'Subscription expired',

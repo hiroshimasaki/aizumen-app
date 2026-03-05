@@ -144,12 +144,14 @@ export function AuthProvider({ children }) {
 
     // トライアル状態の計算と定期更新
     const [currentTime, setCurrentTime] = useState(new Date());
-    const isFreePlan = tenant?.plan === 'free';
+
+    // Date オブジェクトを安定化させる助
     const trialEndsAt = tenant?.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
+    const periodEndsAt = subscription?.current_period_end ? new Date(subscription.current_period_end) : null;
 
     useEffect(() => {
-        // 無料プランのトライアル期限、または有料プランの有効期限がある場合にタイマーを回す
-        const hasExpiry = (isFreePlan && trialEndsAt) || (subscription?.current_period_end);
+        // 期限情報がある場合のみタイマーを回す助
+        const hasExpiry = (tenant?.plan === 'free' && tenant?.trial_ends_at) || (subscription?.current_period_end);
         if (!hasExpiry) return;
 
         console.log('[AuthContext] Starting expiry monitor timer (10s)...');
@@ -157,13 +159,34 @@ export function AuthProvider({ children }) {
             setCurrentTime(new Date());
         }, 10000); // 10秒ごとに更新してリアルタイム性を高める助
         return () => clearInterval(interval);
-    }, [isFreePlan, trialEndsAt, subscription?.current_period_end]);
+        // 依存配列にはプリミティブな値を入れることで不必要な再生成を防ぐ助
+    }, [tenant?.plan, tenant?.trial_ends_at, subscription?.current_period_end]);
 
     const getExpiryStatus = () => {
-        // 1. 無料プランの場合は trial_ends_at をチェック
-        if (isFreePlan) {
+        // 1. サブスクリプション情報（本契約履歴）がある場合は最優先でチェック助
+        if (subscription) {
+            // ステータスが canceled, unpaid または incomplete_expired なら期限切れ助
+            if (['canceled', 'unpaid', 'incomplete_expired'].includes(subscription.status)) {
+                return { isExpired: true, label: '終了' };
+            }
+
+            // 期限日時を持っている場合、過去なら期限切れ助
+            if (periodEndsAt) {
+                if (periodEndsAt.getTime() <= currentTime.getTime()) {
+                    return { isExpired: true, label: '終了' };
+                }
+            }
+
+            // 本契約が有効（active, trialing 等）で期限内なら、無料トライアルの期限にかかわらず有効助
+            if (subscription.status === 'active' || subscription.status === 'trialing' || subscription.status === 'past_due') {
+                return { isExpired: false, label: '有効' };
+            }
+        }
+
+        // 2. 本契約履歴がない、または判定を抜けた場合は、無料プラン（トライアル）の期限をチェック助
+        if (tenant?.plan === 'free') {
             if (!trialEndsAt) return { isExpired: false, label: '' };
-            const diffMs = trialEndsAt - currentTime;
+            const diffMs = trialEndsAt.getTime() - currentTime.getTime();
             if (diffMs <= 0) return { isExpired: true, label: '終了' };
 
             const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -175,28 +198,22 @@ export function AuthProvider({ children }) {
             return { isExpired: false, label: `残り ${diffMins}分` };
         }
 
-        // 2. 有料プランの場合はステータスと期限の両方をチェック
-        if (subscription) {
-            // ステータスが canceled または incomplete_expired なら即座に終了助
-            if (['canceled', 'incomplete_expired'].includes(subscription.status)) {
-                return { isExpired: true, label: '終了' };
-            }
-
-            // 解約予約中（cancel_at_period_end = true）で、期限を過ぎている場合も終了助
-            // ※ status が active でも、手動テスト等で期限を過去にした場合に確実に止めるため助
-            if (subscription.current_period_end) {
-                const periodEnd = new Date(subscription.current_period_end);
-                // 比較を確実にするためミリ秒単位で。助
-                if (periodEnd.getTime() <= currentTime.getTime()) {
-                    return { isExpired: true, label: '終了' };
-                }
-            }
-        }
-
         return { isExpired: false, label: '有効' };
     };
 
     const { isExpired, label: trialTimeLeft } = getExpiryStatus();
+
+    const isFreePlan = tenant?.plan === 'free';
+
+    // 期限が来た瞬間に一度だけ fetchProfile を実行してサーバーの自己修復結果を反映させる助
+    const prevIsExpiredRef = useRef(isExpired);
+    useEffect(() => {
+        if (isExpired && !prevIsExpiredRef.current && isProfileLoaded) {
+            console.log('[AuthContext] Expiry detected! Syncing with server...');
+            fetchProfile();
+        }
+        prevIsExpiredRef.current = isExpired;
+    }, [isExpired, isProfileLoaded]);
 
     // プロフィール情報が読み込まれるまでは、JWT（app_metadata）の情報も利用することで
     // リフレッシュ時のロールのチラつきとリダイレクトループ（白画面）を防止する助

@@ -22,10 +22,11 @@ router.get('/stats', async (req, res) => {
 
         if (tError) throw tError;
 
-        // 全ユーザー数
+        // 有効ユーザー数（無効化ユーザーを除外）
         const { count: userCount, error: uError } = await supabaseAdmin
             .from('users')
-            .select('*', { count: 'exact', head: true });
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true);
 
         if (uError) throw uError;
 
@@ -37,9 +38,10 @@ router.get('/stats', async (req, res) => {
         if (pError) throw pError;
 
         const planStats = plans.reduce((acc, curr) => {
-            acc[curr.plan] = (acc[curr.plan] || 0) + 1;
+            const planKey = curr.plan || 'free';
+            acc[planKey] = (acc[planKey] || 0) + 1;
             return acc;
-        }, { lite: 0, plus: 0, pro: 0 });
+        }, { free: 0, lite: 0, plus: 0, pro: 0 });
 
         res.json({
             tenants: tenantCount,
@@ -363,13 +365,24 @@ router.get('/usage', async (req, res) => {
 router.get('/billing', async (req, res) => {
     try {
         console.log('[SuperAdmin API] Fetching billing stats...');
-        const { PLAN_CONFIG } = require('../config/stripe');
+        const { PLAN_CONFIG, CREDIT_CONFIG } = require('../config/stripe');
 
         // 1. 全サブスクリプション取得
         const { data: subs } = await supabaseAdmin
             .from('subscriptions')
             .select('plan, status, tenant_id, tenants(name)')
-            .in('status', ['active', 'trialing', 'past_due', 'unpaid']);
+            .in('status', ['active', 'trialing', 'past_due', 'unpaid', 'incomplete']);
+
+        // 2. 当月のクレジット購入履歴取得
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const { data: creditTxs } = await supabaseAdmin
+            .from('ai_credit_transactions')
+            .select('amount, created_at')
+            .eq('type', 'purchase')
+            .gte('created_at', startOfMonth.toISOString());
 
         // MRR 計算
         let mrr = 0;
@@ -377,12 +390,12 @@ router.get('/billing', async (req, res) => {
 
         subs?.forEach(s => {
             const config = PLAN_CONFIG[s.plan];
-            if (config && s.status === 'active') {
+            if (config && (s.status === 'active' || s.status === 'trialing')) {
                 mrr += (config.amount || 0);
             }
 
             // アラート (支払い遅延など)
-            if (s.status === 'past_due' || s.status === 'unpaid') {
+            if (s.status === 'past_due' || s.status === 'unpaid' || s.status === 'incomplete') {
                 alerts.push({
                     tenantName: s.tenants?.name || '不明',
                     status: s.status,
@@ -391,9 +404,24 @@ router.get('/billing', async (req, res) => {
             }
         });
 
+        // クレジット売上計算
+        let creditRevenue = 0;
+        creditTxs?.forEach(tx => {
+            // CREDIT_CONFIG から金額を逆引き (credits フィールドで一致を確認)
+            const config = Object.values(CREDIT_CONFIG).find(c => c.credits === tx.amount);
+            if (config) {
+                creditRevenue += config.amount;
+            } else {
+                // 万が一設定に見当たらない場合は 1クレジット=10円 で概算 (フォールバック)
+                creditRevenue += tx.amount * 10;
+            }
+        });
+
         res.json({
-            mrr,
-            activeCount: subs?.filter(s => s.status === 'active').length || 0,
+            mrr,                    // 月間定常収益 (サブスクのみ)
+            creditRevenue,          // 当月のスポット売上 (クレジットのみ)
+            totalRevenue: mrr + creditRevenue, // 当月の総売上
+            activeCount: subs?.filter(s => s.status === 'active' || s.status === 'trialing').length || 0,
             alerts
         });
     } catch (err) {
