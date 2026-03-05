@@ -1,0 +1,30 @@
+{
+  "name": "aizumen-server",
+  "version": "1.0.0",
+  "description": "AiZumen SaaS API Server",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest --verbose"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.49.1",
+    "cors": "^2.8.6",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^7.5.0",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "pdf-lib": "^1.17.1",
+    "stripe": "^18.1.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "jest": "^30.0.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.1.0"
+  }
+}

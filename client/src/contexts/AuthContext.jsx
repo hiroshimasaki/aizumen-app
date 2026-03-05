@@ -1,0 +1,186 @@
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import api from '../lib/api';
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+    const [user, setUser] = useState(null);
+    const [session, setSession] = useState(null);
+    const [tenant, setTenant] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+
+    // 最新の値をリスナーから参照するためのリファレンス
+    const userRef = useRef(user);
+    const isProfileLoadedRef = useRef(isProfileLoaded);
+
+    useEffect(() => {
+        userRef.current = user;
+        isProfileLoadedRef.current = isProfileLoaded;
+    }, [user, isProfileLoaded]);
+
+    useEffect(() => {
+        // 初期セッション確認
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.user) {
+                fetchProfile();
+            } else {
+                setLoading(false);
+            }
+        });
+
+        // セッション変更の監視
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                console.log(`[AuthContext] Auth State Change: ${event}`, session?.user?.id);
+                setSession(session);
+
+                if (session?.user) {
+                    // ユーザーIDが同じであれば、既存のプロファイルを消さないように setUser する助
+                    setUser(prev => {
+                        if (prev?.id === session.user.id && prev.profile) {
+                            return { ...session.user, profile: prev.profile };
+                        }
+                        return session.user;
+                    });
+
+                    // 最新の ref を参照して、既にプロフィールがある場合は不必要な fetch を避ける助
+                    if (!isProfileLoadedRef.current || event === 'SIGNED_IN' || event === 'TOKEN_REFRESH') {
+                        fetchProfile();
+                    }
+                } else {
+                    setUser(null);
+                    setTenant(null);
+                    setLoading(false);
+                    setIsProfileLoaded(false);
+                }
+            }
+        );
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const [credits, setCredits] = useState({ balance: 0, monthly_quota: 0 });
+
+    async function fetchProfile() {
+        // プロフィール取得中は loading を true にして不完全な状態でのレンダリングを防ぐ助
+        // ただし、既にプロファイルがある場合はチラつき防止（画面リセット防止）のため false のままにする
+        if (!userRef.current?.profile) setLoading(true);
+
+        console.log('[AuthContext] Fetching profile and credits...');
+        try {
+            const [profileRes, creditsRes] = await Promise.all([
+                api.get('/api/auth/me'),
+                api.get('/api/credits/balance').catch(() => ({ data: { balance: 0, monthly_quota: 0 } }))
+            ]);
+
+            const profileData = profileRes.data.user;
+            setTenant(profileRes.data.tenant);
+            setCredits(creditsRes.data);
+
+            setUser(prev => {
+                if (!prev) return null;
+                return { ...prev, profile: profileData };
+            });
+            setIsProfileLoaded(true);
+        } catch (err) {
+            console.error('プロフィールの取得に失敗しました助:', err);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function signIn(email, password) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        return data;
+    }
+
+    async function signInWithCode(companyCode, employeeId, password) {
+        const { data } = await api.post('/api/auth/login-with-code', {
+            companyCode, employeeId, password
+        });
+        if (data.session) {
+            await supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+            });
+        }
+        return data;
+    }
+
+    async function signUp({ email, password, userName, companyName, companyCode, plan }) {
+        const { data } = await api.post('/api/auth/signup', {
+            email, password, userName, companyName, companyCode, plan,
+        });
+        // サインアップ後に自動ログイン
+        if (data.session) {
+            await supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+            });
+        }
+        return data;
+    }
+
+    async function signOut() {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSession(null);
+        setTenant(null);
+        setIsProfileLoaded(false);
+    }
+
+    async function resetPassword(email) {
+        await api.post('/api/auth/reset-password', { email });
+    }
+
+    // トライアル状態の計算
+    const isFreePlan = tenant?.plan === 'free';
+    const trialEndsAt = tenant?.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
+    const isTrialExpired = isFreePlan && trialEndsAt && new Date() > trialEndsAt;
+    const trialDaysLeft = trialEndsAt
+        ? Math.max(0, Math.ceil((trialEndsAt - new Date()) / (1000 * 60 * 60 * 24)))
+        : null;
+
+    // プロフィール情報が読み込まれるまでは、JWT（app_metadata）の情報も利用することで
+    // リフレッシュ時のロールのチラつきとリダイレクトループ（白画面）を防止する助
+    const userRole = user?.profile?.role || user?.app_metadata?.role || 'user';
+    const isAdmin = userRole === 'admin' || userRole === 'system_admin';
+
+    const value = {
+        user,
+        session,
+        credits,
+        setCredits,
+        tenant,
+        setTenant,
+        tenantId: user?.app_metadata?.tenant_id,
+        userRole,
+        isAdmin,
+        loading,
+        signIn,
+        signInWithCode,
+        signUp,
+        signOut,
+        resetPassword,
+        fetchProfile,
+        isFreePlan,
+        isTrialExpired,
+        trialDaysLeft,
+        isProfileLoaded,
+    };
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuthはAuthProvider内で使用する必要があります');
+    }
+    return context;
+}

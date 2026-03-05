@@ -1,0 +1,188 @@
+const express = require('express');
+const router = express.Router();
+const { authMiddleware } = require('../middleware/auth');
+const { checkCredits } = require('../middleware/credits');
+const { supabaseAdmin } = require('../config/supabase');
+const { AppError } = require('../middleware/errorHandler');
+
+// TODO: Phase 2で本実装（Gemini API連携）
+// 現在はスケルトンのみ
+
+const multer = require('multer');
+const aiService = require('../services/aiService');
+const creditService = require('../services/creditService');
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+/**
+ * POST /api/ocr/analyze
+ * OCR解析（1クレジット消費）
+ * 実際のファイルを FormData で受け取り、Gemini APIで解析して構造化データを返します。
+ */
+router.post('/analyze', authMiddleware, checkCredits(1), upload.single('file'), async (req, res, next) => {
+    try {
+        if (!req.file) {
+            throw new AppError('No file provided for analysis', 400, 'NO_FILE');
+        }
+
+        const amount = 1;
+
+        // テナント名とマッピング設定の取得
+        const [{ data: settings }, { data: tenant }] = await Promise.all([
+            supabaseAdmin
+                .from('tenant_settings')
+                .select('settings_json')
+                .eq('tenant_id', req.tenantId)
+                .single(),
+            supabaseAdmin
+                .from('tenants')
+                .select('name')
+                .eq('id', req.tenantId)
+                .single()
+        ]);
+
+        const ocrMapping = settings?.settings_json?.ocrMapping || {};
+        const tenantName = tenant?.name || '';
+
+        // Gemini APIによる解析 (マッピング設定と自社名を渡す)
+        console.log(`[OCR] Analyzing file: ${req.file.originalname} (${req.file.mimetype}) with mapping:`, ocrMapping);
+        const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, ocrMapping, tenantName);
+
+        // クレジット消費処理
+        const creditResult = await creditService.consumeCredits(
+            req.tenantId,
+            req.user.id,
+            amount,
+            `Single OCR Analysis: ${req.file.originalname}`
+        );
+
+        res.json({
+            ...analysisResult,
+            creditStats: {
+                cost: amount,
+                remainingBalance: creditResult.balance,
+                purchasedBalance: creditResult.purchased_balance
+            }
+        });
+    } catch (err) {
+        console.error('[OCR] Analysis error:', err);
+        next(err);
+    }
+});
+
+/**
+ * POST /api/ocr/bulk-register
+ * 一括OCR登録（ファイル数分クレジット消費）
+ * ストレージ上のファイルを順次解析し、結果のリストを返します。
+ */
+router.post('/bulk-register', authMiddleware, async (req, res, next) => {
+    try {
+        const { fileIds = [] } = req.body;
+        if (fileIds.length === 0) {
+            throw new AppError('No file IDs provided', 400, 'NO_FILES');
+        }
+
+        const required = fileIds.length;
+
+        // テナント名、設定、クレジット残高の取得
+        const [{ data: settings }, { data: tenant }, { data: credits }] = await Promise.all([
+            supabaseAdmin
+                .from('tenant_settings')
+                .select('settings_json')
+                .eq('tenant_id', req.tenantId)
+                .single(),
+            supabaseAdmin
+                .from('tenants')
+                .select('name')
+                .eq('id', req.tenantId)
+                .single(),
+            supabaseAdmin
+                .from('ai_credits')
+                .select('balance')
+                .eq('tenant_id', req.tenantId)
+                .single()
+        ]);
+
+        const ocrMapping = settings?.settings_json?.ocrMapping || {};
+        const tenantName = tenant?.name || '';
+
+        if (!credits || credits.balance < required) {
+            throw new AppError(
+                `Insufficient AI credits. Required: ${required}, Balance: ${credits?.balance || 0}`,
+                402,
+                'INSUFFICIENT_CREDITS'
+            );
+        }
+
+        const results = [];
+
+        // 各ファイルを順次解析
+        for (const fileId of fileIds) {
+            try {
+                // ファイルメタ取得
+                const { data: fileMeta } = await supabaseAdmin
+                    .from('quotation_files')
+                    .select('storage_path, original_name, mime_type')
+                    .eq('id', fileId)
+                    .eq('tenant_id', req.tenantId)
+                    .single();
+
+                if (!fileMeta) {
+                    results.push({ id: fileId, error: 'File not found' });
+                    continue;
+                }
+
+                // Storageからダウンロード
+                const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+                    .from('quotation-files')
+                    .download(fileMeta.storage_path);
+
+                if (downloadError) {
+                    console.error(`[OCR Bulk] Download failed for ${fileId}:`, downloadError);
+                    results.push({ id: fileId, error: 'Download failed' });
+                    continue;
+                }
+
+                // Bufferに変換
+                const arrayBuffer = await fileData.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+
+                // AI解析 (マッピング設定と自社名を渡す)
+                const analysis = await aiService.analyzeDocument(buffer, fileMeta.mime_type, ocrMapping, tenantName);
+                results.push({
+                    id: fileId,
+                    originalName: fileMeta.original_name,
+                    ...analysis
+                });
+
+            } catch (innerErr) {
+                console.error(`[OCR Bulk] Error analyzing file ${fileId}:`, innerErr);
+                results.push({ id: fileId, error: innerErr.message });
+            }
+        }
+
+        // クレジット合計消費
+        const creditResult = await creditService.consumeCredits(
+            req.tenantId,
+            req.user.id,
+            required,
+            `Bulk OCR Analysis (${required} files)`
+        );
+
+        res.json({
+            results,
+            creditStats: {
+                totalCost: required,
+                remainingBalance: creditResult.balance,
+                purchasedBalance: creditResult.purchased_balance
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+module.exports = router;
