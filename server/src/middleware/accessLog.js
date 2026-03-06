@@ -13,7 +13,7 @@ const accessLogMiddleware = (req, res, next) => {
         // ヘルスチェックや静的ファイルのリクエストなどは除外（必要に応じて）
         if (req.path === '/api/health') return;
 
-        // 非同期でログを書き込み。エラーハンドリングは logService 内で行われる。助。
+        // 非同期でログを書き込み。エラーハンドリングは logService 内で行われる。
         logService.access({
             path: req.path,
             method: req.method,

@@ -24,7 +24,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
             .eq('id', req.tenantId)
             .single();
 
-        // 自己修復ロジックの追加助
+        // 自己修復ロジックの追加
         if (sub && (sub.status === 'active' || sub.status === 'past_due')) {
             if (sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
                 console.log(`[Subscription/GET] Self-healing: Subscription for tenant ${req.tenantId} has expired.`);
@@ -45,7 +45,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
                     })
                     .eq('id', req.tenantId);
 
-                // 再取得または手動更新助
+                // 再取得または手動更新
                 sub.status = 'canceled';
                 if (tenant) tenant.plan = 'free';
             }

@@ -33,7 +33,7 @@ const errorHandler = (err, req, res, _next) => {
     console.error(JSON.stringify(errorLog));
 
     // DBへの永続化ログ
-    // 非同期で実行（レスポンスを待たせない）助。
+    // 非同期で実行（レスポンスを待たせない）
     logService.error({
         message: err.message,
         stack: err.isOperational ? null : err.stack,

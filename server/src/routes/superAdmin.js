@@ -107,7 +107,7 @@ router.get('/tenants', async (req, res) => {
             monthlyQuota: t.ai_credits?.monthly_quota || 0,
             purchasedBalance: t.ai_credits?.purchased_balance || 0,
             storageUsage: storageMap[t.id] || 0,
-            maxStorageGB: PLAN_CONFIG[t.plan]?.maxStorageGB || 1 // 設定ファイルから取得助
+            maxStorageGB: PLAN_CONFIG[t.plan]?.maxStorageGB || 1 // 設定ファイルから取得
         }));
 
         res.json(formattedTenants);

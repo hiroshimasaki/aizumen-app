@@ -62,7 +62,7 @@ export default function MFASetupPage() {
             setSecret(data.totp.secret);
         } catch (err) {
             console.error('[MFA Setup] Unexpected error:', err);
-            setError(err.message || 'MFA設定の開始に失敗しました。プロジェクトの設定でMFAが有効になっているか確認してください助');
+            setError(err.message || 'MFA設定の開始に失敗しました。プロジェクトの設定でMFAが有効になっているか確認してください');
         }
     };
 
@@ -85,7 +85,7 @@ export default function MFASetupPage() {
                 navigate('/super-admin');
             }, 3000);
         } catch (err) {
-            setError('認証コードが正しくありません。再度お試しください助');
+            setError('認証コードが正しくありません。再度お試しください');
         } finally {
             setLoading(false);
         }
@@ -111,7 +111,7 @@ export default function MFASetupPage() {
                                 <Smartphone size={32} />
                             </div>
                             <h1 className="text-3xl font-black text-white tracking-tight">MFA 設定</h1>
-                            <p className="text-slate-400 mt-2">セキュリティを保護するため、2段階認証を設定してください助</p>
+                            <p className="text-slate-400 mt-2">セキュリティを保護するため、2段階認証を設定してください</p>
                         </div>
 
                         <div className="flex flex-col md:flex-row items-center gap-10 bg-slate-800/30 p-8 rounded-[2rem] border border-white/5">
@@ -129,11 +129,11 @@ export default function MFASetupPage() {
                             <div className="flex-1 text-left space-y-4">
                                 <div className="space-y-1">
                                     <h3 className="text-white font-bold text-sm">1. アプリを起動</h3>
-                                    <p className="text-xs text-slate-500">Google Authenticator 等の認証アプリを起動してください助</p>
+                                    <p className="text-xs text-slate-500">Google Authenticator 等の認証アプリを起動してください</p>
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-white font-bold text-sm">2. QR コードをスキャン</h3>
-                                    <p className="text-xs text-slate-500">左の QR コードをアプリで読み取ってください助</p>
+                                    <p className="text-xs text-slate-500">左の QR コードをアプリで読み取ってください</p>
                                 </div>
                                 <div className="space-y-2 pt-2">
                                     <h3 className="text-white font-bold text-sm">3. コードを入力</h3>
@@ -170,7 +170,7 @@ export default function MFASetupPage() {
                             <CheckCircle2 size={48} />
                         </div>
                         <h2 className="text-3xl font-black text-white">設定完了</h2>
-                        <p className="text-slate-400">セキュリティ設定が正常に完了しました。ダッシュボードへ移動します助</p>
+                        <p className="text-slate-400">セキュリティ設定が正常に完了しました。ダッシュボードへ移動します</p>
                         <div className="pt-4">
                             <button
                                 onClick={() => navigate('/super-admin')}

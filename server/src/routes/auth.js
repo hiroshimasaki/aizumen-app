@@ -413,7 +413,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
         const maxStorageGB = PLAN_CONFIG[tenant?.plan]?.maxStorageGB || 1;
 
         // 自己修復ロジック: ステータスが active または past_due でも、期限（current_period_end）が過ぎていれば
-        // stripe 側の同期を待たずに DB 上で明示的に canceled 扱いにする助
+        // stripe 側の同期を待たずに DB 上で明示的に canceled 扱いにする
         if (subscription && (subscription.status === 'active' || subscription.status === 'past_due')) {
             if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
                 console.log(`[Auth/Me] Self-healing: Subscription for tenant ${req.tenantId} has expired. Updating DB...`);
@@ -434,7 +434,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
                     })
                     .eq('id', req.tenantId);
 
-                // 返却するオブジェクトも更新助
+                // 返却するオブジェクトも更新
                 subscription.status = 'canceled';
                 if (tenant) tenant.plan = 'free';
             }
@@ -462,17 +462,17 @@ router.post('/report-error', async (req, res, next) => {
     try {
         const { message, stack, browserInfo, path, level } = req.body;
 
-        // 非ログイン時でも受け取る（authMiddlewareは通さない助）
+        // 非ログイン時でも受け取る（authMiddlewareは通さない）
         // ただし tenantId, userId はトークンがあれば取得を試みる
         let userId = null;
         let tenantId = null;
 
-        // BearerトークンがあればパースしてIDを特定（簡易的）助
+        // BearerトークンがあればパースしてIDを特定（簡易的）
         const authHeader = req.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];
             try {
-                // ここではデコードのみ（検証は省略して利便性優先助）
+                // ここではデコードのみ（検証は省略して利便性優先）
                 const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
                 userId = payload.sub;
                 tenantId = payload.app_metadata?.tenant_id;

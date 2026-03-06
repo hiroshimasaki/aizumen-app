@@ -497,7 +497,7 @@ export default function LandingPage() {
                         <div className="flex-1">
                             <h2 className="text-2xl md:text-4xl font-black text-white mb-6">組織に合わせた柔軟な権限設定</h2>
                             <p className="text-slate-400 leading-relaxed mb-8">
-                                一般ユーザー、管理者、システム管理者の3段階の権限をご用意。現場担当者からIT責任者まで、それぞれの役割に合わせた最適なアクセス制御を実現します。助
+                                一般ユーザー、管理者、システム管理者の3段階の権限をご用意。現場担当者からIT責任者まで、それぞれの役割に合わせた最適なアクセス制御を実現します。
                             </p>
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
@@ -512,14 +512,14 @@ export default function LandingPage() {
                                         <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs">管理</div>
                                         <h4 className="font-bold text-white">管理者</h4>
                                     </div>
-                                    <p className="text-xs text-slate-400">一般機能に加え、AI読取項目のマッピング設定や自社情報の編集、案件の集約管理など、現場の運用管理を行います。助</p>
+                                    <p className="text-xs text-slate-400">一般機能に加え、AI読取項目のマッピング設定や自社情報の編集、案件の集約管理など、現場の運用管理を行います。</p>
                                 </div>
                                 <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20">
                                     <div className="flex items-center gap-3 mb-2">
                                         <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-xs">全能</div>
                                         <h4 className="font-bold text-white">システム管理者</h4>
                                     </div>
-                                    <p className="text-xs text-slate-400">自社内の全設定、ユーザーの招待・削除・**パスワードリセット**、プランの変更、全データの一括出力が可能な、社内の最上位権限者です。助</p>
+                                    <p className="text-xs text-slate-400">自社内の全設定、ユーザーの招待・削除・**パスワードリセット**、プランの変更、全データの一括出力が可能な、社内の最上位権限者です。</p>
                                 </div>
                             </div>
                         </div>

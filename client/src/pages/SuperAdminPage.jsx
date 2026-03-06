@@ -47,10 +47,10 @@ export default function SuperAdminPage() {
     };
 
     const getStorageLimitGB = (tenant) => {
-        // APIから返却された上限値がある場合はそれを使用（stripe.jsの最新値）助
+        // APIから返却された上限値がある場合はそれを使用（stripe.jsの最新値）
         if (tenant?.maxStorageGB) return tenant.maxStorageGB;
 
-        // フォールバック（念のため）助
+        // フォールバック（念のため）
         const limits = { free: 1, lite: 5, plus: 20, pro: 100 };
         return limits[tenant?.plan?.toLowerCase()] || 1;
     };

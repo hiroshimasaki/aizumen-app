@@ -165,7 +165,7 @@ export default function PlatformLoginPage() {
                                     <Smartphone size={32} />
                                 </div>
                                 <h2 className="text-xl font-bold text-white uppercase tracking-tight">2-Factor Authentication</h2>
-                                <p className="text-sm text-slate-400">認証アプリに表示されている 6 桁のコードを入力してください助</p>
+                                <p className="text-sm text-slate-400">認証アプリに表示されている 6 桁のコードを入力してください</p>
                             </div>
 
                             <div className="relative group">

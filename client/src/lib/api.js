@@ -27,7 +27,7 @@ api.interceptors.response.use(
                         type: 'info'
                     }
                 }));
-                // 即座にリダイレクトするとメッセージが見えないため、少し待つ助。案。助。
+                // 即座にリダイレクトするとメッセージが見えないため、少し待つ
                 await supabase.auth.signOut();
                 setTimeout(() => {
                     window.location.href = '/login';
