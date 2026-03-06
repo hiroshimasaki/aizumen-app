@@ -12,7 +12,7 @@ const logService = require('../services/logService');
  */
 router.get('/', authMiddleware, async (req, res, next) => {
     try {
-        const { data: sub } = await supabaseAdmin
+        let { data: sub } = await supabaseAdmin
             .from('subscriptions')
             .select('*')
             .eq('tenant_id', req.tenantId)
@@ -23,6 +23,33 @@ router.get('/', authMiddleware, async (req, res, next) => {
             .select('plan')
             .eq('id', req.tenantId)
             .single();
+
+        // 自己修復ロジックの追加助
+        if (sub && (sub.status === 'active' || sub.status === 'past_due')) {
+            if (sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
+                console.log(`[Subscription/GET] Self-healing: Subscription for tenant ${req.tenantId} has expired.`);
+
+                await supabaseAdmin
+                    .from('subscriptions')
+                    .update({
+                        status: 'canceled',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('tenant_id', req.tenantId);
+
+                await supabaseAdmin
+                    .from('tenants')
+                    .update({
+                        plan: 'free',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', req.tenantId);
+
+                // 再取得または手動更新助
+                sub.status = 'canceled';
+                if (tenant) tenant.plan = 'free';
+            }
+        }
 
         const plan = tenant?.plan || 'lite';
         const planConfig = PLAN_CONFIG[plan];

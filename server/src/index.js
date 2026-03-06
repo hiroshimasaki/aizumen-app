@@ -47,15 +47,15 @@ const ocrLimiter = rateLimit({
   message: { error: 'OCR rate limit exceeded. Please wait before retrying.' },
 });
 
-// --- Stripe Webhook (raw body が必要なので json パース前に登録) ---
-app.use('/api/webhook', webhookRoutes);
-app.use('/api/credits', creditsRoutes); // apiLimiter を削除 (後の app.use('/api/', apiLimiter) でカバーされるため)
-
 // --- Global Middleware ---
 app.use(cors({
   origin: [process.env.APP_URL || 'http://localhost:5174', 'null', 'file://'],
   credentials: true,
 }));
+
+// --- Stripe Webhook (raw body が必要なので json パース前に登録) ---
+app.use('/api/webhook', webhookRoutes);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(accessLogMiddleware); // ここに追加
@@ -95,6 +95,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/backups', backupRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/credits', creditsRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 
 // --- 404 Handler ---

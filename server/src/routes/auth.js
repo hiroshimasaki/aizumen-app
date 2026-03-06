@@ -392,6 +392,34 @@ router.get('/me', authMiddleware, async (req, res, next) => {
         const storageUsage = usageData?.reduce((sum, f) => sum + (f.file_size || 0), 0) || 0;
         const maxStorageGB = PLAN_CONFIG[tenant?.plan]?.maxStorageGB || 1;
 
+        // 自己修復ロジック: ステータスが active または past_due でも、期限（current_period_end）が過ぎていれば
+        // stripe 側の同期を待たずに DB 上で明示的に canceled 扱いにする助
+        if (subscription && (subscription.status === 'active' || subscription.status === 'past_due')) {
+            if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
+                console.log(`[Auth/Me] Self-healing: Subscription for tenant ${req.tenantId} has expired. Updating DB...`);
+
+                await supabaseAdmin
+                    .from('subscriptions')
+                    .update({
+                        status: 'canceled',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('tenant_id', req.tenantId);
+
+                await supabaseAdmin
+                    .from('tenants')
+                    .update({
+                        plan: 'free',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', req.tenantId);
+
+                // 返却するオブジェクトも更新助
+                subscription.status = 'canceled';
+                if (tenant) tenant.plan = 'free';
+            }
+        }
+
         res.json({
             user: profile,
             tenant,
