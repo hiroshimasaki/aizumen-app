@@ -12,6 +12,13 @@ const CATEGORIES = [
     { value: 'other', label: 'その他', icon: MoreHorizontal, color: 'slate' },
 ];
 
+const maskText = (text) => {
+    if (!text) return '';
+    if (text.length <= 1) return '*';
+    if (text.length === 2) return text[0] + '*';
+    return text[0] + '*'.repeat(text.length - 2) + text[text.length - 1];
+};
+
 const CATEGORY_STYLES = {
     question: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', label: '質問' },
     suggestion: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', label: '改善提案' },
@@ -213,8 +220,8 @@ function PostCard({ post, onClick, onLike }) {
             </div>
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
                 <div className="flex items-center gap-3 text-xs text-slate-500">
-                    <span className="font-medium text-slate-300">{post.user_name}</span>
-                    {post.tenant_name && <span className="text-slate-600">@{post.tenant_name}</span>}
+                    <span className="font-medium text-slate-300">{maskText(post.user_name)}</span>
+                    {post.tenant_name && <span className="text-slate-600">@{maskText(post.tenant_name)}</span>}
                     <span>{new Date(post.created_at).toLocaleDateString('ja-JP')}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500">
@@ -426,8 +433,8 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
                     </div>
                     <h2 className="text-xl font-black text-white mb-2">{post.title}</h2>
                     <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-                        <span className="font-medium text-slate-300">{post.user_name}</span>
-                        {post.tenant_name && <span>@{post.tenant_name}</span>}
+                        <span className="font-medium text-slate-300">{maskText(post.user_name)}</span>
+                        {post.tenant_name && <span>@{maskText(post.tenant_name)}</span>}
                         <span>{new Date(post.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                         {post.updated_at !== post.created_at && <span className="text-slate-600">(編集済み)</span>}
                     </div>
@@ -474,8 +481,8 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
-                                        <span className="font-medium text-slate-300">{reply.user_name}</span>
-                                        {reply.tenant_name && <span>@{reply.tenant_name}</span>}
+                                        <span className="font-medium text-slate-300">{maskText(reply.user_name)}</span>
+                                        {reply.tenant_name && <span>@{maskText(reply.tenant_name)}</span>}
                                         <span>{new Date(reply.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                         {reply.updated_at !== reply.created_at && <span className="text-slate-600">(編集済み)</span>}
                                     </div>
