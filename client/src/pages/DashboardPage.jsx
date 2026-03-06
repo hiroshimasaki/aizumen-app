@@ -91,6 +91,18 @@ export default function DashboardPage() {
         };
     }, [tenant?.id]);
 
+    // 背景スクロールロック
+    useEffect(() => {
+        if (isFormOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isFormOpen]);
+
     const handleEdit = (quotation) => {
         setEditingData(quotation);
         setIsFormOpen(true);

@@ -4,7 +4,9 @@ const { createClient } = require('@supabase/supabase-js');
 const { supabaseAdmin } = require('../config/supabase');
 const authService = require('../services/authService');
 const { authMiddleware } = require('../middleware/auth');
+const { PLAN_CONFIG } = require('../config/stripe');
 const { AppError } = require('../middleware/errorHandler');
+const logService = require('../services/logService');
 
 /**
  * POST /api/auth/signup
@@ -14,6 +16,15 @@ router.post('/signup', async (req, res, next) => {
     try {
         const { email, password, userName, companyName, companyCode, plan } = req.body;
         const result = await authService.signUp({ email, password, userName, companyName, companyCode, plan });
+
+        await logService.audit({
+            action: 'tenant_signup',
+            entityType: 'tenant',
+            entityId: result.tenant.id,
+            description: `New tenant registered: ${companyName}`,
+            tenantId: result.tenant.id,
+            userId: result.user.id
+        });
 
         // サインアップ後にログインセッションを返す
         const tempClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
@@ -102,6 +113,14 @@ router.post('/login', async (req, res, next) => {
             },
             session: data.session,
         });
+
+        await logService.audit({
+            action: 'login_success',
+            entityType: 'auth',
+            description: `User logged in: ${email}`,
+            tenantId: data.user.app_metadata?.tenant_id,
+            userId: data.user.id
+        });
     } catch (err) {
         next(err);
     }
@@ -178,6 +197,14 @@ router.post('/login-with-code', async (req, res, next) => {
             },
             session: data.session,
         });
+
+        await logService.audit({
+            action: 'login_success',
+            entityType: 'auth',
+            description: `User logged in with code: ${employeeId}@${companyCode}`,
+            tenantId: data.user.app_metadata?.tenant_id,
+            userId: data.user.id
+        });
     } catch (err) {
         next(err);
     }
@@ -190,6 +217,13 @@ router.post('/login-with-code', async (req, res, next) => {
 router.post('/logout', authMiddleware, async (req, res, next) => {
     try {
         // サーバーサイドでのセッション無効化は Supabase Auth が管理
+        await logService.audit({
+            action: 'logout',
+            entityType: 'auth',
+            description: `User logged out`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
         res.json({ message: 'Logged out successfully' });
     } catch (err) {
         next(err);
@@ -240,6 +274,15 @@ router.put('/update-password', authMiddleware, async (req, res, next) => {
         if (error) {
             throw new AppError('Failed to update password', 500, 'PASSWORD_UPDATE_FAILED');
         }
+
+        await logService.audit({
+            action: 'password_updated',
+            entityType: 'user',
+            entityId: req.user.id,
+            description: `User updated their own password`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
 
         res.json({ message: 'Password updated successfully' });
     } catch (err) {
@@ -323,13 +366,69 @@ router.get('/me', authMiddleware, async (req, res, next) => {
             .eq('tenant_id', req.tenantId)
             .maybeSingle();
 
+        // ストレージ使用量取得
+        const { data: usageData } = await supabaseAdmin
+            .from('quotation_files')
+            .select('file_size')
+            .eq('tenant_id', req.tenantId);
+
+        const storageUsage = usageData?.reduce((sum, f) => sum + (f.file_size || 0), 0) || 0;
+        const maxStorageGB = PLAN_CONFIG[tenant?.plan]?.maxStorageGB || 1;
+
         res.json({
             user: profile,
             tenant,
-            subscription,
+            subscription: {
+                ...subscription,
+                storageUsage,
+                maxStorageGB
+            },
         });
     } catch (err) {
         next(err);
+    }
+});
+
+/**
+ * POST /api/auth/report-error
+ * フロントエンドからのエラー報告を受け取る
+ */
+router.post('/report-error', async (req, res, next) => {
+    try {
+        const { message, stack, browserInfo, path, level } = req.body;
+
+        // 非ログイン時でも受け取る（authMiddlewareは通さない助）
+        // ただし tenantId, userId はトークンがあれば取得を試みる
+        let userId = null;
+        let tenantId = null;
+
+        // BearerトークンがあればパースしてIDを特定（簡易的）助
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            try {
+                // ここではデコードのみ（検証は省略して利便性優先助）
+                const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+                userId = payload.sub;
+                tenantId = payload.app_metadata?.tenant_id;
+            } catch (e) { /* ignore */ }
+        }
+
+        await logService.error({
+            message: message || 'Frontend Error',
+            stack,
+            source: 'client',
+            level: level || 'error',
+            tenantId,
+            userId,
+            path,
+            browserInfo
+        });
+
+        res.status(204).end();
+    } catch (err) {
+        // ログ保存失敗自体でAPIエラーにはしたくない
+        res.status(204).end();
     }
 });
 

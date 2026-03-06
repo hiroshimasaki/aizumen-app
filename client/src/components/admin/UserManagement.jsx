@@ -22,6 +22,18 @@ export default function UserManagement() {
     const [resettingUser, setResettingUser] = useState(null);
     const [newPassword, setNewPassword] = useState('');
 
+    // 背景スクロールロック
+    useEffect(() => {
+        if (createdCredentials || resettingUser) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [createdCredentials, resettingUser]);
+
     useEffect(() => {
         fetchUsers();
         fetchLicenseInfo();

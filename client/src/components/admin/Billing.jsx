@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CreditCard, Zap, Check, ChevronRight, Package, History, AlertCircle, Calendar } from 'lucide-react';
+import { CreditCard, Zap, Check, ChevronRight, Package, History, AlertCircle, Calendar, HardDrive } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -7,9 +7,9 @@ import { cn } from '../../lib/utils';
 import { useNotification } from '../../contexts/NotificationContext';
 
 const PLANS = [
-    { id: 'lite', name: 'Lite', price: '10,000', users: 2, credits: 100, features: ['2ユーザーまで', '毎月100クレジット付与', 'AI抽出条件カスタム', 'バックアップ7日間保持'] },
-    { id: 'plus', name: 'Plus', price: '30,000', users: 10, credits: 500, features: ['10ユーザーまで', '毎月500クレジット付与', 'AI抽出条件カスタム', 'バックアップ7日間保持'] },
-    { id: 'pro', name: 'Pro', price: '50,000', users: 20, credits: 1000, features: ['20ユーザーまで', '毎月1,000クレジット付与', 'AI抽出条件カスタム', '高度な分析レポート', 'バックアップ30日間保持'] },
+    { id: 'lite', name: 'Lite', price: '10,000', users: 2, credits: 100, features: ['2ユーザーまで', '毎月100クレジット付与', 'ストレージ 5GB (約1万枚相当)', 'AI抽出条件カスタム', 'バックアップ7日間保持'] },
+    { id: 'plus', name: 'Plus', price: '30,000', users: 10, credits: 500, features: ['10ユーザーまで', '毎月500クレジット付与', 'ストレージ 20GB (約4万枚相当)', 'AI抽出条件カスタム', 'バックアップ7日間保持'] },
+    { id: 'pro', name: 'Pro', price: '50,000', users: 20, credits: 1000, features: ['20ユーザーまで', '毎月1,000クレジット付与', 'ストレージ 100GB (約20万枚相当)', 'AI抽出条件カスタム', '高度な分析レポート', 'バックアップ30日間保持'] },
 ];
 
 const CREDIT_PACKS = [
@@ -212,7 +212,7 @@ export default function Billing() {
             )}
 
             {/* 現在の状況 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">現在のプラン</p>
                     <div className="flex items-center gap-3">
@@ -239,7 +239,7 @@ export default function Billing() {
                                     <div className="w-48 h-3 bg-amber-500/10 rounded animate-pulse" />
                                 ) : null}
                             </div>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-slate-400 whitespace-nowrap mt-1">
                                 {subscription?.subscription?.status === 'active' ? 'サブスクリプション有効' : '無料トライアル / 制限中'}
                             </p>
                         </div>
@@ -284,39 +284,76 @@ export default function Billing() {
                 </div>
 
                 <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">支払い管理</p>
-                    <button
-                        onClick={handlePortal}
-                        disabled={!!processing}
-                        className={cn(
-                            "w-full flex items-center justify-between px-4 py-3 bg-slate-900/50 hover:bg-slate-900 border border-slate-700 rounded-xl text-sm font-medium text-slate-300 transition-all",
-                            processing === 'portal' && "opacity-50"
-                        )}
-                    >
-                        <div className="flex flex-col items-start gap-0.5">
-                            <div className="flex items-center gap-2">
-                                <CreditCard size={18} />
-                                <span className="text-sm font-medium">
-                                    {processing === 'portal' ? '処理中...' : '支払い情報の管理'}
-                                </span>
-                            </div>
-                            {/* カード情報の表示エリアを固定高にしてガタつきを防止 */}
-                            <div className="h-4 flex items-center">
-                                {(stripeDetails?.paymentMethod || subscription?.paymentMethod) ? (
-                                    <span className="text-[10px] text-slate-400 pl-6.5 font-mono animate-in fade-in duration-300">
-                                        {(stripeDetails?.paymentMethod || subscription?.paymentMethod).brand.toUpperCase()} ****{(stripeDetails?.paymentMethod || subscription?.paymentMethod).last4}
-                                    </span>
-                                ) : loadingStripe ? (
-                                    <div className="ml-6.5 w-24 h-2 bg-slate-700/50 rounded animate-pulse" />
-                                ) : (
-                                    <span className="text-[10px] text-slate-500 pl-6.5 italic">
-                                        カード情報未設定
-                                    </span>
-                                )}
-                            </div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ストレージ使用量</p>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-500/20 rounded-lg">
+                            <HardDrive className="text-emerald-400" size={24} />
                         </div>
-                        <ChevronRight size={16} className="text-slate-500" />
-                    </button>
+                        <div className="w-full">
+                            {(() => {
+                                const usageGB = (subscription?.plan?.storageUsage || 0) / (1024 * 1024 * 1024);
+                                const maxGB = subscription?.plan?.maxStorageGB || 1;
+                                const percent = Math.min((usageGB / maxGB) * 100, 100);
+                                return (
+                                    <>
+                                        <div className="flex items-end justify-between mb-1">
+                                            <h4 className="text-xl font-bold text-white">{usageGB.toFixed(1)} GB</h4>
+                                            <span className="text-xs text-slate-400">/ {maxGB} GB</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${percent >= 80 ? 'bg-red-500' : 'bg-emerald-400'}`}
+                                                style={{ width: `${percent}%` }}
+                                            />
+                                        </div>
+                                        <div className="text-right mt-1">
+                                            <span className={`text-[10px] font-medium ${percent >= 80 ? 'text-red-400' : 'text-slate-500'}`}>
+                                                {Math.floor(percent)}% 使用
+                                            </span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
+                    <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">支払い管理</p>
+                        <button
+                            onClick={handlePortal}
+                            disabled={!!processing}
+                            className={cn(
+                                "w-full flex items-center justify-between px-4 py-3 bg-slate-900/50 hover:bg-slate-900 border border-slate-700 rounded-xl text-sm font-medium text-slate-300 transition-all",
+                                processing === 'portal' && "opacity-50"
+                            )}
+                        >
+                            <div className="flex flex-col items-start gap-0.5">
+                                <div className="flex items-center gap-2">
+                                    <CreditCard size={18} className="shrink-0" />
+                                    <span className="text-sm font-medium whitespace-nowrap">
+                                        {processing === 'portal' ? '処理中...' : '支払い情報の管理'}
+                                    </span>
+                                </div>
+                                {/* カード情報の表示エリアを固定高にしてガタつきを防止 */}
+                                <div className="h-4 flex items-center">
+                                    {(stripeDetails?.paymentMethod || subscription?.paymentMethod) ? (
+                                        <span className="text-[10px] text-slate-400 pl-6.5 font-mono animate-in fade-in duration-300">
+                                            {(stripeDetails?.paymentMethod || subscription?.paymentMethod).brand.toUpperCase()} ****{(stripeDetails?.paymentMethod || subscription?.paymentMethod).last4}
+                                        </span>
+                                    ) : loadingStripe ? (
+                                        <div className="ml-6.5 w-24 h-2 bg-slate-700/50 rounded animate-pulse" />
+                                    ) : (
+                                        <span className="text-[10px] text-slate-500 pl-6.5 italic">
+                                            カード情報未設定
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <ChevronRight size={16} className="text-slate-500 shrink-0" />
+                        </button>
+                    </div>
                 </div>
             </div>
 

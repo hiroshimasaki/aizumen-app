@@ -148,9 +148,20 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
         }
     }, [quotationId]);
 
-    const onDrop = useCallback(acceptedFiles => {
+    const onDrop = useCallback((acceptedFiles, fileRejections) => {
         setFiles(prev => [...prev, ...acceptedFiles]);
-    }, []);
+
+        if (fileRejections.length > 0) {
+            const errors = fileRejections.map(rejection => {
+                const name = rejection.file.name;
+                const error = rejection.errors[0]?.code === 'file-invalid-type'
+                    ? '未対応の形式です'
+                    : rejection.errors[0]?.message;
+                return `${name}: ${error}`;
+            });
+            showAlert(`一部のファイルを追加できませんでした：\n${errors.join('\n')}`, 'error');
+        }
+    }, [showAlert]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -160,7 +171,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
             'image/vnd.dxf': ['.dxf'],
             'text/x-dxf': ['.dxf'],
             'application/step': ['.step', '.stp'],
-            'model/step': ['.step', '.stp']
+            'model/step': ['.step', '.stp'],
+            'application/octet-stream': ['.dxf', '.step', '.stp']
         },
         multiple: true
     });
@@ -604,7 +616,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                                     解析エラー
                                                 </div>
                                             )}
-                                            {(!fileStatuses[f.name] || fileStatuses[f.name] === 'pending' || fileStatuses[f.name] === 'error') && (
+                                            {(!fileStatuses[f.name] || fileStatuses[f.name] === 'pending' || fileStatuses[f.name] === 'error') && f.name.toLowerCase().endsWith('.pdf') && (
                                                 <div className="flex flex-col items-center pt-0.5">
                                                     <button
                                                         type="button"

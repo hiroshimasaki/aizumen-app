@@ -4,6 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
+const logService = require('./services/logService');
+
 // Route imports
 const authRoutes = require('./routes/auth');
 const quotationRoutes = require('./routes/quotations');
@@ -22,7 +24,8 @@ const superAdminRoutes = require('./routes/superAdmin');
 
 // Middleware imports
 const { errorHandler } = require('./middleware/errorHandler');
-const { checkTenant } = require('./middleware/auth'); // Assuming checkTenant is in auth middleware
+const { checkTenant } = require('./middleware/auth');
+const accessLogMiddleware = require('./middleware/accessLog');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +58,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(accessLogMiddleware); // ここに追加
 
 app.use('/api/', apiLimiter);
 app.use('/api/ocr/', ocrLimiter);
@@ -179,6 +183,20 @@ app.listen(PORT, () => {
   });
 
   console.log('[AiZumen API] Cron job registered: trash purge at 03:00 JST daily');
+});
+
+// グローバルエラー捕捉
+process.on('uncaughtException', async (err) => {
+  console.error('[AiZumen API] Uncaught Exception:', err);
+  await logService.error(err, { source: 'server_global_uncaught' });
+  // 本来はプロセスを再起動すべきだが、一旦記録のみ
+});
+
+process.on('unhandledRejection', async (reason, promise) => {
+  console.error('[AiZumen API] Unhandled Rejection at:', promise, 'reason:', reason);
+  await logService.error(reason instanceof Error ? reason : new Error(String(reason)), {
+    source: 'server_global_rejection'
+  });
 });
 
 module.exports = app;

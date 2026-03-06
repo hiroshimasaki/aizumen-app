@@ -157,6 +157,18 @@ export default function QuotationsPage() {
         };
     }, [page, statusFilter, showDeleted, isAdmin, tenant?.id]);
 
+    // 背景スクロールロック
+    useEffect(() => {
+        if (isFormOpen || isBulkOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isFormOpen, isBulkOpen]);
+
     const handleSearchSubmit = (e) => {
         if (e) e.preventDefault();
         setPage(1);
@@ -268,24 +280,30 @@ export default function QuotationsPage() {
     };
 
     // Bulk Analyze Handlers
-    const onDropBulk = useCallback(acceptedFiles => {
+    const onDropBulk = useCallback((acceptedFiles, fileRejections) => {
         setBulkFiles(prev => [...prev, ...acceptedFiles]);
         const initialStatuses = {};
         acceptedFiles.forEach(f => {
             if (!bulkStatuses[f.name]) initialStatuses[f.name] = 'pending';
         });
         setBulkStatuses(prev => ({ ...prev, ...initialStatuses }));
-    }, [bulkStatuses]);
+
+        if (fileRejections.length > 0) {
+            const errors = fileRejections.map(rejection => {
+                const name = rejection.file.name;
+                const error = rejection.errors[0]?.code === 'file-invalid-type'
+                    ? '一括解析はPDFのみ対応しています'
+                    : rejection.errors[0]?.message;
+                return `${name}: ${error}`;
+            });
+            showAlert(`一部のファイルを追加できませんでした：\n${errors.join('\n')}`, 'error');
+        }
+    }, [bulkStatuses, showAlert]);
 
     const { getRootProps: getBulkRootProps, getInputProps: getBulkInputProps, isDragActive: isBulkDragActive } = useDropzone({
         onDrop: onDropBulk,
         accept: {
-            'application/pdf': ['.pdf'],
-            'application/dxf': ['.dxf'],
-            'image/vnd.dxf': ['.dxf'],
-            'text/x-dxf': ['.dxf'],
-            'application/step': ['.step', '.stp'],
-            'model/step': ['.step', '.stp']
+            'application/pdf': ['.pdf']
         }
     });
 
@@ -304,6 +322,11 @@ export default function QuotationsPage() {
             const file = bulkFiles[i];
             if (bulkStatuses[file.name] === 'completed') {
                 setBulkProgress(p => ({ ...p, current: p.current + 1 }));
+                continue;
+            }
+
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                setBulkStatuses(prev => ({ ...prev, [file.name]: 'error' }));
                 continue;
             }
 
@@ -634,8 +657,8 @@ export default function QuotationsPage() {
                             >
                                 <input {...getBulkInputProps()} />
                                 <UploadCloud size={32} className="mx-auto text-slate-500 mb-3" />
-                                <p className="text-slate-400 text-sm font-medium">ここにPDF, DXF, STEPファイルをドロップ</p>
-                                <p className="text-slate-500 text-xs mt-1">対応形式: .pdf, .dxf, .step (1ファイル 10MB / 合計 20MB)</p>
+                                <p className="text-slate-400 text-sm font-medium">ここにPDFファイルをドロップ</p>
+                                <p className="text-slate-500 text-xs mt-1">対応形式: .pdf (1ファイル 10MB / 合計 20MB)</p>
                             </div>
 
                             {/* File List */}

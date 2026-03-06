@@ -1,3 +1,5 @@
+const logService = require('../services/logService');
+
 /**
  * カスタムエラークラス
  * isOperational = true のエラーはクライアントにメッセージを返す（予期されたエラー）
@@ -15,8 +17,8 @@ class AppError extends Error {
  * グローバルエラーハンドリングミドルウェア
  */
 const errorHandler = (err, req, res, _next) => {
-    // ログ出力
-    console.error(JSON.stringify({
+    // 構造化ログ出力（標準出力）
+    const errorLog = {
         timestamp: new Date().toISOString(),
         level: err.isOperational ? 'warn' : 'error',
         message: err.message,
@@ -25,9 +27,23 @@ const errorHandler = (err, req, res, _next) => {
         path: req.path,
         method: req.method,
         tenantId: req.tenantId || null,
-        userId: req.user?.id || null,
+        userId: req.user?.id || req.session?.user?.id || null,
         stack: err.isOperational ? undefined : err.stack,
-    }));
+    };
+    console.error(JSON.stringify(errorLog));
+
+    // DBへの永続化ログ
+    // 非同期で実行（レスポンスを待たせない）助。
+    logService.error({
+        message: err.message,
+        stack: err.isOperational ? null : err.stack,
+        source: 'server',
+        level: err.isOperational ? 'warn' : 'error',
+        tenantId: errorLog.tenantId,
+        userId: errorLog.userId,
+        path: req.path,
+        method: req.method
+    });
 
     // 運用上の予期されたエラー
     if (err.isOperational) {
@@ -37,18 +53,7 @@ const errorHandler = (err, req, res, _next) => {
         });
     }
 
-    // 予期しないエラー（バグ）
-    // クライアントには詳細を見せない
-    try {
-        const fs = require('fs');
-        const path = require('path');
-        const logPath = path.join(__dirname, '../../error.log');
-        const errorDetails = err ? (err.stack || err.message || String(err)) : 'Unknown Error';
-        fs.appendFileSync(logPath, `${new Date().toISOString()} - FATAL ERROR: ${errorDetails}\n\n`);
-    } catch (e) {
-        // failed to write log
-    }
-
+    // 予期しないエラー（バグ）の場合は 500
     res.status(500).json({
         error: 'Internal server error',
         code: 'INTERNAL_ERROR'

@@ -3,6 +3,7 @@ const router = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const authService = require('../services/authService');
 const { supabaseAdmin } = require('../config/supabase');
+const logService = require('../services/logService');
 
 /**
  * GET /api/users
@@ -55,6 +56,16 @@ router.post('/invite', authMiddleware, requireRole('system_admin'), async (req, 
     try {
         const { employeeId, name, role } = req.body;
         const result = await authService.inviteUser(req.tenantId, { employeeId, name, role });
+
+        await logService.audit({
+            action: 'user_invited',
+            entityType: 'user',
+            entityId: result.user?.id,
+            description: `User invited: ${name} (${role})`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.status(201).json(result);
     } catch (err) {
         next(err);
@@ -69,6 +80,16 @@ router.put('/:id', authMiddleware, requireRole('system_admin'), async (req, res,
     try {
         const { name, role, isActive } = req.body;
         const updated = await authService.updateUser(req.tenantId, req.params.id, { name, role, isActive });
+
+        await logService.audit({
+            action: 'user_updated',
+            entityType: 'user',
+            entityId: req.params.id,
+            description: `User updated: ${name} (isActive: ${isActive})`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json(updated);
     } catch (err) {
         next(err);
@@ -83,6 +104,16 @@ router.post('/:id/reset-password', authMiddleware, requireRole('system_admin'), 
     try {
         const { newPassword } = req.body;
         const result = await authService.resetUserPassword(req.tenantId, req.params.id, newPassword);
+
+        await logService.audit({
+            action: 'user_password_reset',
+            entityType: 'user',
+            entityId: req.params.id,
+            description: `Password reset for user`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json(result);
     } catch (err) {
         next(err);
@@ -96,6 +127,16 @@ router.post('/:id/reset-password', authMiddleware, requireRole('system_admin'), 
 router.delete('/:id', authMiddleware, requireRole('system_admin'), async (req, res, next) => {
     try {
         const result = await authService.deleteUser(req.tenantId, req.params.id, req.user.id);
+
+        await logService.audit({
+            action: 'user_deleted',
+            entityType: 'user',
+            entityId: req.params.id,
+            description: `User physically deleted`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json(result);
     } catch (err) {
         next(err);

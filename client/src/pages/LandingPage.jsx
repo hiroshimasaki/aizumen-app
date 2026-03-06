@@ -372,6 +372,7 @@ export default function LandingPage() {
                             <ul className="space-y-4 mb-8 flex-1">
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 最大2ユーザー利用可能</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 毎月100 AIクレジット付与</li>
+                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> ストレージ 5GB (約1万枚)</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> バックアップ 7日間保持</li>
                             </ul>
                             <Link to="/signup" className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-center transition-all border border-white/5">無料で試す</Link>
@@ -394,6 +395,7 @@ export default function LandingPage() {
                             <ul className="space-y-4 mb-8 flex-1">
                                 <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> 最大10ユーザー利用可能</li>
                                 <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> 毎月500 AIクレジット付与</li>
+                                <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> ストレージ 20GB (約4万枚)</li>
                                 <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> バックアップ 7日間保持</li>
                             </ul>
                             <Link to="/signup" className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-center transition-all shadow-xl shadow-blue-500/30 text-lg">
@@ -415,6 +417,7 @@ export default function LandingPage() {
                             <ul className="space-y-4 mb-8 flex-1">
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 最大20ユーザー利用可能</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 毎月1,000 AIクレジット付与</li>
+                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> ストレージ 100GB (約20万枚)</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> バックアップ 30日間保持</li>
                                 <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> フル機能・高度な分析レポート</li>
                             </ul>
@@ -458,6 +461,12 @@ export default function LandingPage() {
                                     <td className="p-6 text-white text-center">7 日間</td>
                                     <td className="p-6 text-white text-center">7 日間</td>
                                     <td className="p-6 text-amber-400 text-center font-bold">30 日間</td>
+                                </tr>
+                                <tr>
+                                    <td className="p-6 text-slate-300 font-medium">ストレージ容量</td>
+                                    <td className="p-6 text-white text-center">5 GB<br /><span className="text-[10px] text-slate-500">(約1万枚相当)</span></td>
+                                    <td className="p-6 text-white text-center">20 GB<br /><span className="text-[10px] text-slate-500">(約4万枚相当)</span></td>
+                                    <td className="p-6 text-amber-400 text-center font-bold">100 GB<br /><span className="text-[10px] text-amber-900/60 font-medium">(約20万枚相当)</span></td>
                                 </tr>
                                 <tr>
                                     <td className="p-6 text-slate-300 font-medium">注文書自動OCR解析</td>

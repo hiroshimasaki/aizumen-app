@@ -1,7 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, FileJson, FileSpreadsheet, Info, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function ImportGuide({ isOpen, onClose }) {
+    // 背景スクロールロック
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const fields = [

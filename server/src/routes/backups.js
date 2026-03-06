@@ -3,6 +3,7 @@ const router = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const backupService = require('../services/backupService');
 const { AppError } = require('../middleware/errorHandler');
+const logService = require('../services/logService');
 
 /**
  * GET /api/backups
@@ -37,6 +38,15 @@ router.get('/:fileName/download', authMiddleware, requireRole('system_admin'), a
 router.post('/', authMiddleware, requireRole('system_admin'), async (req, res, next) => {
     try {
         const result = await backupService.runTenantBackup(req.tenantId);
+
+        await logService.audit({
+            action: 'backup_executed',
+            entityType: 'backup',
+            description: `Manual backup executed for tenant`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json(result);
     } catch (err) {
         next(err);

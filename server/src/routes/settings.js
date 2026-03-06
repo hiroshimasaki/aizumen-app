@@ -3,6 +3,7 @@ const router = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
+const logService = require('../services/logService');
 
 /**
  * GET /api/settings
@@ -53,6 +54,14 @@ router.put('/', authMiddleware, requireRole('admin'), async (req, res, next) => 
 
         if (error) throw new AppError('Failed to update settings', 500, 'UPDATE_FAILED');
 
+        await logService.audit({
+            action: 'tenant_settings_updated',
+            entityType: 'settings',
+            description: `Tenant settings updated`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         // hourlyRate があれば tenants テーブルも更新
         if (req.body.hourlyRate !== undefined) {
             const { error: tError } = await supabaseAdmin
@@ -98,6 +107,16 @@ router.put('/company', authMiddleware, requireRole('admin'), async (req, res, ne
             .single();
 
         if (error) throw new AppError('Failed to update company info', 500, 'UPDATE_FAILED');
+
+        await logService.audit({
+            action: 'company_info_updated',
+            entityType: 'tenant',
+            entityId: req.tenantId,
+            description: `Company information updated: ${name}`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json(data);
     } catch (err) {
         next(err);

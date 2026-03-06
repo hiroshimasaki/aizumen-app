@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useLocation, useN
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { LogOut, Database, BarChart3, Settings, Zap, Menu, X, CalendarDays, TrendingUp, AlertTriangle, UserCog } from 'lucide-react';
+import api from './lib/api';
 
 // Auth pages
 import LoginPage from './components/auth/LoginPage';
@@ -30,6 +31,7 @@ function AppLayout() {
         isExpired,
         trialTimeLeft,
         isProfileLoaded,
+        subscription,
     } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
@@ -46,6 +48,19 @@ function AppLayout() {
             }
         }
     }, [isExpired, location, navigate]);
+
+    // 背景スクロールロック (期限切れブロック時)
+    useEffect(() => {
+        if (isExpired && !location.search.includes('tab=billing')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isExpired, location.search]);
+
     const navItems = [];
 
     // 一般ユーザー用のメニュー
@@ -82,6 +97,12 @@ function AppLayout() {
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [menuOpen]);
+
+    // ストレージ警告の計算
+    const storageUsageGB = (subscription?.storageUsage || 0) / (1024 * 1024 * 1024);
+    const maxStorageGB = subscription?.maxStorageGB || 1;
+    const storagePercent = (storageUsageGB / maxStorageGB) * 100;
+    const isStorageWarning = storagePercent >= 80;
 
     return (
         <div className="min-h-screen bg-slate-900">
@@ -237,6 +258,26 @@ function AppLayout() {
                 </div>
             )}
 
+            {/* Storage Warning Banner */}
+            {!isExpired && isStorageWarning && (
+                <div className="bg-amber-900/30 border-b border-amber-500/20 backdrop-blur-sm">
+                    <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-amber-300 font-medium">
+                            <TrendingUp className="w-4 h-4" />
+                            <span>
+                                ストレージ使用量: {maxStorageGB.toFixed(1)}GBのうち{storageUsageGB.toFixed(1)}GBを使用（{Math.floor(storagePercent)}％）
+                            </span>
+                        </div>
+                        <Link
+                            to="/admin?tab=billing"
+                            className="px-4 py-1 bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold rounded-full hover:bg-amber-500/30 transition-all"
+                        >
+                            プランをアップグレード
+                        </Link>
+                    </div>
+                </div>
+            )}
+
             {/* Expired Hard Block Modal (Free/Paid共通) */}
             {isExpired && !location.search.includes('tab=billing') && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-500">
@@ -308,6 +349,45 @@ function ScrollToTop() {
 }
 
 export default function App() {
+    useEffect(() => {
+        const handleError = async (eventOrError) => {
+            // eventOrError can be a PromiseRejectionEvent or an ErrorEvent
+            let error = null;
+            if (eventOrError instanceof PromiseRejectionEvent) {
+                error = eventOrError.reason;
+            } else if (eventOrError instanceof ErrorEvent) {
+                error = eventOrError.error;
+            } else {
+                error = eventOrError;
+            }
+
+            if (!error) return;
+
+            // Avoid reporting the same error multiple times in a short interval if possible
+            // but for now, simple report is okay.
+            try {
+                // Background report, don't wait/block
+                api.post('/api/auth/report-error', {
+                    message: error.message || 'Unknown error',
+                    stack: error.stack,
+                    url: window.location.href,
+                    userAgent: navigator.userAgent,
+                    source: 'client_global'
+                }).catch(e => console.warn('Failed silence report:', e));
+            } catch (e) {
+                // Secondary fail-safe
+            }
+        };
+
+        window.addEventListener('error', handleError);
+        window.addEventListener('unhandledrejection', handleError);
+
+        return () => {
+            window.removeEventListener('error', handleError);
+            window.removeEventListener('unhandledrejection', handleError);
+        };
+    }, []);
+
     return (
         <BrowserRouter>
             <AuthProvider>

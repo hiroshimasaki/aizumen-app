@@ -5,6 +5,8 @@ const { checkTrialLimit } = require('../middleware/trialMiddleware');
 const { checkCredits } = require('../middleware/credits');
 const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
+const { checkStorageLimit } = require('../middleware/storageLimit');
+const logService = require('../services/logService');
 
 // TODO: Phase 2で本実装（Gemini API連携）
 // 現在はスケルトンのみ
@@ -23,11 +25,14 @@ const upload = multer({
  * OCR解析（1クレジット消費）
  * 実際のファイルを FormData で受け取り、Gemini APIで解析して構造化データを返します。
  */
-router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload.single('file'), async (req, res, next) => {
+router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload.single('file'), checkStorageLimit, async (req, res, next) => {
     try {
         if (!req.file) {
             throw new AppError('No file provided for analysis', 400, 'NO_FILE');
         }
+
+        // 文字化け対策
+        const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
 
         const amount = 1;
 
@@ -49,7 +54,7 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
         const tenantName = tenant?.name || '';
 
         // Gemini APIによる解析 (マッピング設定と自社名を渡す)
-        console.log(`[OCR] Analyzing file: ${req.file.originalname} (${req.file.mimetype}) with mapping:`, ocrMapping);
+        console.log(`[OCR] Analyzing file: ${originalName} (${req.file.mimetype}) with mapping:`, ocrMapping);
         const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, ocrMapping, tenantName);
 
         // クレジット消費処理
@@ -57,8 +62,16 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
             req.tenantId,
             req.user.id,
             amount,
-            `Single OCR Analysis: ${req.file.originalname}`
+            `Single OCR Analysis: ${originalName}`
         );
+
+        await logService.audit({
+            action: 'ocr_analyzed',
+            entityType: 'ocr',
+            description: `Single OCR: ${originalName}`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
 
         res.json({
             ...analysisResult,
@@ -172,6 +185,14 @@ router.post('/bulk-register', authMiddleware, checkTrialLimit, async (req, res, 
             required,
             `Bulk OCR Analysis (${required} files)`
         );
+
+        await logService.audit({
+            action: 'ocr_bulk_processed',
+            entityType: 'ocr',
+            description: `Bulk OCR: ${required} files processed`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
 
         res.json({
             results,

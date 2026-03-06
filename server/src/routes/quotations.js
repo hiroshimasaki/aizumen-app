@@ -6,6 +6,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
 const { generateQuotationId, parsePrice } = require('../utils/helpers');
 const { v4: uuidv4 } = require('uuid');
+const logService = require('../services/logService');
 
 const PAGE_SIZE = 20;
 
@@ -222,6 +223,15 @@ router.delete('/:id', authMiddleware, checkTrialLimit, async (req, res, next) =>
             changes: { message: '案件をゴミ箱に移動しました' },
         });
 
+        await logService.audit({
+            action: 'quotation_deleted',
+            entityType: 'quotation',
+            entityId: id,
+            description: `Quotation moved to trash`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json({ message: 'Quotation moved to trash' });
     } catch (err) {
         next(err);
@@ -252,6 +262,15 @@ router.post('/:id/restore', authMiddleware, checkTrialLimit, async (req, res, ne
             changes: { message: '案件をゴミ箱から復元しました' },
         });
 
+        await logService.audit({
+            action: 'quotation_restored',
+            entityType: 'quotation',
+            entityId: id,
+            description: `Quotation restored from trash`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json({ message: 'Quotation restored' });
     } catch (err) {
         next(err);
@@ -274,6 +293,15 @@ router.delete('/:id/permanent', authMiddleware, checkTrialLimit, async (req, res
             changed_by: req.user.id,
             change_type: 'permanently_deleted',
             changes: { message: '案件が完全に削除されました' },
+        });
+
+        await logService.audit({
+            action: 'quotation_permanently_deleted',
+            entityType: 'quotation',
+            entityId: req.params.id,
+            description: `Quotation permanently deleted`,
+            tenantId: req.tenantId,
+            userId: req.userId
         });
 
         res.json({ message: 'Quotation permanently deleted' });
@@ -478,6 +506,14 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
         }
 
         console.log('[Quotations] Created successfully');
+        await logService.audit({
+            action: 'quotation_created',
+            entityType: 'quotation',
+            entityId: quotation.id,
+            description: `New quotation created: ${displayId}`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
         res.status(201).json(quotation);
     } catch (err) {
         console.error('[Quotations] FATAL ERROR in POST /:', err);
@@ -682,6 +718,15 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             });
         }
 
+        await logService.audit({
+            action: 'quotation_updated',
+            entityType: 'quotation',
+            entityId: id,
+            description: `Quotation updated: ${updated.display_id}`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json(updated);
     } catch (err) {
         next(err);
@@ -724,6 +769,14 @@ router.post('/batch-delivery', authMiddleware, async (req, res, next) => {
             .in('id', itemIds);
 
         if (error) throw new AppError('Failed to update delivery dates', 500, 'BATCH_FAILED');
+        await logService.audit({
+            action: 'batch_delivery_executed',
+            entityType: 'quotation_item',
+            description: `Bulk delivery executed for ${itemIds.length} items (Date: ${deliveryDate})`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json({ message: `${itemIds.length} items delivered`, count: itemIds.length });
     } catch (err) {
         next(err);

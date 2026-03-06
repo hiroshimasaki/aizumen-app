@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabaseAdmin } = require('../config/supabase');
 const { authMiddleware, requireRole, requireMFA } = require('../middleware/auth');
+const { PLAN_CONFIG } = require('../config/stripe');
 const systemLimits = require('../config/systemLimits');
 
 // 全てのルートに認証、system_admin/super_admin ロール、および MFA を要求
@@ -83,6 +84,16 @@ router.get('/tenants', async (req, res) => {
 
         if (error) throw error;
 
+        // ストレージ使用量の集計 (全量取得してサーバーサイドで集計)
+        const { data: allFiles } = await supabaseAdmin
+            .from('quotation_files')
+            .select('tenant_id, file_size');
+
+        const storageMap = allFiles?.reduce((acc, f) => {
+            acc[f.tenant_id] = (acc[f.tenant_id] || 0) + (f.file_size || 0);
+            return acc;
+        }, {}) || {};
+
         // 扱いやすいようにフラットに整形
         const formattedTenants = tenants.map(t => ({
             id: t.id,
@@ -94,7 +105,9 @@ router.get('/tenants', async (req, res) => {
             expiryDate: t.subscriptions?.current_period_end,
             creditBalance: t.ai_credits?.balance || 0,
             monthlyQuota: t.ai_credits?.monthly_quota || 0,
-            purchasedBalance: t.ai_credits?.purchased_balance || 0
+            purchasedBalance: t.ai_credits?.purchased_balance || 0,
+            storageUsage: storageMap[t.id] || 0,
+            maxStorageGB: PLAN_CONFIG[t.plan]?.maxStorageGB || 1 // 設定ファイルから取得助
         }));
 
         res.json(formattedTenants);
@@ -319,9 +332,13 @@ router.get('/usage', async (req, res) => {
         const last30Days = new Date();
         last30Days.setDate(last30Days.getDate() - 30);
 
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
         const { data: aiUsage } = await supabaseAdmin
             .from('ai_credit_transactions')
-            .select('tenant_id, amount, tenants(name)')
+            .select('tenant_id, amount, type, created_at, tenants(name)')
             .eq('type', 'usage')
             .gte('created_at', last30Days.toISOString());
 
@@ -337,6 +354,14 @@ router.get('/usage', async (req, res) => {
             .sort((a, b) => b.count - a.count)
             .slice(0, 10);
 
+        // 今月1日からの合計解析数
+        const monthUsage = aiUsage?.filter(tx =>
+            tx.type === 'usage' && new Date(tx.created_at) >= startOfMonth
+        ).length || 0;
+
+        // コスト見積もり (Gemini 1.5 Flash: 約 0.1円 / 解析)
+        const estimatedCost = monthUsage * 0.1;
+
         // 3. 全体の合計値
         const totalStorage = storageUsage?.reduce((sum, curr) => sum + (curr.file_size || 0), 0) || 0;
         const totalAi = aiUsage?.reduce((sum, curr) => sum + Math.abs(curr.amount || 0), 0) || 0;
@@ -347,7 +372,9 @@ router.get('/usage', async (req, res) => {
             totals: {
                 storage: totalStorage,
                 ai: totalAi,
-                db: 0 // 推計値取得は将来の拡張課題
+                db: 0,
+                monthUsage: monthUsage,
+                estimatedCost: estimatedCost
             },
             storageLimit: systemLimits.STORAGE_LIMIT_BYTES,
             dbLimit: systemLimits.DATABASE_LIMIT_BYTES
@@ -427,6 +454,84 @@ router.get('/billing', async (req, res) => {
     } catch (err) {
         console.error('[SuperAdmin API] Billing Stats Error:', err.message);
         res.status(500).json({ error: 'Failed to fetch billing statistics' });
+    }
+});
+
+/**
+ * システムログの取得 (エラーログ)
+ * GET /api/super-admin/logs/errors
+ */
+router.get('/logs/errors', async (req, res) => {
+    try {
+        const { limit = 50, offset = 0, tenantId, source, level } = req.query;
+        let query = supabaseAdmin
+            .from('system_error_logs')
+            .select('*, tenants(name)')
+            .order('created_at', { ascending: false })
+            .range(offset, parseInt(offset) + parseInt(limit) - 1);
+
+        if (tenantId) query = query.eq('tenant_id', tenantId);
+        if (source) query = query.eq('source', source);
+        if (level) query = query.eq('level', level);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('[SuperAdmin API] Error Logs Fetch Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch error logs' });
+    }
+});
+
+/**
+ * システムログの取得 (アクセスログ)
+ * GET /api/super-admin/logs/access
+ */
+router.get('/logs/access', async (req, res) => {
+    try {
+        const { limit = 100, offset = 0, tenantId, method, status } = req.query;
+        let query = supabaseAdmin
+            .from('system_access_logs')
+            .select('*, tenants(name)')
+            .order('created_at', { ascending: false })
+            .range(offset, parseInt(offset) + parseInt(limit) - 1);
+
+        if (tenantId) query = query.eq('tenant_id', tenantId);
+        if (method) query = query.eq('method', method);
+        if (status) query = query.eq('status_code', status);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('[SuperAdmin API] Access Logs Fetch Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch access logs' });
+    }
+});
+
+/**
+ * システムログの取得 (監査ログ)
+ * GET /api/super-admin/logs/audit
+ */
+router.get('/logs/audit', async (req, res) => {
+    try {
+        const { limit = 50, offset = 0, tenantId, action, entityType } = req.query;
+        let query = supabaseAdmin
+            .from('audit_logs')
+            .select('*, tenants(name)')
+            .order('created_at', { ascending: false })
+            .range(offset, parseInt(offset) + parseInt(limit) - 1);
+
+        if (tenantId) query = query.eq('tenant_id', tenantId);
+        if (action) query = query.eq('action', action);
+        if (entityType) query = query.eq('entity_type', entityType);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('[SuperAdmin API] Audit Logs Fetch Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch audit logs' });
     }
 });
 

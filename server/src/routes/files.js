@@ -7,6 +7,8 @@ const { authMiddleware } = require('../middleware/auth');
 const { checkTrialLimit } = require('../middleware/trialMiddleware');
 const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
+const { checkStorageLimit } = require('../middleware/storageLimit');
+const logService = require('../services/logService');
 
 // メモリストレージ (Supabase Storageに直接アップロードするため)
 const upload = multer({
@@ -28,7 +30,7 @@ const upload = multer({
  * POST /api/files/upload
  * 複数ファイルアップロード
  */
-router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10), async (req, res, next) => {
+router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10), checkStorageLimit, async (req, res, next) => {
     try {
         if (!req.files || req.files.length === 0) {
             throw new AppError('No files provided', 400, 'NO_FILES');
@@ -45,23 +47,34 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
 
         for (const file of req.files) {
             const fileId = uuidv4();
-            const ext = file.originalname.split('.').pop();
+            // 文字化け対策: Latin-1 → UTF-8 変換
+            const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+            const ext = originalName.split('.').pop();
             const storagePath = `${req.tenantId}/${quotationId || 'pool'}/${fileId}.${ext}`;
 
             // ファイルハッシュ計算
             const hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
 
             // Supabase Storageにアップロード
+            // MIMEタイプが application/octet-stream の場合、拡張子から推測して上書き (Supabaseの制限対策)
+            let contentType = file.mimetype;
+            if (contentType === 'application/octet-stream' || !contentType) {
+                if (ext.toLowerCase() === 'dxf') contentType = 'application/dxf';
+                else if (['step', 'stp'].includes(ext.toLowerCase())) contentType = 'application/step';
+                else if (ext.toLowerCase() === 'pdf') contentType = 'application/pdf';
+            }
+
             const { error: uploadError } = await supabaseAdmin.storage
                 .from('quotation-files')
                 .upload(storagePath, file.buffer, {
-                    contentType: file.mimetype,
+                    contentType: contentType,
                     upsert: false,
                 });
 
             if (uploadError) {
                 console.error('[Files] Upload failed:', uploadError);
-                continue;
+                const errorMsg = uploadError.message || JSON.stringify(uploadError);
+                throw new AppError(`ファイルのアップロードに失敗しました: ${originalName} (理由: ${errorMsg})`, 500, 'UPLOAD_FAILED');
             }
 
             // DBにメタデータ保存
@@ -73,24 +86,28 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
                         quotation_id: quotationId,
                         tenant_id: req.tenantId,
                         storage_path: storagePath,
-                        original_name: file.originalname,
+                        original_name: originalName,
                         file_hash: hash,
                         file_size: file.size,
-                        mime_type: file.mimetype,
+                        mime_type: contentType,
                         file_type: 'attachment',
                     })
                     .select()
                     .single();
 
-                if (!dbError) results.push(data);
+                if (dbError) {
+                    console.error('[Files] DB insert failed:', dbError);
+                    throw new AppError(`ファイル情報の保存に失敗しました: ${originalName}`, 500, 'DB_INSERT_FAILED');
+                }
+                results.push(data);
             } else {
                 results.push({
                     id: fileId,
                     storagePath,
-                    originalName: file.originalname,
+                    originalName: originalName,
                     hash,
                     size: file.size,
-                    mimeType: file.mimetype,
+                    mimeType: contentType,
                 });
             }
         }
@@ -98,6 +115,14 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
         res.status(201).json({
             message: `${results.length} file(s) uploaded`,
             files: results,
+        });
+
+        await logService.audit({
+            action: 'file_uploaded',
+            entityType: 'file',
+            description: `Uploaded ${results.length} file(s)`,
+            tenantId: req.tenantId,
+            userId: req.userId
         });
     } catch (err) {
         next(err);
@@ -163,6 +188,15 @@ router.delete('/:id', authMiddleware, checkTrialLimit, async (req, res, next) =>
             .from('quotation_files')
             .delete()
             .eq('id', req.params.id);
+
+        await logService.audit({
+            action: 'file_deleted',
+            entityType: 'file',
+            entityId: req.params.id,
+            description: `File deleted: ${fileMeta.storage_path.split('/').pop()}`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
 
         res.json({ message: 'File deleted' });
     } catch (err) {

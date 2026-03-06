@@ -183,35 +183,65 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                     </div>
 
                                     {/* Files List */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start pt-2">
-                                        {quotation.files && quotation.files.length > 0 && (
-                                            quotation.files.map((file) => (
-                                                <button
-                                                    key={file.id}
-                                                    onClick={(e) => handleFileDownload(e, file.id, file.originalName)}
-                                                    disabled={downloadingId === file.id}
-                                                    className="group flex flex-col items-center gap-1 hover:opacity-80 transition-opacity text-left bg-slate-900/10 rounded-lg p-1 border border-transparent hover:border-slate-700/50"
-                                                >
-                                                    <div className="w-full relative overflow-hidden rounded-md bg-slate-900/40 flex items-center justify-center p-0" style={{ aspectRatio: '1.414 / 1' }}>
-                                                        {file.originalName.toLowerCase().endsWith('.pdf') ? (
-                                                            <PdfThumbnail fileId={file.id} />
-                                                        ) : (
-                                                            <div className="flex items-center justify-center text-slate-400 w-full h-full">
-                                                                {downloadingId === file.id ? (
-                                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-400"></div>
-                                                                ) : (
-                                                                    file.originalName.toLowerCase().endsWith('.msg') || file.originalName.toLowerCase().endsWith('.eml') ? <Mail size={80} className="opacity-30" /> : <FileText size={80} className="opacity-30" />
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[10px] text-slate-400 w-full max-w-[500px] truncate text-center flex items-center justify-center gap-1 leading-tight mt-1 bg-slate-900/50 py-1.5 rounded-md px-2">
-                                                        {downloadingId === file.id ? <div className="animate-spin rounded-full h-2 w-2 border-b-2 border-slate-400 mr-1" /> : <Download size={10} />}
-                                                        {file.originalName}
-                                                    </span>
-                                                </button>
-                                            ))
-                                        )}
+                                    <div className="flex flex-col gap-2 pt-2">
+                                        {quotation.files && quotation.files.length > 0 && (() => {
+                                            const pdfs = quotation.files.filter(f => f.originalName.toLowerCase().endsWith('.pdf'));
+                                            const others = quotation.files.filter(f => !f.originalName.toLowerCase().endsWith('.pdf'));
+                                            const displayPdfs = pdfs.slice(0, 2);
+                                            const remainingPdfs = pdfs.slice(2);
+                                            const listFiles = [...remainingPdfs, ...others];
+
+                                            return (
+                                                <>
+                                                    {displayPdfs.length > 0 && (
+                                                        <div className="grid grid-cols-2 gap-4 items-start">
+                                                            {displayPdfs.map((file) => (
+                                                                <button
+                                                                    key={file.id}
+                                                                    onClick={(e) => handleFileDownload(e, file.id, file.originalName)}
+                                                                    disabled={downloadingId === file.id}
+                                                                    className="group flex flex-col items-center gap-1 hover:opacity-80 transition-opacity text-left bg-slate-900/10 rounded-lg p-1 border border-transparent hover:border-slate-700/50"
+                                                                >
+                                                                    <div className="w-full relative overflow-hidden rounded-md bg-slate-900/40 flex items-center justify-center p-0" style={{ aspectRatio: '1.414 / 1' }}>
+                                                                        <PdfThumbnail fileId={file.id} />
+                                                                    </div>
+                                                                    <span className="text-[10px] text-slate-400 w-full max-w-[500px] truncate text-center flex items-center justify-center gap-1 leading-tight mt-1 bg-slate-900/50 py-1.5 rounded-md px-2">
+                                                                        {downloadingId === file.id ? <div className="animate-spin rounded-full h-2 w-2 border-b-2 border-slate-400 mr-1" /> : <Download size={10} />}
+                                                                        {file.originalName}
+                                                                    </span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {listFiles.length > 0 && (
+                                                        <div className="flex flex-col gap-2 mt-2">
+                                                            {listFiles.map((file) => (
+                                                                <button
+                                                                    key={file.id}
+                                                                    onClick={(e) => handleFileDownload(e, file.id, file.originalName)}
+                                                                    disabled={downloadingId === file.id}
+                                                                    className="group flex items-center gap-3 px-3 py-2 bg-slate-900/40 hover:bg-slate-900/60 border border-slate-700/50 rounded-lg transition-all text-left w-full h-12"
+                                                                >
+                                                                    <div className="shrink-0 w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-slate-500">
+                                                                        {downloadingId === file.id ? (
+                                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400" />
+                                                                        ) : (
+                                                                            <FileText size={18} />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="text-[11px] font-bold text-slate-300 truncate leading-tight">{file.originalName}</div>
+                                                                        <div className="text-[9px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                                                            <Download size={8} /> クリックでダウンロード
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
 
                                     {/* Source Files Reference */}

@@ -48,6 +48,18 @@ export const NotificationProvider = ({ children }) => {
         setConfirm(null);
     }, [confirm]);
 
+    // 背景スクロールロック
+    useEffect(() => {
+        if (alert || confirm) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [alert, confirm]);
+
     return (
         <NotificationContext.Provider value={{ showAlert, showConfirm }}>
             {children}

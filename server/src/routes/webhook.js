@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { stripe, PLAN_CONFIG } = require('../config/stripe');
 const { supabaseAdmin } = require('../config/supabase');
+const logService = require('../services/logService');
 
 /**
  * POST /api/webhooks/stripe
@@ -95,6 +96,13 @@ async function handleCheckoutCompleted(session) {
         await updateCreditsOnPlanChange(tenant_id, planConfig.monthlyCredits);
 
         console.log(`[Webhook] Subscription activated for tenant ${tenant_id}: ${plan}`);
+
+        await logService.audit({
+            action: 'subscription_activated',
+            entityType: 'subscription',
+            description: `Subscription activated: ${plan}`,
+            tenantId: tenant_id
+        });
     }
     else if (type === 'credit_purchase') {
         const amount = parseInt(credits);
@@ -221,6 +229,13 @@ async function handleSubscriptionUpdated(subscription) {
     }
 
     console.log(`[Webhook] Successfully updated tenant ${tenant_id} to ${newPlan}`);
+
+    await logService.audit({
+        action: 'subscription_updated',
+        entityType: 'subscription',
+        description: `Subscription updated: ${newPlan} (Status: ${status})`,
+        tenantId: tenant_id
+    });
 }
 
 /**
@@ -250,6 +265,13 @@ async function handleSubscriptionDeleted(subscription) {
             })
             .eq('id', sub.tenant_id);
         console.log(`[Webhook] Tenant ${sub.tenant_id} reverted to free plan.`);
+
+        await logService.audit({
+            action: 'subscription_deleted',
+            entityType: 'subscription',
+            description: `Subscription deleted/canceled. Reverted to free plan.`,
+            tenantId: sub.tenant_id
+        });
     }
 }
 

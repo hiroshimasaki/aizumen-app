@@ -4,6 +4,7 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 const { supabaseAdmin } = require('../config/supabase');
 const { stripe, PLAN_CONFIG } = require('../config/stripe');
 const { AppError } = require('../middleware/errorHandler');
+const logService = require('../services/logService');
 
 /**
  * GET /api/subscription
@@ -26,12 +27,20 @@ router.get('/', authMiddleware, async (req, res, next) => {
         const plan = tenant?.plan || 'lite';
         const planConfig = PLAN_CONFIG[plan];
 
-        // ユーザー数カウント
+        // 1. ユーザー数カウント
         const { count: userCount } = await supabaseAdmin
             .from('users')
             .select('id', { count: 'exact', head: true })
             .eq('tenant_id', req.tenantId)
             .eq('is_active', true);
+
+        // 2. ストレージ使用量取得
+        const { data: usageData } = await supabaseAdmin
+            .from('quotation_files')
+            .select('file_size')
+            .eq('tenant_id', req.tenantId);
+
+        const storageUsage = usageData?.reduce((sum, f) => sum + (f.file_size || 0), 0) || 0;
 
         res.json({
             subscription: sub,
@@ -40,6 +49,8 @@ router.get('/', authMiddleware, async (req, res, next) => {
                 maxUsers: planConfig?.maxUsers || 1,
                 currentUsers: userCount || 0,
                 monthlyCredits: planConfig?.monthlyCredits || 200,
+                storageUsage, // current bytes
+                maxStorageGB: planConfig?.maxStorageGB || 1
             }
         });
     } catch (err) {
@@ -255,6 +266,14 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
                 });
 
                 // DBへの保存は不要。WebhookとGET API側でStripeを参照する。
+                await logService.audit({
+                    action: 'subscription_downgrade_scheduled',
+                    entityType: 'subscription',
+                    entityId: existingSub.stripe_subscription_id,
+                    description: `Downgrade scheduled: ${existingSub.plan} -> ${plan}`,
+                    tenantId: req.tenantId,
+                    userId: req.userId
+                });
                 return res.json({ scheduled: true, plan, currentPlan: existingSub.plan });
             }
 
@@ -301,6 +320,14 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
             await updateCreditsOnPlanChange(req.tenantId, planConfig.monthlyCredits);
 
             console.log(`[Subscription] Plan upgraded successfully: ${plan}`);
+            await logService.audit({
+                action: 'subscription_upgrade_immediate',
+                entityType: 'subscription',
+                entityId: existingSub.stripe_subscription_id,
+                description: `Immediate upgrade: ${existingSub.plan} -> ${plan}`,
+                tenantId: req.tenantId,
+                userId: req.userId
+            });
             return res.json({ updated: true, plan });
         }
 
@@ -418,6 +445,14 @@ router.post('/checkout/verify', authMiddleware, requireRole('system_admin'), asy
         await updateCreditsOnPlanChange(tenant_id, planConfig.monthlyCredits);
 
         console.log(`[Checkout/Verify] Subscription synced for tenant ${tenant_id}: ${plan}`);
+        await logService.audit({
+            action: 'subscription_verify',
+            entityType: 'subscription',
+            entityId: session.subscription,
+            description: `Subscription verified: ${plan}`,
+            tenantId: tenant_id,
+            userId: req.userId
+        });
         res.json({ synced: true, plan });
     } catch (err) {
         next(err);
@@ -447,6 +482,14 @@ router.post('/cancel-downgrade', authMiddleware, requireRole('system_admin'), as
             // スケジュールをリリース（削除ではなくリリースすることで、現在のサブスクリプションがそのまま継続される）
             await stripe.subscriptionSchedules.release(stripeSubscription.schedule);
 
+            await logService.audit({
+                action: 'subscription_downgrade_canceled',
+                entityType: 'subscription',
+                entityId: sub.stripe_subscription_id,
+                description: `Downgrade schedule canceled`,
+                tenantId: req.tenantId,
+                userId: req.userId
+            });
             res.json({ status: 'canceled', message: 'Downgrade schedule canceled successfully' });
         } else {
             res.status(400).json({ error: 'No scheduled downgrade found' });
@@ -557,6 +600,15 @@ router.post('/credits/purchase', authMiddleware, requireRole('system_admin'), as
                 if (paymentIntent.status === 'succeeded') {
                     const { grantCredits } = require('../services/creditService');
                     await grantCredits(req.tenantId, config.credits, 'purchase', `One-click: ${paymentIntent.id}`);
+
+                    await logService.audit({
+                        action: 'credit_purchase_oneclick',
+                        entityType: 'credits',
+                        description: `One-click purchase: ${config.credits} pts`,
+                        tenantId: req.tenantId,
+                        userId: req.userId
+                    });
+
                     return res.json({ success: true, balanceIncrement: config.credits });
                 } else {
                     throw new AppError(`決済が完了しませんでした (Status: ${paymentIntent.status})。別のカードをお試しください。`, 402, 'PAYMENT_FAILED');

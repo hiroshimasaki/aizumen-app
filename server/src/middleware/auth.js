@@ -78,6 +78,7 @@ const authMiddleware = async (req, res, next) => {
 
         // リクエストにユーザー情報を付加
         req.user = user;
+        req.userId = user.id;
         req.userRole = role || 'user';
         req.tenantId = (role === 'super_admin') ? 'platform' : (profile?.tenant_id || null);
         req.accessToken = token;
