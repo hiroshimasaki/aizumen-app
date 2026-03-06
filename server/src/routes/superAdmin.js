@@ -535,4 +535,175 @@ router.get('/logs/audit', async (req, res) => {
     }
 });
 
+/**
+ * 未対応の報告数を取得する
+ * GET /api/super-admin/forum/reports/pending-count
+ */
+router.get('/forum/reports/pending-count', async (req, res) => {
+    try {
+        const { count, error } = await supabaseAdmin
+            .from('forum_reports')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+
+        if (error) throw error;
+        
+        res.json({ count: count || 0 });
+    } catch (err) {
+        console.error('[SuperAdmin API] Pending Reports Count Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch pending reports count' });
+    }
+});
+
+/**
+ * フォーラム違反報告の取得
+ * GET /api/super-admin/forum/reports
+ */
+router.get('/forum/reports', async (req, res) => {
+    try {
+        const { limit = 50, offset = 0, status } = req.query;
+        let query = supabaseAdmin
+            .from('forum_reports')
+            .select(`
+                *,
+                post:forum_posts(title, body, user_name, tenant_name),
+                reply:forum_replies(body, user_name, tenant_name, post_id),
+                reporter:users!forum_reports_reporter_id_fkey(name, email)
+            `)
+            .order('created_at', { ascending: false })
+            .range(offset, parseInt(offset) + Math.max(1, parseInt(limit)) - 1);
+
+        if (status) query = query.eq('status', status);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        // クライアント側で扱いやすい形に整形
+        const formatted = data.map(r => {
+            const isPost = !!r.post_id;
+            const targetType = r.target_type || (isPost ? 'post' : 'reply');
+            return {
+                id: r.id,
+                reason: r.reason,
+                details: r.details,
+                status: r.status,
+                created_at: r.created_at,
+                reporter: r.reporter?.name || 'Unknown',
+                targetType: targetType,
+                targetId: r.post_id || r.reply_id,
+                parentPostId: r.post_id || r.reply?.post_id,
+                targetContent: r.target_snapshot || (isPost ? r.post?.title : r.reply?.body),
+                targetAuthor: r.target_author_snapshot || (isPost ? `${r.post?.user_name} @${r.post?.tenant_name}` : (r.reply ? `${r.reply?.user_name} @${r.reply?.tenant_name}` : 'Unknown'))
+            };
+        });
+
+        res.json(formatted);
+    } catch (err) {
+        console.error('[SuperAdmin API] Forum Reports Fetch Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch forum reports' });
+    }
+});
+
+/**
+ * 違反報告のステータス更新
+ * PATCH /api/super-admin/forum/reports/:id/status
+ */
+router.patch('/forum/reports/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body; // 'pending', 'resolved', 'ignored'
+
+        if (!['pending', 'resolved', 'ignored'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status' });
+        }
+        
+        const { data, error } = await supabaseAdmin
+            .from('forum_reports')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('[SuperAdmin API] Report Status Update Error:', err.message);
+        res.status(500).json({ error: 'Failed to update report status' });
+    }
+});
+
+/**
+ * 違反報告の対象コンテンツの強制削除 & 履歴スナップショット保持
+ * DELETE /api/super-admin/forum/reports/:id/content
+ */
+router.delete('/forum/reports/:id/content', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // 1. 対象の報告と関連コンテンツをフェッチ
+        const { data: report, error: fetchErr } = await supabaseAdmin
+            .from('forum_reports')
+            .select(`
+                *,
+                post:forum_posts(title, body, user_name, tenant_name),
+                reply:forum_replies(body, user_name, tenant_name)
+            `)
+            .eq('id', id)
+            .single();
+
+        if (fetchErr || !report) throw fetchErr || new Error('Report not found');
+
+        // 2. スナップショットの生成
+        const targetType = report.post_id ? 'post' : 'reply';
+        const targetId = report.post_id || report.reply_id;
+        let snapshotContent = '';
+        let snapshotAuthor = '';
+
+        if (targetType === 'post' && report.post) {
+            snapshotContent = `[管理者によって削除されました] ${report.post.title}`;
+            snapshotAuthor = `${report.post.user_name} @${report.post.tenant_name}`;
+        } else if (targetType === 'reply' && report.reply) {
+            snapshotContent = `[管理者によって削除されました] ${report.reply.body}`;
+            snapshotAuthor = `${report.reply.user_name} @${report.reply.tenant_name}`;
+        }
+
+        // 3. 報告のスナップショットを更新＆ステータスをresolvedへ
+        const { error: updateErr } = await supabaseAdmin
+            .from('forum_reports')
+            .update({
+                target_type: targetType,
+                target_snapshot: snapshotContent || report.target_snapshot,
+                target_author_snapshot: snapshotAuthor || report.target_author_snapshot,
+                status: 'resolved',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+        
+        if (updateErr) throw updateErr;
+
+        // 4. ベースとなるコンテンツ（postまたはreply）を論理削除（文言置換）
+        if (targetId) {
+            const table = targetType === 'post' ? 'forum_posts' : 'forum_replies';
+            const updates = targetType === 'post' 
+                ? { title: '[管理者によって削除されました]', body: '[管理者によって削除されました]', updated_at: new Date().toISOString() }
+                : { body: '[管理者によって削除されました]', updated_at: new Date().toISOString() };
+
+            const { error: updErr } = await supabaseAdmin
+                .from(table)
+                .update(updates)
+                .eq('id', targetId);
+            
+            if (updErr) {
+                console.error('[SuperAdmin API] Content update (logical delete) failed:', updErr.message);
+                throw updErr;
+            }
+        }
+
+        res.json({ message: 'Target deleted and snapshot saved', status: 'resolved' });
+    } catch (err) {
+        console.error('[SuperAdmin API] Target Content Delete Error:', err.message);
+        res.status(500).json({ error: 'Failed to delete target content and save snapshot' });
+    }
+});
+
 module.exports = router;

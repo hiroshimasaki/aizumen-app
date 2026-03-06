@@ -57,7 +57,7 @@ router.put('/', authMiddleware, requireRole('admin'), async (req, res, next) => 
         await logService.audit({
             action: 'tenant_settings_updated',
             entityType: 'settings',
-            description: `Tenant settings updated`,
+            description: `テナント設定を更新しました`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -112,7 +112,7 @@ router.put('/company', authMiddleware, requireRole('admin'), async (req, res, ne
             action: 'company_info_updated',
             entityType: 'tenant',
             entityId: req.tenantId,
-            description: `Company information updated: ${name}`,
+            description: `企業情報を更新しました: ${name}`,
             tenantId: req.tenantId,
             userId: req.userId
         });

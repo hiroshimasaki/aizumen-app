@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotification } from '../../contexts/NotificationContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Building2, User, Lock, Mail } from 'lucide-react';
 
 export default function LoginPage() {
     const { signIn, signInWithCode } = useAuth();
+    const { showAlert } = useNotification();
     const navigate = useNavigate();
 
     // Tab state: 'employee' or 'admin'
@@ -22,12 +24,14 @@ export default function LoginPage() {
         e.preventDefault();
         setError('');
         setLoading(true);
+        let success = false;
         try {
             if (loginMode === 'employee') {
                 await signInWithCode(companyCode, employeeId, password);
             } else {
                 await signIn(email, password);
             }
+            success = true;
             navigate('/quotations');
         } catch (err) {
             let msg = err.response?.data?.error || err.message || 'ログインに失敗しました。認証情報を確認してください。';
@@ -41,8 +45,11 @@ export default function LoginPage() {
                 msg = '通信エラーが発生しました。インターネット接続を確認してください。';
             }
             setError(msg);
+            await showAlert(msg, 'error');
         } finally {
-            setLoading(false);
+            if (!success) {
+                setLoading(false);
+            }
         }
     }
 

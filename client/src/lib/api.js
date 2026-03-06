@@ -20,30 +20,18 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response?.status === 401) {
-            if (error.response?.data?.code === 'MULTI_LOGIN') {
-                window.dispatchEvent(new CustomEvent('app-show-alert', {
-                    detail: {
-                        message: '他のブラウザまたは端末からログインされたため、自動的にログアウトしました。',
-                        type: 'info'
-                    }
-                }));
-                // 即座にリダイレクトするとメッセージが見えないため、少し待つ
-                await supabase.auth.signOut();
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 3000);
-                return Promise.reject(error);
-            } else if (error.response?.data?.code === 'USER_DEACTIVATED') {
-                window.dispatchEvent(new CustomEvent('app-show-alert', {
-                    detail: {
-                        message: 'このアカウントは管理者によって無効化されました。ログオフします。',
-                        type: 'error'
-                    }
-                }));
-                await supabase.auth.signOut();
-                window.location.href = '/login';
+            const isAuthRequest = error.config?.url?.includes('/api/auth/login') || 
+                                 error.config?.url?.includes('/api/auth/login-with-code') ||
+                                 error.config?.url?.includes('/api/auth/signup');
+            const isLoginPage = window.location.pathname === '/login' || 
+                               window.location.pathname === '/platform-login';
+
+            if (isAuthRequest || isLoginPage) {
+                // ログイン画面での認証失敗時は自動リダイレクト（リロード）を避ける
+                // これにより React の状態（表示中のアラート等）が維持される
                 return Promise.reject(error);
             }
+
             await supabase.auth.signOut();
             window.location.href = '/login';
         } else if (error.response?.status === 403) {

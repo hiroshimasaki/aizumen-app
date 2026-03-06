@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
 const NotificationContext = createContext(null);
 
@@ -87,6 +87,20 @@ import { Info, AlertCircle, CheckCircle2, HelpCircle, X } from 'lucide-react';
 import { cn } from '../lib/utils'; // cnヘルパーがあるか確認が必要
 
 const NotificationOverlay = ({ alert, confirm, onCloseAlert, onConfirm }) => {
+    const okBtnRef = useRef(null);
+
+    useEffect(() => {
+        if (alert && okBtnRef.current) {
+            // フォームを Enter で送信した直後にアラートが表示されると、
+            // そのまま Enter キーが OK ボタンのクリックとして認識されてしまうのを防ぐため、
+            // わずかなディレイ（100ms）をおいてフォーカスを移動させる。
+            const timer = setTimeout(() => {
+                okBtnRef.current?.focus();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [alert]);
+
     if (!alert && !confirm) return null;
 
     return (
@@ -116,8 +130,9 @@ const NotificationOverlay = ({ alert, confirm, onCloseAlert, onConfirm }) => {
                                 </p>
                             </div>
                             <button
+                                ref={okBtnRef}
                                 onClick={onCloseAlert}
-                                className="w-full py-3 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95"
+                                className="w-full py-3 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95 outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 OK
                             </button>

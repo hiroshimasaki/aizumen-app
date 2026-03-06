@@ -61,7 +61,7 @@ router.post('/invite', authMiddleware, requireRole('system_admin'), async (req, 
             action: 'user_invited',
             entityType: 'user',
             entityId: result.user?.id,
-            description: `User invited: ${name} (${role})`,
+            description: `ユーザー招待: ${name} (${role})`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -85,7 +85,7 @@ router.put('/:id', authMiddleware, requireRole('system_admin'), async (req, res,
             action: 'user_updated',
             entityType: 'user',
             entityId: req.params.id,
-            description: `User updated: ${name} (isActive: ${isActive})`,
+            description: `ユーザー情報更新: ${name} (有効状態: ${isActive})`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -109,7 +109,7 @@ router.post('/:id/reset-password', authMiddleware, requireRole('system_admin'), 
             action: 'user_password_reset',
             entityType: 'user',
             entityId: req.params.id,
-            description: `Password reset for user`,
+            description: `ユーザーのパスワードを管理者がリセット`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -132,7 +132,7 @@ router.delete('/:id', authMiddleware, requireRole('system_admin'), async (req, r
             action: 'user_deleted',
             entityType: 'user',
             entityId: req.params.id,
-            description: `User physically deleted`,
+            description: `ユーザーを物理削除`,
             tenantId: req.tenantId,
             userId: req.userId
         });

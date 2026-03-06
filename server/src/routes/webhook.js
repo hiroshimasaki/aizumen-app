@@ -100,7 +100,7 @@ async function handleCheckoutCompleted(session) {
         await logService.audit({
             action: 'subscription_activated',
             entityType: 'subscription',
-            description: `Subscription activated: ${plan}`,
+            description: `サブスクリプション有効化: ${plan}`,
             tenantId: tenant_id
         });
     }
@@ -233,7 +233,7 @@ async function handleSubscriptionUpdated(subscription) {
     await logService.audit({
         action: 'subscription_updated',
         entityType: 'subscription',
-        description: `Subscription updated: ${newPlan} (Status: ${status})`,
+        description: `サブスクリプション更新: ${newPlan} (状態: ${status})`,
         tenantId: tenant_id
     });
 }
@@ -269,7 +269,7 @@ async function handleSubscriptionDeleted(subscription) {
         await logService.audit({
             action: 'subscription_deleted',
             entityType: 'subscription',
-            description: `Subscription deleted/canceled. Reverted to free plan.`,
+            description: `サブスクリプション終了: フリープランへ移行しました`,
             tenantId: sub.tenant_id
         });
     }

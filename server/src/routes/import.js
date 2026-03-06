@@ -5,6 +5,7 @@ const csv = require('csv-parser');
 const { Readable } = require('stream');
 const { supabaseAdmin } = require('../config/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { generateQuotationId } = require('../utils/helpers');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -62,9 +63,27 @@ router.post('/quotations', authMiddleware, requireRole('system_admin'), upload.s
                 }
 
                 // 案件作成
+                const displayId = mapped.display_id || await generateQuotationId(supabaseAdmin, req.tenantId);
+
+                // 見積ID 重複チェック
+                const { data: qExists } = await supabaseAdmin
+                    .from('quotations')
+                    .select('id')
+                    .eq('tenant_id', req.tenantId)
+                    .eq('display_id', displayId)
+                    .eq('is_deleted', false)
+                    .maybeSingle();
+
+                if (qExists) {
+                    results.skipped++;
+                    results.errors.push({ row: i + 1, reason: `見積ID "${displayId}" は既に登録済みです` });
+                    continue;
+                }
+
                 const { data: quotation, error: qError } = await supabaseAdmin
                     .from('quotations')
                     .insert({
+                        display_id: displayId,
                         tenant_id: req.tenantId,
                         company_name: mapped.company_name || 'インポート案件',
                         contact_person: mapped.contact_person || '',
@@ -143,6 +162,7 @@ function mapRecordToQuotation(record) {
         '加工費': 'processing_cost', 'processing_cost': 'processing_cost', 'processingCost': 'processing_cost',
         '材料費': 'material_cost', 'material_cost': 'material_cost', 'materialCost': 'material_cost',
         'その他': 'other_cost', 'other_cost': 'other_cost', 'otherCost': 'other_cost',
+        '見積ID': 'display_id', 'display_id': 'display_id', 'displayId': 'display_id',
     };
 
     const mapped = {};

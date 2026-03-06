@@ -297,7 +297,7 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
                     action: 'subscription_downgrade_scheduled',
                     entityType: 'subscription',
                     entityId: existingSub.stripe_subscription_id,
-                    description: `Downgrade scheduled: ${existingSub.plan} -> ${plan}`,
+                    description: `ダウングレード予約: ${existingSub.plan} -> ${plan}`,
                     tenantId: req.tenantId,
                     userId: req.userId
                 });
@@ -351,7 +351,7 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
                 action: 'subscription_upgrade_immediate',
                 entityType: 'subscription',
                 entityId: existingSub.stripe_subscription_id,
-                description: `Immediate upgrade: ${existingSub.plan} -> ${plan}`,
+                description: `アップグレード（即時適用）: ${existingSub.plan} -> ${plan}`,
                 tenantId: req.tenantId,
                 userId: req.userId
             });
@@ -476,7 +476,7 @@ router.post('/checkout/verify', authMiddleware, requireRole('system_admin'), asy
             action: 'subscription_verify',
             entityType: 'subscription',
             entityId: session.subscription,
-            description: `Subscription verified: ${plan}`,
+            description: `サブスクリプション検証完了: ${plan}`,
             tenantId: tenant_id,
             userId: req.userId
         });
@@ -513,7 +513,7 @@ router.post('/cancel-downgrade', authMiddleware, requireRole('system_admin'), as
                 action: 'subscription_downgrade_canceled',
                 entityType: 'subscription',
                 entityId: sub.stripe_subscription_id,
-                description: `Downgrade schedule canceled`,
+                description: `ダウングレード予約をキャンセル`,
                 tenantId: req.tenantId,
                 userId: req.userId
             });
@@ -631,7 +631,7 @@ router.post('/credits/purchase', authMiddleware, requireRole('system_admin'), as
                     await logService.audit({
                         action: 'credit_purchase_oneclick',
                         entityType: 'credits',
-                        description: `One-click purchase: ${config.credits} pts`,
+                        description: `ワンクリック購入: ${config.credits} pts`,
                         tenantId: req.tenantId,
                         userId: req.userId
                     });

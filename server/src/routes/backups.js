@@ -42,7 +42,7 @@ router.post('/', authMiddleware, requireRole('system_admin'), async (req, res, n
         await logService.audit({
             action: 'backup_executed',
             entityType: 'backup',
-            description: `Manual backup executed for tenant`,
+            description: `手動バックアップ実行`,
             tenantId: req.tenantId,
             userId: req.userId
         });

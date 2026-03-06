@@ -30,7 +30,7 @@ router.get('/quotations', authMiddleware, requireRole('system_admin'), async (re
 
         // CSV 生成
         const headers = [
-            '案件ID', '会社名', '注文番号', '工事番号', 'ステータス',
+            '案件ID', '見積ID', '会社名', '注文番号', '工事番号', 'ステータス',
             '合計金額', '作成日', '更新日', '納品予定日', 'メモ'
         ];
 
@@ -41,6 +41,7 @@ router.get('/quotations', authMiddleware, requireRole('system_admin'), async (re
         data.forEach(q => {
             const row = [
                 q.id,
+                q.display_id,
                 `"${(q.company_name || '').replace(/"/g, '""')}"`,
                 `"${(q.order_number || '').replace(/"/g, '""')}"`,
                 `"${(q.construction_number || '').replace(/"/g, '""')}"`,

@@ -30,12 +30,12 @@
 
 <body class="bg-slate-950 text-slate-200 font-sans overflow-hidden selection:bg-blue-500/30">
     <!-- Background Decorators -->
-    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div class="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full mix-blend-screen"></div>
-        <div class="absolute bottom-[10%] right-[10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full mix-blend-screen"></div>
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-[100] pointer-events-none">
+        <div class="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-blue-600/5 blur-[120px] rounded-full mix-blend-screen"></div>
+        <div class="absolute bottom-[10%] right-[10%] w-[40%] h-[40%] bg-indigo-600/5 blur-[120px] rounded-full mix-blend-screen"></div>
     </div>
 
-    <div id="app" class="h-screen flex flex-col p-6 backdrop-blur-3xl">
+    <div id="app" class="relative z-10 h-screen flex flex-col p-6 backdrop-blur-3xl">
         <!-- Header -->
         <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
             <div class="flex items-center gap-4">
@@ -84,7 +84,7 @@
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-200">会社コード</label>
                         <div class="relative group/input">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
                             <input type="text" id="company-code"
                                 class="w-full bg-[#334155] border border-white/5 rounded-lg py-2.5 pl-10 pr-4 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all shadow-inner"
                                 placeholder="sample-inc">
@@ -93,7 +93,7 @@
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-200">従業員番号</label>
                         <div class="relative group/input">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             <input type="text" id="employee-id"
                                 class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
                                 placeholder="0001">
@@ -102,7 +102,7 @@
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-200">パスワード</label>
                         <div class="relative group/input">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             <input type="password" id="employee-password"
                                 class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
                                 placeholder="••••••••">
@@ -120,7 +120,7 @@
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-200">メールアドレス</label>
                         <div class="relative group/input">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                             <input type="email" id="email"
                                 class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
                                 placeholder="admin@example.com">
@@ -129,7 +129,7 @@
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-200">パスワード</label>
                         <div class="relative group/input">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             <input type="password" id="password"
                                 class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
                                 placeholder="••••••••">
@@ -140,6 +140,14 @@
                         <input type="checkbox" id="admin-remember" class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-[#0ea5e9] focus:ring-[#0ea5e9]/20 transition-all cursor-pointer">
                         <label for="admin-remember" class="text-xs font-bold text-slate-400 cursor-pointer hover:text-slate-300">ログイン情報を保存する</label>
                     </div>
+                </div>
+
+                <!-- Error Message Area -->
+                <div id="login-error-container" class="mt-6 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3 hidden error-animate">
+                    <div class="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 text-[14px] shrink-0">
+                        ⚠️
+                    </div>
+                    <p id="login-error-text" class="text-xs font-bold text-red-400 leading-tight"></p>
                 </div>
 
                 <button id="login-btn"
@@ -169,6 +177,18 @@
                         class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-bold text-white transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center gap-2">
                         <span>変更</span>
                     </button>
+                </div>
+
+                <!-- Minimize Toggle -->
+                <div class="mt-4 pt-4 border-t border-slate-700/30 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        <span class="text-xs font-bold text-slate-300">閉じるボタンで最小化する</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="minimize-toggle" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
                 </div>
             </div>
 
@@ -204,15 +224,21 @@
             </div>
         </div>
     </div>
-    <script src="renderer.js"></script>
-</body>
 
-</html>>
-                    </div>
+    <!-- Custom Alert Overlay -->
+    <div id="custom-alert" class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm hidden">
+        <div class="bg-slate-900 border border-slate-700/50 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 text-[18px]">
+                    ⚠️
                 </div>
+                <h3 class="text-sm font-bold text-slate-200">エラー</h3>
             </div>
+            <p id="custom-alert-message" class="text-xs text-slate-400 leading-relaxed mb-6"></p>
+            <button onclick="closeCustomAlert()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold rounded-xl border border-slate-700 transition-all">OK</button>
         </div>
     </div>
+
     <script src="renderer.js"></script>
 </body>
 

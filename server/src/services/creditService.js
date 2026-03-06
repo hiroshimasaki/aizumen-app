@@ -160,7 +160,7 @@ const resetMonthlyCredits = async (tenantId, newMonthlyQuota) => {
         tenant_id: tenantId,
         amount: newMonthlyQuota,
         type: 'monthly_grant',
-        description: `Monthly quota reset (${newMonthlyQuota} pts)`
+        description: `月間枠のリセット (${newMonthlyQuota} pts)`
     });
 
     return data;
@@ -198,7 +198,7 @@ const updateCreditsOnPlanChange = async (tenantId, newMonthlyQuota) => {
         tenant_id: tenantId,
         amount: diff,
         type: 'plan_change',
-        description: `Plan changed: ${oldMonthlyQuota} -> ${newMonthlyQuota} pts`
+        description: `プラン変更に伴うクレジット調整: ${oldMonthlyQuota} -> ${newMonthlyQuota} pts`
     });
 
     return updated;

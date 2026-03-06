@@ -97,7 +97,7 @@ export default function TenantSettings() {
                         </h3>
                         <p className="text-sm text-slate-400 mt-1">
                             自社の図面や注文書で使われている「項目名」と、システムの「データ」を紐づけます。<br />
-                            AIはこの設定をヒントに書類から金額や品名を抽出します。
+                            AIはこの設定をヒントに書類から金額や品名を抽出します。<strong>（各項目、カンマ区切りで複数指定可能です）</strong>
                         </p>
                     </div>
                 </div>
@@ -115,7 +115,7 @@ export default function TenantSettings() {
                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
                                 placeholder="例: 加工費, 工賃, 作業代"
                             />
-                            <p className="text-[10px] text-slate-500 mt-1">カンマ区切りで複数指定可能</p>
+
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">

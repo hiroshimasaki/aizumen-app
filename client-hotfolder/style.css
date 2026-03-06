@@ -5,8 +5,14 @@
 }
 
 body {
-    -webkit-user-select: none;
-    user-select: none;
+    -webkit-user-select: auto;
+    user-select: auto;
+}
+
+input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+    pointer-events: auto !important;
 }
 
 .hidden {
@@ -55,4 +61,25 @@ button:active {
 
 input:focus {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Error Slide In */
+@keyframes errorIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.error-animate {
+    animation: errorIn 0.3s ease-out forwards;
+}
+
+/* Shake animation for serious errors */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+
+.shake {
+    animation: shake 0.4s ease-in-out;
 }

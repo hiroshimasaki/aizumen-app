@@ -21,7 +21,7 @@ router.post('/signup', async (req, res, next) => {
             action: 'tenant_signup',
             entityType: 'tenant',
             entityId: result.tenant.id,
-            description: `New tenant registered: ${companyName}`,
+            description: `新規テナント登録: ${companyName}`,
             tenantId: result.tenant.id,
             userId: result.user.id
         });
@@ -137,7 +137,7 @@ router.post('/login', async (req, res, next) => {
         await logService.audit({
             action: 'login_success',
             entityType: 'auth',
-            description: `User logged in: ${email}`,
+            description: `ログイン成功: ${email}`,
             tenantId: data.user.app_metadata?.tenant_id,
             userId: data.user.id
         });
@@ -238,7 +238,7 @@ router.post('/login-with-code', async (req, res, next) => {
         await logService.audit({
             action: 'login_success',
             entityType: 'auth',
-            description: `User logged in with code: ${employeeId}@${companyCode}`,
+            description: `ログイン成功（従業員番号）: ${employeeId}@${companyCode}`,
             tenantId: data.user.app_metadata?.tenant_id,
             userId: data.user.id
         });
@@ -257,7 +257,7 @@ router.post('/logout', authMiddleware, async (req, res, next) => {
         await logService.audit({
             action: 'logout',
             entityType: 'auth',
-            description: `User logged out`,
+            description: `ログアウト`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -316,7 +316,7 @@ router.put('/update-password', authMiddleware, async (req, res, next) => {
             action: 'password_updated',
             entityType: 'user',
             entityId: req.user.id,
-            description: `User updated their own password`,
+            description: `パスワード更新（本人による）`,
             tenantId: req.tenantId,
             userId: req.userId
         });

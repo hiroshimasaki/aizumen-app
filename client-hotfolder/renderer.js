@@ -33,6 +33,9 @@ const selectFolderBtn = document.getElementById('select-folder-btn');
 const analyzeAllBtn = document.getElementById('analyze-all-btn');
 const fileListContainer = document.getElementById('file-list');
 const fileCountLabel = document.getElementById('file-count');
+const minimizeToggle = document.getElementById('minimize-toggle');
+const loginErrorContainer = document.getElementById('login-error-container');
+const loginErrorText = document.getElementById('login-error-text');
 
 // Tab Switch Logic
 tabEmployee.addEventListener('click', (e) => {
@@ -42,7 +45,8 @@ tabEmployee.addEventListener('click', (e) => {
     tabAdmin.className = "flex-1 py-2.5 rounded-lg text-sm font-bold text-slate-400 hover:text-slate-200 transition-colors";
     employeeForm.classList.remove('hidden');
     adminForm.classList.add('hidden');
-    companyCodeInput.focus(); // 入力フィールドを活性化
+    setTimeout(() => companyCodeInput.focus(), 10); // 入力フィールドを活性化
+    hideLoginError();
 });
 
 tabAdmin.addEventListener('click', (e) => {
@@ -52,12 +56,16 @@ tabAdmin.addEventListener('click', (e) => {
     tabEmployee.className = "flex-1 py-2.5 rounded-lg text-sm font-bold text-slate-400 hover:text-slate-200 transition-colors";
     adminForm.classList.remove('hidden');
     employeeForm.classList.add('hidden');
-    emailInput.focus(); // 入力フィールドを活性化
+    setTimeout(() => emailInput.focus(), 10); // 入力フィールドを活性化
+    hideLoginError();
 });
 
 // Login Handler
 const handleLoginEnter = (e) => {
     if (e.key === 'Enter') {
+        // アラートが表示されている場合は、ログイン処理を行わない
+        if (!customAlert.classList.contains('hidden')) return;
+        
         e.preventDefault();
         loginBtn.click();
     }
@@ -68,7 +76,42 @@ employeePasswordInput.addEventListener('keydown', handleLoginEnter);
 emailInput.addEventListener('keydown', handleLoginEnter);
 passwordInput.addEventListener('keydown', handleLoginEnter);
 
+// Hide error on input
+[companyCodeInput, employeeIdInput, employeePasswordInput, emailInput, passwordInput].forEach(input => {
+    input.addEventListener('input', () => hideLoginError());
+});
+
+function showLoginError(message) {
+    const loginCard = loginBtn.closest('div');
+    loginErrorText.innerText = mapErrorMessage(message);
+    loginErrorContainer.classList.remove('hidden');
+    
+    // Shake effect
+    loginCard.classList.remove('shake');
+    void loginCard.offsetWidth; // trigger reflow
+    loginCard.classList.add('shake');
+}
+
+function hideLoginError() {
+    loginErrorContainer.classList.add('hidden');
+}
+
+function mapErrorMessage(msg) {
+    if (!msg) return 'ログインに失敗しました。';
+    if (msg.includes('Invalid') || msg.includes('credentials')) return '会社コード、従業員ID、またはパスワードが正しくありません。';
+    if (msg.includes('Email and password')) return 'メールアドレスとパスワードを入力してください。';
+    if (msg.includes('Company code')) return 'すべての項目を入力してください。';
+    if (msg.includes('deactivated')) return 'このアカウントは現在無効化されています。管理者にお問い合わせください。';
+    if (msg.includes('permissions')) return '解析を実行する権限がありません。管理者権限を持つアカウントでログインしてください。';
+    if (msg.includes('Network Error')) return 'サーバーに接続できません。インターネット環境やサーバーの状態を確認してください。';
+    if (msg.includes('401')) return '認証に失敗しました。入力内容を再度ご確認ください。';
+    if (msg.includes('403')) return 'アクセスが拒否されました。権限が不足している可能性があります。';
+    return msg;
+}
+
 loginBtn.addEventListener('click', async () => {
+    hideLoginError();
+    // ボタンのみ無効化（二重送信防止）
     loginBtn.disabled = true;
     loginBtn.innerText = 'ログイン中...';
 
@@ -80,9 +123,7 @@ loginBtn.addEventListener('click', async () => {
             const password = employeePasswordInput.value;
 
             if (!companyCode || !employeeId || !password) {
-                loginBtn.disabled = false;
-                loginBtn.innerText = 'ログイン';
-                return alert('すべての項目を入力してください');
+                throw new Error('すべての項目を入力してください');
             }
 
             response = await axios.post(`${apiBaseUrl}/api/auth/login-with-code`, {
@@ -96,9 +137,7 @@ loginBtn.addEventListener('click', async () => {
             const password = passwordInput.value;
 
             if (!email || !password) {
-                loginBtn.disabled = false;
-                loginBtn.innerText = 'ログイン';
-                return alert('メールアドレスとパスワードを入力してください');
+                throw new Error('メールアドレスとパスワードを入力してください');
             }
 
             response = await axios.post(`${apiBaseUrl}/api/auth/login`, {
@@ -144,17 +183,42 @@ loginBtn.addEventListener('click', async () => {
         mainContent.classList.remove('hidden');
         logoutBtn.classList.remove('hidden'); // ログアウトボタンを表示
         authStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" style="animation: none;"></span><span class="text-emerald-400">ログイン中</span>';
+        
+        // メインプロセスにログイン完了を通知
+        ipcRenderer.send('auth-success', userToken);
     } catch (err) {
         console.error('Login failed:', err);
-        // サーバーから返されたエラーメッセージがあれば優先して表示する
-        // サーバー側 (errorHandler.js) は { error: "..." } を返すため、.error を参照する助
-        const errorMessage = err.response?.data?.error || err.response?.data?.message || 'ログインに失敗しました。認証情報を確認してください。';
-        alert(errorMessage);
+        const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || 'ログインに失敗しました。';
+        showLoginError(errorMessage);
+        showAlert(mapErrorMessage(errorMessage)); // モーダルアラートも表示
     } finally {
+        // ボタンの状態を復元
         loginBtn.disabled = false;
         loginBtn.innerText = 'ログイン';
     }
 });
+
+// Custom Alert Logic
+const customAlert = document.getElementById('custom-alert');
+const customAlertMessage = document.getElementById('custom-alert-message');
+
+function showAlert(message) {
+    customAlertMessage.innerText = message;
+    customAlert.classList.remove('hidden');
+    // OKボタンにフォーカスを当てて、Enterキーなどで閉じやすくする
+    const okBtn = customAlert.querySelector('button');
+    if (okBtn) setTimeout(() => okBtn.focus(), 50);
+}
+
+window.closeCustomAlert = () => {
+    customAlert.classList.add('hidden');
+    // ダイアログを閉じたあとにフォーカスを戻す（念のため）
+    if (activeTab === 'employee') {
+        companyCodeInput.focus();
+    } else {
+        emailInput.focus();
+    }
+};
 
 // Logout Handler
 logoutBtn.addEventListener('click', () => {
@@ -176,6 +240,9 @@ logoutBtn.addEventListener('click', () => {
     logoutBtn.classList.add('hidden');
     
     authStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span><span class="text-slate-400">未ログイン</span>';
+    
+    // メインプロセスにログアウトを通知
+    ipcRenderer.send('auth-logout');
 });
 
 // Folder Selection
@@ -249,8 +316,17 @@ window.removeFile = (path) => {
 
 // Start Bulk Analyze
 analyzeAllBtn.addEventListener('click', () => {
-    if (!userToken) return alert('再度ログインしてください');
+    if (!userToken) return showAlert('再度ログインしてください');
     ipcRenderer.send('start-bulk-analysis', userToken);
+});
+
+// Minimize Toggle Handler
+minimizeToggle.addEventListener('change', () => {
+    const configData = {
+        minimizeOnClose: minimizeToggle.checked
+    };
+    ipcRenderer.send('update-config', configData);
+    ipcRenderer.send('update-minimize-config', minimizeToggle.checked);
 });
 
 // Initialization
@@ -277,6 +353,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 adminRememberCb.checked = true;
                 emailInput.value = config.lastAdminEmail || '';
                 passwordInput.value = config.lastAdminPassword || '';
+            }
+
+            // 最小化設定
+            if (config.minimizeOnClose !== undefined) {
+                minimizeToggle.checked = config.minimizeOnClose;
+                ipcRenderer.send('update-minimize-config', config.minimizeOnClose);
             }
         }
     } catch (e) {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, Loader2, ArrowRight, AlertCircle, Smartphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabase';
 
 /**
@@ -11,6 +12,7 @@ import { supabase } from '../lib/supabase';
 export default function PlatformLoginPage() {
     const navigate = useNavigate();
     const { signIn } = useAuth();
+    const { showAlert } = useNotification();
 
     const [step, setStep] = useState('login'); // 'login' | 'mfa'
     const [email, setEmail] = useState('');
@@ -24,6 +26,7 @@ export default function PlatformLoginPage() {
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
+        let success = false;
         setError(null);
 
         try {
@@ -55,10 +58,15 @@ export default function PlatformLoginPage() {
                 // MFA コード入力ステップへ
                 setStep('mfa');
             }
+            success = true;
         } catch (err) {
-            setError(err.message === 'Invalid login credentials' ? 'ログイン情報が正しくありません' : err.message);
+            const msg = err.message === 'Invalid login credentials' ? 'ログイン情報が正しくありません' : err.message;
+            setError(msg);
+            await showAlert(msg, 'error');
         } finally {
-            setLoading(false);
+            if (!success) {
+                setLoading(false);
+            }
         }
     };
 
@@ -66,6 +74,7 @@ export default function PlatformLoginPage() {
     const handleMfaVerify = async (e) => {
         e.preventDefault();
         setLoading(true);
+        let success = false;
         setError(null);
 
         try {
@@ -80,11 +89,16 @@ export default function PlatformLoginPage() {
             if (error) throw error;
 
             // 認証成功 -> 管理画面へ
+            success = true;
             navigate('/super-admin');
         } catch (err) {
-            setError('認証コードが正しくありません');
+            const msg = '認証コードが正しくありません';
+            setError(msg);
+            await showAlert(msg, 'error');
         } finally {
-            setLoading(false);
+            if (!success) {
+                setLoading(false);
+            }
         }
     };
 

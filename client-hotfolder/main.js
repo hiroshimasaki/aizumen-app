@@ -14,13 +14,19 @@ let authToken = null;
 const apiBaseUrl = 'http://localhost:3001';
 let watchFolder = null;
 let tray = null; // トレイアイコン用
+let minimizeOnClose = true; // 閉じるボタンで最小化するかどうか
+app.isQuiting = false; // 終了フラグの初期化
 
 const getConfigPath = () => path.join(app.getPath('userData'), 'hotfolder-config.json');
 
 function loadConfig() {
     try {
         if (fs.existsSync(getConfigPath())) {
-            return JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'));
+            const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'));
+            if (config.minimizeOnClose !== undefined) {
+                minimizeOnClose = config.minimizeOnClose;
+            }
+            return config;
         }
     } catch (e) {
         console.error('Failed to load config', e);
@@ -37,6 +43,7 @@ function saveConfig(config) {
 }
 
 function createWindow() {
+    loadConfig(); // 起動時に設定を読み込む
     const { Menu, Tray, nativeImage } = electron;
     const iconImage = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
 
@@ -54,16 +61,14 @@ function createWindow() {
     mainWindow.loadFile('index.html');
     
     // システムトレイの設定
-    // macOSかWindowsかでデフォルトアイコンがない場合のエラーを防ぐため空Canvasなどで代用も可能ですが、
-    // ここではNativeImageを使用するのが一般的。一旦空のオブジェクトかダミーアイコンを用意。
-    const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png')); // 無くてもエラーにはならないよう調整
+    const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
     tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
     
     const contextMenu = Menu.buildFromTemplate([
         { label: 'アプリを開く', click: () => mainWindow.show() },
         { type: 'separator' },
         { label: '終了', click: () => {
-            mainWindow.destroy(); // 終了処理
+            app.isQuiting = true;
             app.quit();
         }}
     ]);
@@ -71,25 +76,39 @@ function createWindow() {
     tray.setToolTip('AiZumen HotFolder');
     tray.setContextMenu(contextMenu);
 
-    // トレイアイコンをクリックしたら表示
     tray.on('click', () => {
         mainWindow.show();
     });
 
-    // 最小化（Minimize）時にタスクバーから隠す
+    // 最小化（Minimize）時
     mainWindow.on('minimize', (event) => {
-        event.preventDefault();
-        mainWindow.hide();
-    });
-
-    // 閉じる（Close）ボタンを押した時に終了せず、隠す（トレイ化）
-    mainWindow.on('close', (event) => {
-        if (!app.isQuiting) {
+        if (minimizeOnClose) {
+            // トグルON: トレイに隠す
             event.preventDefault();
             mainWindow.hide();
         }
+        // トグルOFF: 通常の最小化（タスクバーへ）
+    });
+
+    // 閉じる（Close）ボタンを押した時
+    mainWindow.on('close', (event) => {
+        if (app.isQuiting) return;
+
+        if (minimizeOnClose) {
+            // トグルON: 最小化（隠す）
+            event.preventDefault();
+            mainWindow.hide();
+        } else {
+            // トグルOFF: 終了
+            app.quit();
+        }
     });
 }
+
+// IPC Handlers
+ipcMain.on('update-minimize-config', (event, value) => {
+    minimizeOnClose = value;
+});
 
 // カスタムメニューの設定 (File -> Exit のみ)
 const menuTemplate = [
@@ -99,6 +118,7 @@ const menuTemplate = [
             {
                 label: 'Exit',
                 click: () => {
+                    app.isQuiting = true;
                     app.quit();
                 }
             }
@@ -108,7 +128,30 @@ const menuTemplate = [
 const menu = Menu.buildFromTemplate(menuTemplate);
 Menu.setApplicationMenu(menu);
 
-app.whenReady().then(createWindow);
+// 終了フラグの管理
+app.on('before-quit', () => {
+    app.isQuiting = true;
+});
+
+// 二重起動防止 (Single Instance Lock)
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    app.quit();
+} else {
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // 2つ目のインスタンスが起動しようとした場合、既存のウィンドウを前面に出す
+        if (mainWindow) {
+            if (mainWindow.isMinimized() || !mainWindow.isVisible()) {
+                mainWindow.show();
+                mainWindow.restore();
+            }
+            mainWindow.focus();
+        }
+    });
+
+    app.whenReady().then(createWindow);
+}
 
 app.on('before-quit', () => {
     app.isQuiting = true;
@@ -119,6 +162,18 @@ app.on('window-all-closed', () => {
 });
 
 // フォルダ監視の開始/更新
+let isLoggedIn = false; // ログイン状態管理
+
+ipcMain.on('auth-success', (event, token) => {
+    authToken = token;
+    isLoggedIn = true;
+});
+
+ipcMain.on('auth-logout', () => {
+    authToken = null;
+    isLoggedIn = false;
+});
+
 ipcMain.on('set-watch-folder', (event, folderPath) => {
     if (watcher) {
         watcher.close();
@@ -136,6 +191,7 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
         fs.mkdirSync(processedDir);
     }
 
+    let isReady = false;
     watcher = chokidar.watch(watchFolder, {
         ignored: [/(^|[\/\\])\../, processedDir], // . で始まるファイルと processed フォルダを無視
         persistent: true,
@@ -149,15 +205,26 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
             if (!pendingFiles.some(f => f.path === filePath)) {
                 pendingFiles.push({ name: fileName, path: filePath, status: 'detected' });
 
-                // 通知
-                new Notification({
-                    title: '新しい書類を検知しました',
-                    body: `${fileName} を待機リストに追加しました。`,
-                }).show();
+                // ログイン中 かつ 初期スキャン完了後のみ通知を出す
+                if (isLoggedIn && isReady) {
+                    new Notification({
+                        title: '新しい書類を検知しました',
+                        body: `${fileName} を待機リストに追加しました。`,
+                    }).show();
+                }
 
-                mainWindow.webContents.send('update-file-list', pendingFiles);
+                // 準備完了後なら即座に送信
+                if (isReady) {
+                    mainWindow.webContents.send('update-file-list', pendingFiles);
+                }
             }
         }
+    });
+
+    watcher.on('ready', () => {
+        isReady = true;
+        // 初期スキャン完了後に一括送信
+        mainWindow.webContents.send('update-file-list', pendingFiles);
     });
 
     // ファイルが直接削除された場合の検知
@@ -222,6 +289,10 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
                 }
             });
 
+            if (ocrResponse.status !== 200) {
+                throw new Error(ocrResponse.data?.error || `OCR解析エラー (Status: ${ocrResponse.status})`);
+            }
+
             const ocrData = ocrResponse.data;
 
             // 2. 案件登録
@@ -257,6 +328,10 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
                 }
             });
 
+            if (quoteResponse.status !== 200 && quoteResponse.status !== 201) {
+                throw new Error(quoteResponse.data?.error || `案件登録エラー (Status: ${quoteResponse.status})`);
+            }
+
             const newQuote = quoteResponse.data;
 
             // 3. ファイルアップロード
@@ -265,13 +340,17 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
                 uploadFormData.append('quotationId', newQuote.id);
                 uploadFormData.append('files', fs.createReadStream(file.path));
 
-                await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
+                const uploadResponse = await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
                     headers: {
                         ...uploadFormData.getHeaders(),
                         'Authorization': `Bearer ${authToken}`,
                         'X-Client-Type': 'hotfolder'
                     }
                 });
+
+                if (uploadResponse.status !== 201 && uploadResponse.status !== 200) {
+                    throw new Error(uploadResponse.data?.error || `ファイル登録エラー (Status: ${uploadResponse.status})`);
+                }
             }
 
             // 4. 後処理（移動）
@@ -280,10 +359,12 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
 
             file.status = 'completed';
             file.path = processedPath; // 移動後のパスに更新
+            delete file.errorMessage;
         } catch (err) {
             console.error(`Error processing ${file.name}:`, err.response?.data || err.message);
             file.status = 'error';
-            file.errorMessage = err.response?.data?.error || err.message;
+            // サーバー側から返ってきた具体的なエラー詳細を抽出して表示
+            file.errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
         }
 
         mainWindow.webContents.send('update-file-list', pendingFiles);

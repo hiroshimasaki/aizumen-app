@@ -220,10 +220,27 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
             throw new AppError('Permission denied', 403, 'FORBIDDEN');
         }
 
-        const { error } = await supabaseAdmin
-            .from('forum_posts')
-            .delete()
-            .eq('id', id);
+        if (req.userRole === 'super_admin' && post.user_id !== req.userId) {
+            // 管理者による他人の投稿削除の場合は論理削除（文言変更）とする
+            const { error } = await supabaseAdmin
+                .from('forum_posts')
+                .update({
+                    title: '[管理者によって削除されました]',
+                    body: '[管理者によって削除されました]',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id);
+            
+            if (error) throw new AppError('Failed to overwrite post', 500, 'UPDATE_FAILED');
+        } else {
+            // 本人の場合は通常通り物理削除
+            const { error } = await supabaseAdmin
+                .from('forum_posts')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw new AppError('Failed to delete post', 500, 'DELETE_FAILED');
+        }
 
         if (error) throw new AppError('Failed to delete post', 500, 'DELETE_FAILED');
         res.json({ message: 'Post deleted' });
@@ -333,12 +350,26 @@ router.delete('/replies/:replyId', authMiddleware, async (req, res, next) => {
             throw new AppError('Permission denied', 403, 'FORBIDDEN');
         }
 
-        const { error } = await supabaseAdmin
-            .from('forum_replies')
-            .delete()
-            .eq('id', replyId);
-
-        if (error) throw new AppError('Failed to delete reply', 500, 'DELETE_FAILED');
+        if (req.userRole === 'super_admin' && reply.user_id !== req.userId) {
+            // 管理者による他人の返信削除の場合は論理削除（文言変更）とする
+            const { error } = await supabaseAdmin
+                .from('forum_replies')
+                .update({
+                    body: '[管理者によって削除されました]',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', replyId);
+            
+            if (error) throw new AppError('Failed to overwrite reply', 500, 'UPDATE_FAILED');
+        } else {
+            // 本人の場合は物理削除
+            const { error } = await supabaseAdmin
+                .from('forum_replies')
+                .delete()
+                .eq('id', replyId);
+            
+            if (error) throw new AppError('Failed to delete reply', 500, 'DELETE_FAILED');
+        }
 
         // 返信数を更新
         const { count } = await supabaseAdmin
@@ -467,6 +498,72 @@ router.patch('/:id/resolve', authMiddleware, async (req, res, next) => {
 
         if (error) throw new AppError('Failed to update post', 500, 'UPDATE_FAILED');
         res.json(data);
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * POST /api/forum/:id/report
+ * 投稿を通報
+ */
+router.post('/:id/report', authMiddleware, async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { reason, details } = req.body;
+
+        if (!reason) throw new AppError('Reason is required', 400, 'VALIDATION_ERROR');
+
+        const { error } = await supabaseAdmin
+            .from('forum_reports')
+            .insert({
+                reporter_id: req.userId,
+                post_id: id,
+                reason,
+                details
+            });
+
+        if (error) {
+            if (error.code === '23505') {
+                throw new AppError('You have already reported this post', 400, 'ALREADY_REPORTED');
+            }
+            throw new AppError('Failed to submit report', 500, 'REPORT_FAILED');
+        }
+
+        res.status(201).json({ message: 'Report submitted successfully' });
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * POST /api/forum/replies/:replyId/report
+ * 返信を通報
+ */
+router.post('/replies/:replyId/report', authMiddleware, async (req, res, next) => {
+    try {
+        const { replyId } = req.params;
+        const { reason, details } = req.body;
+
+        if (!reason) throw new AppError('Reason is required', 400, 'VALIDATION_ERROR');
+
+        const { error } = await supabaseAdmin
+            .from('forum_reports')
+            .insert({
+                reporter_id: req.userId,
+                reply_id: replyId,
+                reason,
+                details
+            });
+
+        if (error) {
+            if (error.code === '23505') {
+                throw new AppError('You have already reported this reply', 400, 'ALREADY_REPORTED');
+            }
+            throw new AppError('Failed to submit report', 500, 'REPORT_FAILED');
+        }
+
+        res.status(201).json({ message: 'Report submitted successfully' });
     } catch (err) {
         next(err);
     }

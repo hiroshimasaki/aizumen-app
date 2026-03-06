@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, ThumbsUp, Plus, Search, Filter, CheckCircle2, HelpCircle, Lightbulb, BookOpen, MoreHorizontal, Send, Edit2, Trash2, ArrowLeft, X, ChevronLeft, ChevronRight, Bug } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Plus, Search, Filter, CheckCircle2, HelpCircle, Lightbulb, BookOpen, MoreHorizontal, Send, Edit2, Trash2, ArrowLeft, X, ChevronLeft, ChevronRight, Bug, Flag, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import api from '../lib/api';
@@ -316,6 +316,19 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
     const [editPostCategory, setEditPostCategory] = useState('');
     const [isUpdatingPost, setIsUpdatingPost] = useState(false);
 
+    // 報告ダイアログの状態
+    const [reportTarget, setReportTarget] = useState(null); // { type: 'post' | 'reply', id: string }
+    const [reportReason, setReportReason] = useState('inappropriate');
+    const [reportDetails, setReportDetails] = useState('');
+    const [isReporting, setIsReporting] = useState(false);
+
+    const REPORT_REASONS = [
+        { value: 'spam', label: 'スパム・宣伝' },
+        { value: 'harassment', label: '嫌がらせ・誹謗中傷' },
+        { value: 'inappropriate', label: '不適切なコンテンツ' },
+        { value: 'other', label: 'その他' }
+    ];
+
     const cat = CATEGORY_STYLES[post.category] || CATEGORY_STYLES.other;
     const isAuthor = post.user_id === currentUserId;
 
@@ -382,6 +395,30 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
             setEditingReplyId(null);
             onRefresh();
         } catch (err) { console.error(err); }
+    };
+
+    const submitReport = async (e) => {
+        e.preventDefault();
+        if (!reportTarget) return;
+        setIsReporting(true);
+        try {
+            const endpoint = reportTarget.type === 'post' 
+                ? `/api/forum/${reportTarget.id}/report`
+                : `/api/forum/replies/${reportTarget.id}/report`;
+            
+            await api.post(endpoint, {
+                reason: reportReason,
+                details: reportDetails
+            });
+            await showAlert('違反報告を送信しました。管理者が確認します。', 'success');
+            setReportTarget(null);
+            setReportDetails('');
+        } catch (err) {
+            console.error(err);
+            await showAlert(err.response?.data?.message || err.response?.data?.error || '報告の送信に失敗しました', 'error');
+        } finally {
+            setIsReporting(false);
+        }
     };
 
     return (
@@ -461,6 +498,11 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
                                 <Trash2 className="w-4 h-4" /> 削除
                             </button>
                         )}
+                        {!isAuthor && currentUserId && (
+                            <button onClick={() => setReportTarget({ type: 'post', id: post.id })} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-amber-400 bg-white/5 transition-all ml-auto">
+                                <Flag className="w-4 h-4" /> 通報
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
@@ -499,6 +541,11 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
                                                 <button onClick={() => handleDeleteReply(reply.id)} className="text-xs text-slate-500 hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>
                                             </>
                                         )}
+                                        {reply.user_id !== currentUserId && currentUserId && (
+                                            <button onClick={() => setReportTarget({ type: 'reply', id: reply.id })} className="text-xs text-slate-500 hover:text-amber-400 transition-colors ml-auto flex items-center gap-1">
+                                                <Flag className="w-3 h-3" />
+                                            </button>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -518,6 +565,60 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
                     <Send className="w-4 h-4" />
                 </button>
             </form>
+
+            {/* 違反報告ダイアログ */}
+            {reportTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+                                <AlertTriangle className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">違反報告</h3>
+                                <p className="text-slate-400 text-sm mt-1">
+                                    不適切なコンテンツを管理者に報告します。
+                                </p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={submitReport} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">報告理由</label>
+                                <div className="space-y-2">
+                                    {REPORT_REASONS.map((r) => (
+                                        <label key={r.value} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${reportReason === r.value ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'border-white/5 hover:bg-white/5 text-slate-300'}`}>
+                                            <input
+                                                type="radio" name="report_reason" value={r.value}
+                                                checked={reportReason === r.value} onChange={() => setReportReason(r.value)}
+                                                className="w-4 h-4 text-amber-500 bg-slate-800 border-slate-600 focus:ring-amber-500 focus:ring-offset-slate-900"
+                                            />
+                                            <span className="text-sm font-medium">{r.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">詳細 (任意)</label>
+                                <textarea
+                                    value={reportDetails} onChange={(e) => setReportDetails(e.target.value)}
+                                    placeholder="報告の理由を詳しくお書きください（任意）" rows={3}
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all resize-none"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 justify-end mt-6">
+                                <button type="button" onClick={() => { setReportTarget(null); setReportDetails(''); }} className="px-5 py-2.5 rounded-xl font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all">
+                                    キャンセル
+                                </button>
+                                <button type="submit" disabled={isReporting} className="px-5 py-2.5 rounded-xl font-bold bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 disabled:opacity-50 transition-all">
+                                    {isReporting ? '送信中...' : '報告する'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

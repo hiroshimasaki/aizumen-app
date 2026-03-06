@@ -227,7 +227,7 @@ router.delete('/:id', authMiddleware, checkTrialLimit, async (req, res, next) =>
             action: 'quotation_deleted',
             entityType: 'quotation',
             entityId: id,
-            description: `Quotation moved to trash`,
+            description: `案件をゴミ箱に移動しました`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -266,7 +266,7 @@ router.post('/:id/restore', authMiddleware, checkTrialLimit, async (req, res, ne
             action: 'quotation_restored',
             entityType: 'quotation',
             entityId: id,
-            description: `Quotation restored from trash`,
+            description: `案件をゴミ箱から復元しました`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -299,7 +299,7 @@ router.delete('/:id/permanent', authMiddleware, checkTrialLimit, async (req, res
             action: 'quotation_permanently_deleted',
             entityType: 'quotation',
             entityId: req.params.id,
-            description: `Quotation permanently deleted`,
+            description: `案件を完全に削除しました`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -510,7 +510,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
             action: 'quotation_created',
             entityType: 'quotation',
             entityId: quotation.id,
-            description: `New quotation created: ${displayId}`,
+            description: `案件新規作成: ${displayId}`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -722,7 +722,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             action: 'quotation_updated',
             entityType: 'quotation',
             entityId: id,
-            description: `Quotation updated: ${updated.display_id}`,
+            description: `案件情報更新: ${updated.display_id}`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -772,7 +772,7 @@ router.post('/batch-delivery', authMiddleware, async (req, res, next) => {
         await logService.audit({
             action: 'batch_delivery_executed',
             entityType: 'quotation_item',
-            description: `Bulk delivery executed for ${itemIds.length} items (Date: ${deliveryDate})`,
+            description: `一括納品を実行: ${itemIds.length}件 (納品日: ${deliveryDate})`,
             tenantId: req.tenantId,
             userId: req.userId
         });

@@ -62,13 +62,13 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
             req.tenantId,
             req.user.id,
             amount,
-            `Single OCR Analysis: ${originalName}`
+            `個別OCR解析: ${originalName}`
         );
 
         await logService.audit({
             action: 'ocr_analyzed',
             entityType: 'ocr',
-            description: `Single OCR: ${originalName}`,
+            description: `個別OCR解析完了: ${originalName}`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -183,13 +183,13 @@ router.post('/bulk-register', authMiddleware, checkTrialLimit, async (req, res, 
             req.tenantId,
             req.user.id,
             required,
-            `Bulk OCR Analysis (${required} files)`
+            `一括OCR解析 (${required}件)`
         );
 
         await logService.audit({
             action: 'ocr_bulk_processed',
             entityType: 'ocr',
-            description: `Bulk OCR: ${required} files processed`,
+            description: `一括OCR解析完了: ${required}件`,
             tenantId: req.tenantId,
             userId: req.userId
         });

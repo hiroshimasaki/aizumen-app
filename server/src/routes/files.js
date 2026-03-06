@@ -120,7 +120,7 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
         await logService.audit({
             action: 'file_uploaded',
             entityType: 'file',
-            description: `Uploaded ${results.length} file(s)`,
+            description: `ファイルをアップロードしました: ${results.length}件`,
             tenantId: req.tenantId,
             userId: req.userId
         });
@@ -193,7 +193,7 @@ router.delete('/:id', authMiddleware, checkTrialLimit, async (req, res, next) =>
             action: 'file_deleted',
             entityType: 'file',
             entityId: req.params.id,
-            description: `File deleted: ${fileMeta.storage_path.split('/').pop()}`,
+            description: `ファイルを削除しました: ${fileMeta.storage_path.split('/').pop()}`,
             tenantId: req.tenantId,
             userId: req.userId
         });

@@ -32,6 +32,7 @@ export default function SuperAdminPage() {
     const [activities, setActivities] = useState([]);
     const [usage, setUsage] = useState({ storage: [], ai: [], totals: { storage: 0, ai: 0, db: 0 }, storageLimit: 1 * 1024 * 1024 * 1024, dbLimit: 500 * 1024 * 1024 });
     const [billing, setBilling] = useState({ mrr: 0, activeCount: 0, alerts: [] });
+    const [pendingReportsCount, setPendingReportsCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -68,13 +69,14 @@ export default function SuperAdminPage() {
     const fetchData = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            const [statsRes, tenantsRes, healthRes, activitiesRes, usageRes, billingRes] = await Promise.all([
+            const [statsRes, tenantsRes, healthRes, activitiesRes, usageRes, billingRes, pendingRes] = await Promise.all([
                 api.get('/api/super-admin/stats'),
                 api.get('/api/super-admin/tenants'),
                 api.get('/api/super-admin/health').catch(() => ({ data: { db: 'error', storage: 'error', ai: 'error' } })),
                 api.get('/api/super-admin/activities').catch(() => ({ data: [] })),
                 api.get('/api/super-admin/usage').catch(() => ({ data: { storage: [], ai: [], totals: { storage: 0, ai: 0, db: 0 }, storageLimit: 1 * 1024 * 1024 * 1024, dbLimit: 500 * 1024 * 1024 } })),
-                api.get('/api/super-admin/billing').catch(() => ({ data: { mrr: 0, activeCount: 0, alerts: [] } }))
+                api.get('/api/super-admin/billing').catch(() => ({ data: { mrr: 0, activeCount: 0, alerts: [] } })),
+                api.get('/api/super-admin/forum/reports/pending-count').catch(() => ({ data: { count: 0 } }))
             ]);
 
             setStats(statsRes.data);
@@ -83,6 +85,7 @@ export default function SuperAdminPage() {
             setActivities(activitiesRes.data);
             setUsage(usageRes.data);
             setBilling(billingRes.data);
+            setPendingReportsCount(pendingRes.data?.count || 0);
             setLastUpdated(new Date());
         } catch (err) {
             console.error('[SuperAdminPage] Fetch Error:', err);
@@ -139,11 +142,16 @@ export default function SuperAdminPage() {
                         <button
                             onClick={() => setActiveView('logs')}
                             className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all",
+                                "flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all relative",
                                 activeView === 'logs' ? "bg-[#1677ff] text-white" : "text-slate-500 hover:text-slate-300"
                             )}
                         >
                             <Terminal size={12} /> System Logs
+                            {pendingReportsCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 flex items-center justify-center text-[9px] text-white font-bold border-2 border-[#1d1d1d]">
+                                    {pendingReportsCount}
+                                </span>
+                            )}
                         </button>
                     </div>
 
@@ -406,7 +414,7 @@ export default function SuperAdminPage() {
                     </div>
                 ) : (
                     <div className="flex-1 p-4 overflow-hidden">
-                        <SuperAdminLogs />
+                        <SuperAdminLogs pendingReportsCount={pendingReportsCount} />
                     </div>
                 )}
             </div>
