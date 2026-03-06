@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, ThumbsUp, Plus, Search, Filter, CheckCircle2, HelpCircle, Lightbulb, BookOpen, MoreHorizontal, Send, Edit2, Trash2, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import api from '../lib/api';
 
 const CATEGORIES = [
@@ -20,6 +21,7 @@ const CATEGORY_STYLES = {
 
 export default function ForumPage() {
     const { user } = useAuth();
+    const { showAlert, showConfirm } = useNotification();
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [category, setCategory] = useState('all');
@@ -73,7 +75,7 @@ export default function ForumPage() {
     };
 
     const handleDeletePost = async (postId) => {
-        if (!confirm('この投稿を削除しますか?')) return;
+        if (!await showConfirm('この投稿を削除しますか?')) return;
         try {
             await api.delete(`/api/forum/${postId}`);
             setSelectedPost(null);
@@ -100,6 +102,8 @@ export default function ForumPage() {
                 onDelete={() => handleDeletePost(selectedPost.id)}
                 onResolve={() => handleResolve(selectedPost.id)}
                 onRefresh={() => handlePostSelected(selectedPost.id)}
+                showAlert={showAlert}
+                showConfirm={showConfirm}
             />
         );
     }
@@ -149,7 +153,7 @@ export default function ForumPage() {
 
             {/* 新規投稿フォーム */}
             {showNewPostForm && (
-                <NewPostForm onClose={() => setShowNewPostForm(false)} onCreated={handlePostCreated} />
+                <NewPostForm onClose={() => setShowNewPostForm(false)} onCreated={handlePostCreated} showAlert={showAlert} />
             )}
 
             {/* 投稿一覧 */}
@@ -230,7 +234,7 @@ function PostCard({ post, onClick, onLike }) {
 }
 
 /** 新規投稿フォーム */
-function NewPostForm({ onClose, onCreated }) {
+function NewPostForm({ onClose, onCreated, showAlert }) {
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [category, setCategory] = useState('question');
@@ -243,7 +247,7 @@ function NewPostForm({ onClose, onCreated }) {
             await api.post('/api/forum', { title, body, category });
             onCreated();
         } catch (err) {
-            alert('投稿に失敗しました');
+            await showAlert('投稿に失敗しました', 'error');
         } finally {
             setLoading(false);
         }
@@ -290,13 +294,47 @@ function NewPostForm({ onClose, onCreated }) {
 }
 
 /** 投稿詳細 + 返信 */
-function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, onRefresh }) {
+function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, onRefresh, showAlert, showConfirm }) {
     const [replyBody, setReplyBody] = useState('');
     const [sending, setSending] = useState(false);
     const [editingReplyId, setEditingReplyId] = useState(null);
     const [editReplyBody, setEditReplyBody] = useState('');
+    
+    // 投稿の編集状態
+    const [isEditingPost, setIsEditingPost] = useState(false);
+    const [editPostTitle, setEditPostTitle] = useState('');
+    const [editPostBody, setEditPostBody] = useState('');
+    const [editPostCategory, setEditPostCategory] = useState('');
+    const [isUpdatingPost, setIsUpdatingPost] = useState(false);
+
     const cat = CATEGORY_STYLES[post.category] || CATEGORY_STYLES.other;
     const isAuthor = post.user_id === currentUserId;
+
+    const startEditingPost = () => {
+        setEditPostTitle(post.title);
+        setEditPostBody(post.body);
+        setEditPostCategory(post.category);
+        setIsEditingPost(true);
+    };
+
+    const handleEditPost = async () => {
+        setIsUpdatingPost(true);
+        try {
+            await api.put(`/api/forum/${post.id}`, {
+                title: editPostTitle,
+                body: editPostBody,
+                category: editPostCategory
+            });
+            setIsEditingPost(false);
+            onRefresh();
+            await showAlert('投稿を更新しました', 'success');
+        } catch (err) {
+            console.error(err);
+            await showAlert('投稿の更新に失敗しました', 'error');
+        } finally {
+            setIsUpdatingPost(false);
+        }
+    };
 
     const handleReply = async (e) => {
         e.preventDefault();
@@ -306,7 +344,11 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
             await api.post(`/api/forum/${post.id}/replies`, { body: replyBody });
             setReplyBody('');
             onRefresh();
-        } catch (err) { console.error(err); }
+            await showAlert('返信を投稿しました', 'success');
+        } catch (err) { 
+            console.error(err);
+            await showAlert(err.response?.data?.message || err.response?.data?.error || err.message || '返信の投稿に失敗しました', 'error');
+        }
         finally { setSending(false); }
     };
 
@@ -318,7 +360,7 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
     };
 
     const handleDeleteReply = async (replyId) => {
-        if (!confirm('この返信を削除しますか?')) return;
+        if (!await showConfirm('この返信を削除しますか?')) return;
         try {
             await api.delete(`/api/forum/replies/${replyId}`);
             onRefresh();
@@ -340,35 +382,79 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
             </button>
 
             {/* 投稿本文 */}
-            <div className="bg-slate-800/30 border border-white/5 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-3">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${cat.bg} ${cat.text} border ${cat.border}`}>{cat.label}</span>
-                    {post.is_resolved && <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">解決済み</span>}
+            {isEditingPost ? (
+                <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-white">投稿を編集</h2>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="flex gap-2">
+                            {CATEGORIES.filter(c => c.value !== 'all').map(categoryOption => (
+                                <button
+                                    key={categoryOption.value}
+                                    type="button"
+                                    onClick={() => setEditPostCategory(categoryOption.value)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                        editPostCategory === categoryOption.value ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'text-slate-400 hover:text-white bg-white/5 border border-transparent'
+                                    }`}
+                                >{categoryOption.label}</button>
+                            ))}
+                        </div>
+                        <input
+                            type="text" required placeholder="タイトル"
+                            value={editPostTitle} onChange={e => setEditPostTitle(e.target.value)}
+                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-all"
+                        />
+                        <textarea
+                            required placeholder="内容を入力してください..."
+                            rows={8} value={editPostBody} onChange={e => setEditPostBody(e.target.value)}
+                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-all resize-none"
+                        />
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button onClick={() => setIsEditingPost(false)} className="px-4 py-2 text-slate-400 font-medium rounded-xl hover:bg-white/5 transition-all">キャンセル</button>
+                            <button onClick={handleEditPost} disabled={isUpdatingPost || !editPostTitle.trim() || !editPostBody.trim()} className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 disabled:opacity-50 transition-all">
+                                {isUpdatingPost ? '保存中...' : '保存'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <h2 className="text-xl font-black text-white mb-2">{post.title}</h2>
-                <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-                    <span className="font-medium text-slate-300">{post.user_name}</span>
-                    {post.tenant_name && <span>@{post.tenant_name}</span>}
-                    <span>{new Date(post.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <p className="text-slate-300 whitespace-pre-wrap leading-relaxed text-sm">{post.body}</p>
-
-                <div className="flex items-center gap-3 mt-6 pt-4 border-t border-white/5">
-                    <button onClick={onLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${post.liked_by_me ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' : 'text-slate-400 hover:text-pink-400 bg-white/5'}`}>
-                        <ThumbsUp className="w-4 h-4" /> {post.like_count || 0}
-                    </button>
-                    {isAuthor && (
-                        <button onClick={onResolve} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${post.is_resolved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-400 hover:text-emerald-400 bg-white/5'}`}>
-                            <CheckCircle2 className="w-4 h-4" /> {post.is_resolved ? '解決済み' : '解決済みにする'}
+            ) : (
+                <div className="bg-slate-800/30 border border-white/5 rounded-2xl p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${cat.bg} ${cat.text} border ${cat.border}`}>{cat.label}</span>
+                        {post.is_resolved && <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">解決済み</span>}
+                    </div>
+                    <h2 className="text-xl font-black text-white mb-2">{post.title}</h2>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
+                        <span className="font-medium text-slate-300">{post.user_name}</span>
+                        {post.tenant_name && <span>@{post.tenant_name}</span>}
+                        <span>{new Date(post.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        {post.updated_at !== post.created_at && <span className="text-slate-600">(編集済み)</span>}
+                    </div>
+                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed text-sm">{post.body}</p>
+    
+                    <div className="flex items-center gap-3 mt-6 pt-4 border-t border-white/5">
+                        <button onClick={onLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${post.liked_by_me ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' : 'text-slate-400 hover:text-pink-400 bg-white/5'}`}>
+                            <ThumbsUp className="w-4 h-4" /> {post.like_count || 0}
                         </button>
-                    )}
-                    {isAuthor && (
-                        <button onClick={onDelete} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-red-400 bg-white/5 transition-all">
-                            <Trash2 className="w-4 h-4" /> 削除
-                        </button>
-                    )}
+                        {isAuthor && (
+                            <button onClick={onResolve} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${post.is_resolved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-400 hover:text-emerald-400 bg-white/5'}`}>
+                                <CheckCircle2 className="w-4 h-4" /> {post.is_resolved ? '解決済み' : '解決済みにする'}
+                            </button>
+                        )}
+                        {isAuthor && (
+                            <button onClick={startEditingPost} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-blue-400 bg-white/5 transition-all">
+                                <Edit2 className="w-4 h-4" /> 編集
+                            </button>
+                        )}
+                        {isAuthor && (
+                            <button onClick={onDelete} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-red-400 bg-white/5 transition-all">
+                                <Trash2 className="w-4 h-4" /> 削除
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* 返信一覧 */}
             <div>

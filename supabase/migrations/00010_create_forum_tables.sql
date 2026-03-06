@@ -4,7 +4,7 @@
 -- =============================================
 
 -- フォーラム投稿
-CREATE TABLE forum_posts (
+CREATE TABLE IF NOT EXISTS forum_posts (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL,
     user_name   VARCHAR(255) NOT NULL DEFAULT '',
@@ -20,12 +20,12 @@ CREATE TABLE forum_posts (
     updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_forum_posts_category ON forum_posts(category);
-CREATE INDEX idx_forum_posts_user ON forum_posts(user_id);
-CREATE INDEX idx_forum_posts_created ON forum_posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_forum_posts_category ON forum_posts(category);
+CREATE INDEX IF NOT EXISTS idx_forum_posts_user ON forum_posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_forum_posts_created ON forum_posts(created_at DESC);
 
 -- フォーラム返信
-CREATE TABLE forum_replies (
+CREATE TABLE IF NOT EXISTS forum_replies (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id     UUID NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
     user_id     UUID NOT NULL,
@@ -37,11 +37,11 @@ CREATE TABLE forum_replies (
     updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_forum_replies_post ON forum_replies(post_id, created_at);
-CREATE INDEX idx_forum_replies_user ON forum_replies(user_id);
+CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_forum_replies_user ON forum_replies(user_id);
 
 -- フォーラムいいね（投稿・返信の両方に対応）
-CREATE TABLE forum_likes (
+CREATE TABLE IF NOT EXISTS forum_likes (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID NOT NULL,
     post_id     UUID REFERENCES forum_posts(id) ON DELETE CASCADE,
@@ -57,6 +57,17 @@ CREATE TABLE forum_likes (
     )
 );
 
-CREATE INDEX idx_forum_likes_post ON forum_likes(post_id) WHERE post_id IS NOT NULL;
-CREATE INDEX idx_forum_likes_reply ON forum_likes(reply_id) WHERE reply_id IS NOT NULL;
-CREATE INDEX idx_forum_likes_user ON forum_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_forum_likes_post ON forum_likes(post_id) WHERE post_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_forum_likes_reply ON forum_likes(reply_id) WHERE reply_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_forum_likes_user ON forum_likes(user_id);
+
+-- 返信数を増やす関数
+CREATE OR REPLACE FUNCTION increment_reply_count(post_uuid UUID)
+RETURNS void AS $$
+BEGIN
+    UPDATE forum_posts
+    SET reply_count = reply_count + 1
+    WHERE id = post_uuid;
+END;
+$$ LANGUAGE plpgsql;
+

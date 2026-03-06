@@ -260,16 +260,19 @@ router.post('/:id/replies', authMiddleware, async (req, res, next) => {
         if (error) throw new AppError('Failed to create reply', 500, 'CREATE_FAILED');
 
         // 返信数を更新
-        await supabaseAdmin.rpc('increment_reply_count', { post_uuid: id }).catch(() => {});
-        // フォールバック: 直接カウントを更新
-        const { count } = await supabaseAdmin
-            .from('forum_replies')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', id);
-        await supabaseAdmin
-            .from('forum_posts')
-            .update({ reply_count: count || 0 })
-            .eq('id', id);
+        const { error: rpcError } = await supabaseAdmin.rpc('increment_reply_count', { post_uuid: id });
+        if (rpcError) {
+            console.error('[Forum API] RPC increment failed, using fallback:', rpcError.message);
+            // フォールバック: 直接カウントを再計算して更新
+            const { count } = await supabaseAdmin
+                .from('forum_replies')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', id);
+            await supabaseAdmin
+                .from('forum_posts')
+                .update({ reply_count: count || 0 })
+                .eq('id', id);
+        }
 
         res.status(201).json(data);
     } catch (err) {
