@@ -233,6 +233,36 @@ export function AuthProvider({ children }) {
     const userRole = user?.profile?.role || user?.app_metadata?.role || 'user';
     const isAdmin = userRole === 'admin' || userRole === 'system_admin';
 
+    // AIクレジットのリアルタイム同期助
+    useEffect(() => {
+        if (!tenant?.id) return;
+
+        const channel = supabase.channel(`credits_changes_${tenant.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'ai_credits',
+                    filter: `tenant_id=eq.${tenant.id}`
+                },
+                (payload) => {
+                    console.log('[AuthContext] AI Credits updated via realtime', payload.new);
+                    setCredits(prev => ({
+                        ...prev,
+                        balance: payload.new.balance,
+                        monthly_quota: payload.new.monthly_quota,
+                        purchased_balance: payload.new.purchased_balance
+                    }));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [tenant?.id]);
+
     const value = {
         user,
         session,

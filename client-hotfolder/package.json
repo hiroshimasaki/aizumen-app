@@ -4,10 +4,10 @@
     "description": "AiZumen HotFolder Monitoring Client",
     "main": "main.js",
     "scripts": {
-        "start": "electron ."
+        "start": "electron .",
+        "dist": "electron-packager . AiZumen-HotFolder --platform=win32 --arch=x64 --out=dist --overwrite"
     },
     "keywords": [],
-    "author": "",
     "license": "ISC",
     "dependencies": {
         "axios": "^1.6.0",
@@ -16,6 +16,35 @@
         "node-notifier": "^10.0.1"
     },
     "devDependencies": {
-        "electron": "^27.0.0"
+        "electron": "^27.0.0",
+        "electron-builder": "^26.8.1",
+        "electron-packager": "^17.1.2"
+    },
+    "author": "AiZumen Team",
+    "build": {
+        "appId": "com.aizumen.hotfolder",
+        "productName": "AiZumen-HotFolder",
+        "copyright": "Copyright © 2024 AiZumen Team",
+        "directories": {
+            "output": "dist"
+        },
+        "win": {
+            "target": [
+                {
+                    "target": "portable",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ]
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true
+        },
+        "files": [
+            "**/*"
+        ]
     }
 }

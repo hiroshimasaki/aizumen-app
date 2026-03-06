@@ -5,87 +5,209 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AiZumen HotFolder</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e2e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body class="bg-slate-900 text-white font-sans overflow-hidden">
-    <div id="app" class="h-screen flex flex-col p-6">
+<body class="bg-slate-950 text-slate-200 font-sans overflow-hidden selection:bg-blue-500/30">
+    <!-- Background Decorators -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full mix-blend-screen"></div>
+        <div class="absolute bottom-[10%] right-[10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full mix-blend-screen"></div>
+    </div>
+
+    <div id="app" class="h-screen flex flex-col p-6 backdrop-blur-3xl">
         <!-- Header -->
-        <header class="flex justify-between items-center mb-6">
-            <div class="flex items-center gap-3">
-                <div class="p-2 bg-blue-600 rounded-lg">
+        <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
+            <div class="flex items-center gap-4">
+                <div class="p-2.5 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg shadow-blue-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-database">
-                        <path d="M3 5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z" />
-                        <path d="M3 10h18" />
-                        <path d="M3 15h18" />
-                        <path d="M10 3v18" />
+                        stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m21 16-9 5-9-5" />
+                        <path d="m21 8-9 5-9-5" />
+                        <path d="m3 8 9-5 9 5-9 5-9-5Z" />
                     </svg>
                 </div>
-                <h1 class="text-xl font-black">AiZumen HotFolder</h1>
+                <div>
+                    <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tight">AiZumen</h1>
+                    <p class="text-[11px] font-bold text-blue-400 uppercase tracking-widest mt-0.5">HotFolder Sync</p>
+                </div>
             </div>
-            <div id="auth-status" class="text-sm flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                未ログイン
+            <div class="flex items-center gap-3">
+                <div id="auth-status" class="text-sm font-medium flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full border border-slate-700/50">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span>
+                    <span class="text-slate-400">未ログイン</span>
+                </div>
+                <button id="logout-btn" class="hidden px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-full border border-slate-700 transition-colors shadow-sm">ログアウト</button>
             </div>
         </header>
 
         <!-- Login Section -->
-        <div id="login-section" class="flex-1 flex items-center justify-center">
-            <div class="bg-slate-800 p-8 rounded-2xl border border-white/10 w-full max-w-sm shadow-2xl">
-                <h2 class="text-lg font-bold mb-6 text-center">ログイン</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">メールアドレス</label>
-                        <input type="email" id="email"
-                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
-                            placeholder="admin@example.com">
+        <div id="login-section" class="flex-1 flex flex-col items-center justify-center -mt-10">
+            <div class="text-center mb-6">
+                <h1 class="text-4xl font-black text-[#0ea5e9] tracking-tight mb-2">AiZumen</h1>
+                <p class="text-slate-400 text-sm font-medium">AI図面見積管理システム</p>
+            </div>
+
+            <div class="bg-[#1e293b] p-8 rounded-2xl border border-white/5 w-full max-w-sm shadow-2xl relative">
+                <!-- Tabs -->
+                <div class="flex bg-slate-800/80 rounded-xl p-1 mb-8">
+                    <button type="button" id="tab-employee" class="flex-1 py-2.5 rounded-lg text-sm font-bold bg-[#6366f1] text-white transition-colors shadow-sm">
+                        従業員
+                    </button>
+                    <button type="button" id="tab-admin" class="flex-1 py-2.5 rounded-lg text-sm font-bold text-slate-400 hover:text-slate-200 transition-colors">
+                        管理者
+                    </button>
+                </div>
+
+                <!-- Employee Form -->
+                <div id="employee-form" class="space-y-5">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-200">会社コード</label>
+                        <div class="relative group/input">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
+                            <input type="text" id="company-code"
+                                class="w-full bg-[#334155] border border-white/5 rounded-lg py-2.5 pl-10 pr-4 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all shadow-inner"
+                                placeholder="sample-inc">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">パスワード</label>
-                        <input type="password" id="password"
-                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
-                            placeholder="••••••••">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-200">従業員番号</label>
+                        <div class="relative group/input">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input type="text" id="employee-id"
+                                class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+                                placeholder="0001">
+                        </div>
                     </div>
-                    <button id="login-btn"
-                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors mt-4">ログイン</button>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-200">パスワード</label>
+                        <div class="relative group/input">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <input type="password" id="employee-password"
+                                class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+                                placeholder="••••••••">
+                        </div>
+                    </div>
+                    <!-- Remember Me -->
+                    <div class="flex items-center gap-2 pt-1">
+                        <input type="checkbox" id="employee-remember" class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-[#0ea5e9] focus:ring-[#0ea5e9]/20 transition-all cursor-pointer">
+                        <label for="employee-remember" class="text-xs font-bold text-slate-400 cursor-pointer hover:text-slate-300">ログイン情報を保存する</label>
+                    </div>
+                </div>
+
+                <!-- Admin Form (Hidden by default) -->
+                <div id="admin-form" class="space-y-5 hidden">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-200">メールアドレス</label>
+                        <div class="relative group/input">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            <input type="email" id="email"
+                                class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+                                placeholder="admin@example.com">
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-200">パスワード</label>
+                        <div class="relative group/input">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <input type="password" id="password"
+                                class="w-full bg-[#f1f5f9] border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+                                placeholder="••••••••">
+                        </div>
+                    </div>
+                    <!-- Remember Me -->
+                    <div class="flex items-center gap-2 pt-1">
+                        <input type="checkbox" id="admin-remember" class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-[#0ea5e9] focus:ring-[#0ea5e9]/20 transition-all cursor-pointer">
+                        <label for="admin-remember" class="text-xs font-bold text-slate-400 cursor-pointer hover:text-slate-300">ログイン情報を保存する</label>
+                    </div>
+                </div>
+
+                <button id="login-btn"
+                    class="w-full bg-[#0ea5e9] text-white font-bold py-3.5 rounded-lg transition-all shadow-md mt-8 hover:bg-blue-500 active:scale-[0.98]">
+                    ログイン
+                </button>
+                
+                <div class="mt-6 text-center text-xs space-y-1.5 opacity-50">
+                    <p class="text-slate-500 italic">&copy; AiZumen HotFolder Sync</p>
                 </div>
             </div>
         </div>
 
         <!-- Main Content (Hidden by default) -->
-        <div id="main-content" class="flex-1 flex flex-col hidden">
+        <div id="main-content" class="flex-1 flex flex-col hidden min-h-0">
             <!-- Folder Setting -->
-            <div class="bg-slate-800/50 p-4 rounded-xl border border-white/5 mb-6">
-                <label class="block text-xs text-slate-400 mb-2">監視フォルダ</label>
-                <div class="flex gap-2">
+            <div class="bg-slate-850/80 p-5 rounded-2xl border border-white/5 mb-6 shadow-lg backdrop-blur-xl">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                    <label class="block text-sm font-bold text-white">監視フォルダ設定</label>
+                </div>
+                <div class="flex gap-3">
                     <input type="text" id="folder-path" readonly
-                        class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-300"
-                        placeholder="フォルダを選択してください...">
+                        class="flex-1 bg-slate-950/50 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-300 shadow-inner focus:outline-none"
+                        placeholder="フォルダが選択されていません...">
                     <button id="select-folder-btn"
-                        class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">選択</button>
+                        class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-bold text-white transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center gap-2">
+                        <span>変更</span>
+                    </button>
                 </div>
             </div>
 
             <!-- File List Container -->
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-slate-400">待機中の図面 (<span id="file-count">0</span>)</h3>
+            <div class="flex-1 flex flex-col min-h-0 bg-slate-850/60 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-md">
+                <div class="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-800/30">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-orange-400"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-200">待機中の書類 <span class="bg-slate-700 text-white px-2 py-0.5 rounded-full text-xs ml-1" id="file-count">0</span></h3>
+                    </div>
                     <button id="analyze-all-btn" disabled
-                        class="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-amber-500/25 disabled:opacity-30 transition-all hover:scale-105">一括AI解析</button>
+                        class="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-amber-500/25 disabled:opacity-30 disabled:scale-100 disabled:shadow-none transition-all hover:scale-105 active:scale-95 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.35 2.53 2.02 4.02 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3.02-3.02z"/></svg>
+                        一括AI解析
+                    </button>
                 </div>
 
                 <div id="file-list"
-                    class="flex-1 bg-slate-900/50 border border-slate-800 rounded-xl overflow-y-auto p-2 space-y-2">
-                    <!-- Files will be injected here -->
-                    <div class="h-full flex flex-col items-center justify-center text-slate-600 space-y-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                            <polyline points="14 2 14 8 20 8" />
-                        </svg>
-                        <p class="text-xs">図面を監視フォルダに入れてください</p>
+                    class="flex-1 overflow-y-auto p-3 space-y-2 relative">
+                    <!-- Default Empty State -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 space-y-4">
+                        <div class="w-16 h-16 rounded-full bg-slate-800/80 flex items-center justify-center border border-slate-700/50 shadow-inner">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm font-medium text-slate-300">書類データがありません</p>
+                            <p class="text-xs text-slate-500 mt-1">監視フォルダにPDFファイルを配置してください</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="renderer.js"></script>
+</body>
+
+</html>>
                     </div>
                 </div>
             </div>

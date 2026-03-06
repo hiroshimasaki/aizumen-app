@@ -8,6 +8,11 @@ node_modules/
 
 # Build
 client/dist/
+client-hotfolder/dist/
+
+# Temporary files
+tmp/
+server/debug_*.js
 
 # Supabase
 supabase/.temp/

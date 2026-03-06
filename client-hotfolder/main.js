@@ -1,8 +1,5 @@
 const electron = require('electron');
-
-// 非常に稀なケースとして、require('electron') がパス（文字列）を返す場合、
-// それは内部モジュールではなく CLI ラッパーがロードされている可能性があります
-const { app, BrowserWindow, ipcMain, dialog, Notification } = (typeof electron === 'object') ? electron : require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, Tray, nativeImage } = electron.app ? electron : (typeof electron === 'object' && electron.default ? electron.default : electron);
 const path = require('path');
 const chokidar = require('chokidar');
 const fs = require('fs');
@@ -16,23 +13,106 @@ let pendingFiles = [];
 let authToken = null;
 const apiBaseUrl = 'http://localhost:3001';
 let watchFolder = null;
+let tray = null; // トレイアイコン用
+
+const getConfigPath = () => path.join(app.getPath('userData'), 'hotfolder-config.json');
+
+function loadConfig() {
+    try {
+        if (fs.existsSync(getConfigPath())) {
+            return JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'));
+        }
+    } catch (e) {
+        console.error('Failed to load config', e);
+    }
+    return {};
+}
+
+function saveConfig(config) {
+    try {
+        fs.writeFileSync(getConfigPath(), JSON.stringify(config, null, 2));
+    } catch (e) {
+        console.error('Failed to save config', e);
+    }
+}
 
 function createWindow() {
+    const { Menu, Tray, nativeImage } = electron;
+    const iconImage = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
+
     mainWindow = new BrowserWindow({
         width: 900,
-        height: 700,
+        height: 800,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
         },
         title: 'AiZumen ホットフォルダ監視',
+        icon: iconImage, // ここでアイコンを設定
     });
 
     mainWindow.loadFile('index.html');
-    // mainWindow.webContents.openDevTools();
+    
+    // システムトレイの設定
+    // macOSかWindowsかでデフォルトアイコンがない場合のエラーを防ぐため空Canvasなどで代用も可能ですが、
+    // ここではNativeImageを使用するのが一般的。一旦空のオブジェクトかダミーアイコンを用意。
+    const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png')); // 無くてもエラーにはならないよう調整
+    tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
+    
+    const contextMenu = Menu.buildFromTemplate([
+        { label: 'アプリを開く', click: () => mainWindow.show() },
+        { type: 'separator' },
+        { label: '終了', click: () => {
+            mainWindow.destroy(); // 終了処理
+            app.quit();
+        }}
+    ]);
+    
+    tray.setToolTip('AiZumen HotFolder');
+    tray.setContextMenu(contextMenu);
+
+    // トレイアイコンをクリックしたら表示
+    tray.on('click', () => {
+        mainWindow.show();
+    });
+
+    // 最小化（Minimize）時にタスクバーから隠す
+    mainWindow.on('minimize', (event) => {
+        event.preventDefault();
+        mainWindow.hide();
+    });
+
+    // 閉じる（Close）ボタンを押した時に終了せず、隠す（トレイ化）
+    mainWindow.on('close', (event) => {
+        if (!app.isQuiting) {
+            event.preventDefault();
+            mainWindow.hide();
+        }
+    });
 }
 
+// カスタムメニューの設定 (File -> Exit のみ)
+const menuTemplate = [
+    {
+        label: 'File',
+        submenu: [
+            {
+                label: 'Exit',
+                click: () => {
+                    app.quit();
+                }
+            }
+        ]
+    }
+];
+const menu = Menu.buildFromTemplate(menuTemplate);
+Menu.setApplicationMenu(menu);
+
 app.whenReady().then(createWindow);
+
+app.on('before-quit', () => {
+    app.isQuiting = true;
+});
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
@@ -45,6 +125,12 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
     }
 
     watchFolder = folderPath;
+    
+    // 設定を保存
+    const config = loadConfig();
+    config.watchFolder = watchFolder;
+    saveConfig(config);
+
     const processedDir = path.join(watchFolder, 'processed');
     if (!fs.existsSync(processedDir)) {
         fs.mkdirSync(processedDir);
@@ -65,10 +151,22 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
 
                 // 通知
                 new Notification({
-                    title: '新しい図面を検知しました',
-                    body: `${fileName} を解析待機リストに追加しました。`,
+                    title: '新しい書類を検知しました',
+                    body: `${fileName} を待機リストに追加しました。`,
                 }).show();
 
+                mainWindow.webContents.send('update-file-list', pendingFiles);
+            }
+        }
+    });
+
+    // ファイルが直接削除された場合の検知
+    watcher.on('unlink', (filePath) => {
+        if (path.extname(filePath).toLowerCase() === '.pdf') {
+            const initialLength = pendingFiles.length;
+            pendingFiles = pendingFiles.filter(f => f.path !== filePath);
+            
+            if (pendingFiles.length !== initialLength) {
                 mainWindow.webContents.send('update-file-list', pendingFiles);
             }
         }
@@ -83,6 +181,17 @@ ipcMain.handle('select-folder', async () => {
         properties: ['openDirectory']
     });
     return result.filePaths[0];
+});
+
+// 設定項目取得用
+ipcMain.handle('get-config', () => {
+    return loadConfig();
+});
+
+// 設定更新用
+ipcMain.on('update-config', (event, newConfig) => {
+    const currentConfig = loadConfig();
+    saveConfig({ ...currentConfig, ...newConfig });
 });
 
 // ファイル削除（リストから除外）

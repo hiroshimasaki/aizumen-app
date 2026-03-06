@@ -82,6 +82,16 @@ router.post('/login', async (req, res, next) => {
             throw new AppError('Account is deactivated', 403, 'ACCOUNT_DEACTIVATED');
         }
 
+        // HotFolderからのログイン時は権限チェックを実施
+        const clientType = req.body.clientType || 'web';
+        const userRole = data.user.app_metadata?.role || 'user';
+        if (clientType === 'hotfolder') {
+            if (userRole !== 'system_admin' && userRole !== 'admin') {
+                console.log(`[Auth/Login] Blocked hotfolder login for user ${email} with role ${userRole}`);
+                throw new AppError('案件登録する権限がありません。システム管理者に確認してください。', 403, 'INSUFFICIENT_PERMISSIONS');
+            }
+        }
+
         // 多重ログイン制御: 現在のsession_idをapp_metadataに記録
         let sessionId = null;
         try {
@@ -173,6 +183,16 @@ router.post('/login-with-code', async (req, res, next) => {
 
         if (userProfile && !userProfile.is_active) {
             throw new AppError('Account is deactivated', 403, 'ACCOUNT_DEACTIVATED');
+        }
+
+        // HotFolderからのログイン時は権限チェックを実施
+        const clientType = req.body.clientType || 'web';
+        const userRole = data.user.app_metadata?.role || 'user';
+        if (clientType === 'hotfolder') {
+            if (userRole !== 'system_admin' && userRole !== 'admin') {
+                console.log(`[Auth/LoginWithCode] Blocked hotfolder login for user ${email} with role ${userRole}`);
+                throw new AppError('案件登録する権限がありません。システム管理者に確認してください。', 403, 'INSUFFICIENT_PERMISSIONS');
+            }
         }
 
         // 多重ログイン制御: 現在のsession_idをapp_metadataに記録
