@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import { LogOut, Database, BarChart3, Settings, Zap, Menu, X, CalendarDays, TrendingUp, AlertTriangle, UserCog } from 'lucide-react';
+import { LogOut, Database, BarChart3, Settings, Zap, Menu, X, CalendarDays, TrendingUp, AlertTriangle, UserCog, MessageSquare } from 'lucide-react';
 import api from './lib/api';
 
 // Auth pages
@@ -18,6 +18,7 @@ import LandingPage from './pages/LandingPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import PlatformLoginPage from './pages/PlatformLoginPage';
 import MFASetupPage from './pages/MFASetupPage';
+import ForumPage from './pages/ForumPage';
 
 // Legal pages
 import TermsOfService from './pages/site/Tos';
@@ -67,6 +68,7 @@ function AppLayout() {
     if (isProfileLoaded && userRole !== 'super_admin') {
         navItems.push({ path: '/quotations', label: '案件一覧', icon: Database });
         navItems.push({ path: '/dashboard', label: 'ガントチャート', icon: CalendarDays });
+        navItems.push({ path: '/forum', label: 'フォーラム', icon: MessageSquare });
     }
 
     // プロフィール読み込みが完了し、かつ管理者権限がある場合のみメニューを追加
@@ -412,6 +414,7 @@ export default function App() {
                         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                             <Route path="/quotations" element={<QuotationsPage />} />
                             <Route path="/dashboard" element={<DashboardPage />} />
+                            <Route path="/forum" element={<ForumPage />} />
                             <Route path="/analysis" element={
                                 <ProtectedRoute requiredRole="admin"><AnalysisPage /></ProtectedRoute>
                             } />

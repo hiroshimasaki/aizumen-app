@@ -21,6 +21,7 @@ const importRoutes = require('./routes/import');
 const backupRoutes = require('./routes/backups');
 const exportRoutes = require('./routes/export');
 const superAdminRoutes = require('./routes/superAdmin');
+const forumRoutes = require('./routes/forum');
 
 // Middleware imports
 const { errorHandler } = require('./middleware/errorHandler');
@@ -97,6 +98,7 @@ app.use('/api/backups', backupRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/forum', forumRoutes);
 
 // --- 404 Handler ---
 app.use('/api', (req, res) => {
