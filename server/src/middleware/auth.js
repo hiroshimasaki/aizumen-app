@@ -68,11 +68,15 @@ const authMiddleware = async (req, res, next) => {
             console.error('[Auth Middleware] Failed to decode JWT payload:', e.message);
         }
 
-        const activeSessionId = user.app_metadata?.active_session_id;
+        const clientType = req.headers['x-client-type'];
+        const activeSessionField = clientType === 'hotfolder' ? 'active_hotfolder_session_id' : 'active_session_id';
+        const activeSessionId = user.app_metadata?.[activeSessionField];
 
         // アクティブセッションIDが登録されており、かつ現在のセッションIDと異なる場合は別端末ログイン扱い
         if (activeSessionId && currentSessionId && activeSessionId !== currentSessionId) {
-            console.log(`[Auth Middleware] Multi-login detected for user ${user.id}. Active: ${activeSessionId}, Current: ${currentSessionId}`);
+            console.log(`[Auth Middleware] MULTI_LOGIN DETECTED - User: ${user.id}, Device: ${clientType || 'web'}`);
+            console.log(`Current session in JWT: ${currentSessionId}`);
+            console.log(`Active session in DB (${activeSessionField}): ${activeSessionId}`);
             return res.status(401).json({ error: 'Logged in from another device', code: 'MULTI_LOGIN' });
         }
 

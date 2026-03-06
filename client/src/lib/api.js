@@ -27,6 +27,12 @@ api.interceptors.response.use(
                         type: 'info'
                     }
                 }));
+                // 即座にリダイレクトするとメッセージが見えないため、少し待つ助。案。助。
+                await supabase.auth.signOut();
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 3000);
+                return Promise.reject(error);
             } else if (error.response?.data?.code === 'USER_DEACTIVATED') {
                 window.dispatchEvent(new CustomEvent('app-show-alert', {
                     detail: {
@@ -34,6 +40,9 @@ api.interceptors.response.use(
                         type: 'error'
                     }
                 }));
+                await supabase.auth.signOut();
+                window.location.href = '/login';
+                return Promise.reject(error);
             }
             await supabase.auth.signOut();
             window.location.href = '/login';

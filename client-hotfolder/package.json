@@ -1,0 +1,21 @@
+{
+    "name": "aizumen-hotfolder",
+    "version": "1.0.0",
+    "description": "AiZumen HotFolder Monitoring Client",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron ."
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "axios": "^1.6.0",
+        "chokidar": "^3.5.3",
+        "form-data": "^4.0.0",
+        "node-notifier": "^10.0.1"
+    },
+    "devDependencies": {
+        "electron": "^27.0.0"
+    }
+}

@@ -51,6 +51,7 @@ router.post('/signup', async (req, res, next) => {
  * ログイン
  */
 router.post('/login', async (req, res, next) => {
+    console.log(`[Auth/Login] Request received from origin: ${req.headers.origin}, clientType: ${req.body.clientType}`);
     try {
         const { email, password } = req.body;
 
@@ -94,13 +95,22 @@ router.post('/login', async (req, res, next) => {
         }
 
         if (sessionId) {
+            const clientType = req.body.clientType || 'web';
+            const updateField = clientType === 'hotfolder' ? 'active_hotfolder_session_id' : 'active_session_id';
+
+            // 最新のユーザー情報を取得して metadata の競合を避ける
+            const { data: latestUser } = await supabaseAdmin.auth.admin.getUserById(data.user.id);
+            const currentMetadata = latestUser?.user?.app_metadata || {};
+
+            console.log(`[Auth/Login] Updating session for ${clientType}. Current metadata:`, currentMetadata);
+
             await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
                 app_metadata: {
-                    ...data.user.app_metadata,
-                    active_session_id: sessionId
+                    ...currentMetadata,
+                    [updateField]: sessionId
                 }
             });
-            console.log(`[Auth/Login] Registered new session for user ${data.user.id}: ${sessionId}`);
+            console.log(`[Auth/Login] Registered new ${clientType} session for user ${data.user.id}: ${sessionId}`);
         }
 
         res.json({
@@ -178,13 +188,20 @@ router.post('/login-with-code', async (req, res, next) => {
         }
 
         if (sessionId) {
+            const clientType = req.body.clientType;
+            const updateField = clientType === 'hotfolder' ? 'active_hotfolder_session_id' : 'active_session_id';
+
+            // 最新のユーザー情報を取得
+            const { data: latestUser } = await supabaseAdmin.auth.admin.getUserById(data.user.id);
+            const currentMetadata = latestUser?.user?.app_metadata || {};
+
             await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
                 app_metadata: {
-                    ...data.user.app_metadata,
-                    active_session_id: sessionId
+                    ...currentMetadata,
+                    [updateField]: sessionId
                 }
             });
-            console.log(`[Auth/LoginWithCode] Registered new session for user ${data.user.id}: ${sessionId}`);
+            console.log(`[Auth/LoginWithCode] Registered new ${clientType || 'web'} session for user ${data.user.id}: ${sessionId}`);
         }
 
         res.json({

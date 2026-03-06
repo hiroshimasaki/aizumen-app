@@ -97,14 +97,27 @@ export function AuthProvider({ children }) {
     }
 
     async function signIn(email, password) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        // 直接 Supabase を叩かず、サーバー経由でログインすることで
+        // 多重ログイン制御用のセッションIDをDBに登録させる助。案。助。
+        const { data } = await api.post('/api/auth/login', {
+            email,
+            password,
+            clientType: 'web'
+        });
+
+        if (data.session) {
+            await supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+            });
+        }
         return data;
     }
 
     async function signInWithCode(companyCode, employeeId, password) {
         const { data } = await api.post('/api/auth/login-with-code', {
-            companyCode, employeeId, password
+            companyCode, employeeId, password,
+            clientType: 'web'
         });
         if (data.session) {
             await supabase.auth.setSession({
