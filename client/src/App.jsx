@@ -404,7 +404,9 @@ export default function App() {
 
                         {/* Super Admin (SU) 専用認証ルート */}
                         <Route path="/platform-login" element={<PlatformLoginPage />} />
-                        <Route path="/platform-setup-mfa" element={<MFASetupPage />} />
+                        <Route path="/platform-setup-mfa" element={
+                            <ProtectedRoute><MFASetupPage /></ProtectedRoute>
+                        } />
 
                         {/* Protected Routes inside AppLayout */}
                         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

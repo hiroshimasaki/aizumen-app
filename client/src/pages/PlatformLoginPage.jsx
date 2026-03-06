@@ -27,9 +27,19 @@ export default function PlatformLoginPage() {
         setError(null);
 
         try {
-            const { error: signInError } = await signIn(email, password, { isPlatformAdmin: true });
+            const { data: signInData, error: signInError } = await signIn(email, password, { isPlatformAdmin: true });
 
             if (signInError) throw signInError;
+
+            // セッションとユーザー情報の取得が完了するのを待つ、または signInData からロールを確認する
+            // signInData.user.role または app_metadata.role を確認
+            const userRole = signInData?.user?.role || signInData?.user?.app_metadata?.role;
+
+            if (userRole !== 'super_admin') {
+                // 権限がない場合は即座にサインアウトしてエラーを投げる
+                await supabase.auth.signOut();
+                throw new Error('このページにアクセスする権限がありません');
+            }
 
             // MFA が必要かチェック
             const { data: mfaData, error: fError } = await supabase.auth.mfa.listFactors();
@@ -72,7 +82,7 @@ export default function PlatformLoginPage() {
             // 認証成功 -> 管理画面へ
             navigate('/super-admin');
         } catch (err) {
-            setError('認証コードが正しくありません助');
+            setError('認証コードが正しくありません');
         } finally {
             setLoading(false);
         }
@@ -191,13 +201,14 @@ export default function PlatformLoginPage() {
                             >
                                 パスワード入力に戻る
                             </button>
-                            <div className="text-center pt-4">
-                                <Link to="/login" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">
-                                    一般ユーザー・テナント管理用ログインへ
-                                </Link>
-                            </div>
                         </form>
                     )}
+                </div>
+
+                <div className="mt-6 text-center">
+                    <Link to="/login" className="text-slate-600 hover:text-slate-400 text-sm transition-colors flex items-center justify-center gap-1.5">
+                        一般ユーザー・テナント管理用ログインへ
+                    </Link>
                 </div>
 
                 <p className="text-center mt-8 text-xs text-slate-600 font-medium uppercase tracking-widest">

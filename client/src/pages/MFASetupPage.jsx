@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Loader2, Smartphone, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Super Admin (SU) の MFA 初回設定画面
  */
 export default function MFASetupPage() {
     const navigate = useNavigate();
+    const { userRole, loading: authLoading } = useAuth();
     const [qrCode, setQrCode] = useState('');
     const [secret, setSecret] = useState('');
     const [factorId, setFactorId] = useState('');
@@ -19,10 +21,15 @@ export default function MFASetupPage() {
     const setupStarted = useRef(false);
 
     useEffect(() => {
+        if (authLoading) return;
+        if (userRole !== 'super_admin') {
+            navigate('/', { replace: true });
+            return;
+        }
         if (setupStarted.current) return;
         setupStarted.current = true;
         setupMFA();
-    }, []);
+    }, [userRole, authLoading, navigate]);
 
     const setupMFA = async () => {
         try {
