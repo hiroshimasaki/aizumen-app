@@ -12,6 +12,9 @@ export default function ProtectedRoute({ children, requiredRole }) {
     );
 
     if (!user) {
+        if (window.location.pathname.startsWith('/super-admin')) {
+            return <Navigate to="/platform-login" replace />;
+        }
         return <Navigate to="/login" replace />;
     }
 

@@ -166,6 +166,11 @@ export default function LoginPage() {
                                 新規登録
                             </Link>
                         </div>
+                        <div className="pt-4 border-t border-white/5">
+                            <Link to="/platform-login" className="text-white/20 hover:text-white/40 text-xs transition-colors">
+                                サービス管理者用ログイン
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>

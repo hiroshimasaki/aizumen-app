@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, Loader2, ArrowRight, AlertCircle, Smartphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -46,7 +46,7 @@ export default function PlatformLoginPage() {
                 setStep('mfa');
             }
         } catch (err) {
-            setError(err.message === 'Invalid login credentials' ? 'ログイン情報が正しくありません助' : err.message);
+            setError(err.message === 'Invalid login credentials' ? 'ログイン情報が正しくありません' : err.message);
         } finally {
             setLoading(false);
         }
@@ -92,7 +92,7 @@ export default function PlatformLoginPage() {
                         <ShieldCheck className="text-blue-400" size={40} />
                     </div>
                     <h1 className="text-3xl font-black text-white tracking-tight mb-2">Platform Management</h1>
-                    <p className="text-slate-400 text-sm">サービス管理者専用ログインです。一般ユーザーの方はご利用いただけません助</p>
+                    <p className="text-slate-400 text-sm">サービス管理者専用ログインです。一般ユーザーの方はご利用いただけません</p>
                 </div>
 
                 <div className="bg-slate-900/50 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-10 shadow-3xl">
@@ -189,8 +189,13 @@ export default function PlatformLoginPage() {
                                 onClick={() => setStep('login')}
                                 className="w-full text-slate-500 text-sm font-bold hover:text-slate-300 transition-colors"
                             >
-                                戻る
+                                パスワード入力に戻る
                             </button>
+                            <div className="text-center pt-4">
+                                <Link to="/login" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">
+                                    一般ユーザー・テナント管理用ログインへ
+                                </Link>
+                            </div>
                         </form>
                     )}
                 </div>
