@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS forum_posts (
     user_name   VARCHAR(255) NOT NULL DEFAULT '',
     tenant_name VARCHAR(255) NOT NULL DEFAULT '',
     category    VARCHAR(50) NOT NULL DEFAULT 'question'
-                CHECK (category IN ('question', 'suggestion', 'tips', 'other')),
+                CHECK (category IN ('question', 'suggestion', 'bug', 'tips', 'other')),
     title       VARCHAR(500) NOT NULL,
     body        TEXT NOT NULL,
     is_resolved BOOLEAN DEFAULT false,

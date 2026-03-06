@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, ThumbsUp, Plus, Search, Filter, CheckCircle2, HelpCircle, Lightbulb, BookOpen, MoreHorizontal, Send, Edit2, Trash2, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Plus, Search, Filter, CheckCircle2, HelpCircle, Lightbulb, BookOpen, MoreHorizontal, Send, Edit2, Trash2, ArrowLeft, X, ChevronLeft, ChevronRight, Bug } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import api from '../lib/api';
@@ -8,6 +8,7 @@ const CATEGORIES = [
     { value: 'all', label: 'すべて', icon: Filter, color: 'slate' },
     { value: 'question', label: '質問', icon: HelpCircle, color: 'blue' },
     { value: 'suggestion', label: '改善提案', icon: Lightbulb, color: 'amber' },
+    { value: 'bug', label: 'バグ報告', icon: Bug, color: 'rose' },
     { value: 'tips', label: 'ノウハウ', icon: BookOpen, color: 'emerald' },
     { value: 'other', label: 'その他', icon: MoreHorizontal, color: 'slate' },
 ];
@@ -22,6 +23,7 @@ const maskText = (text) => {
 const CATEGORY_STYLES = {
     question: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', label: '質問' },
     suggestion: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', label: '改善提案' },
+    bug: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20', label: 'バグ報告' },
     tips: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', label: 'ノウハウ' },
     other: { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/20', label: 'その他' },
 };
