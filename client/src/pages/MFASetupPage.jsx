@@ -37,19 +37,28 @@ export default function MFASetupPage() {
             const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
             if (listError) throw listError;
 
-            const existingUnverified = factors.all.find(f => f.factor_type === 'totp' && f.status === 'unverified');
+            // 既存の同一名称の要素があれば削除する（再設定を可能にするため）
+            const existingFactor = factors.all.find(f => f.friendly_name === 'Platform SU');
 
-            if (existingUnverified) {
-                console.log('[MFA Setup] Reusing existing unverified factor:', existingUnverified.id);
-                // 既存の要素を削除して新しく作り直す（QRコードの有効期限等のため）
-                await supabase.auth.mfa.unenroll({ factorId: existingUnverified.id });
+            if (existingFactor) {
+                try {
+                    console.log('[MFA Setup] Attempting to remove existing factor:', existingFactor.id);
+                    await supabase.auth.mfa.unenroll({ factorId: existingFactor.id });
+                } catch (unenrollErr) {
+                    // セッションの状態（aal1）によっては削除に失敗する場合があるが、
+                    // その場合は名称をユニークにして新しい要素を作成する方向に進む
+                    console.warn('[MFA Setup] Could not unenroll existing factor:', unenrollErr);
+                }
             }
+
+            // 名称をユニークにして重複エラーを確実に回避する（タイムスタンプを付加）
+            const uniqueName = `Platform SU (${new Date().toLocaleTimeString('ja-JP')})`;
 
             // 新しく要素を作成
             const { data, error } = await supabase.auth.mfa.enroll({
                 factorType: 'totp',
                 issuer: 'AiZumen Platform',
-                friendlyName: 'Platform SU'
+                friendlyName: uniqueName
             });
 
             if (error) {

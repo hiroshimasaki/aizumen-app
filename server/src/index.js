@@ -50,7 +50,15 @@ const ocrLimiter = rateLimit({
 
 // --- Global Middleware ---
 app.use(cors({
-  origin: [process.env.APP_URL || 'http://localhost:5174', 'null', 'file://'],
+  origin: [
+    process.env.APP_URL || 'http://localhost:5173',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'null',
+    'file://'
+  ],
   credentials: true,
 }));
 
