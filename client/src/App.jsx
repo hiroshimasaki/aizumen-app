@@ -68,15 +68,15 @@ function AppLayout() {
 
     // 一般ユーザー用のメニュー
     if (isProfileLoaded && userRole !== 'super_admin') {
-        navItems.push({ path: '/quotations', label: '案件一覧', icon: Database });
-        navItems.push({ path: '/dashboard', label: 'ガントチャート', icon: CalendarDays });
-        navItems.push({ path: '/forum', label: 'フォーラム', icon: MessageSquare });
+        navItems.push({ path: '/quotations', label: '案件一覧', icon: Database, roles: ['user', 'admin', 'system_admin'] });
+        navItems.push({ path: '/dashboard', label: 'ガントチャート', icon: CalendarDays, roles: ['user', 'admin', 'system_admin'] });
+        navItems.push({ path: '/forum', label: 'フォーラム', icon: MessageSquare, roles: ['user', 'admin', 'system_admin'] });
     }
 
     // プロフィール読み込みが完了し、かつ管理者権限がある場合のみメニューを追加
     if (isProfileLoaded && ['admin', 'system_admin'].includes(userRole)) {
-        navItems.push({ path: '/analysis', label: 'データ分析', icon: TrendingUp });
-        navItems.push({ path: '/admin', label: '管理', icon: Settings });
+        navItems.push({ path: '/analysis', label: 'データ分析', icon: TrendingUp, roles: ['admin', 'system_admin'] });
+        navItems.push({ path: '/admin', label: '管理', icon: Settings, roles: ['admin', 'system_admin'] });
     }
 
     // サービス管理者（Super Admin / SU）専用メニュー
@@ -115,11 +115,23 @@ function AppLayout() {
             <header className="bg-slate-800/80 backdrop-blur-lg border-b border-white/10 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
                     {/* Logo */}
-                    <Link to={userRole === 'super_admin' ? '/super-admin' : '/quotations'} className="flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-cyan-400" />
-                        <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                            AiZumen
-                        </span>
+                    <Link to={userRole === 'super_admin' ? '/super-admin' : '/quotations'} className="flex items-center gap-2 group">
+                        <div className="relative">
+                            <Zap className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                            {import.meta.env.DEV && (
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+                            )}
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                                AiZumen
+                            </span>
+                            {import.meta.env.DEV && (
+                                <span className="text-[10px] font-black px-1.5 py-0.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded uppercase tracking-tighter leading-none mb-0.5">
+                                    Dev
+                                </span>
+                            )}
+                        </div>
                     </Link>
 
                     {/* Desktop Nav */}
@@ -137,7 +149,18 @@ function AppLayout() {
                                         }`}
                                 >
                                     <Icon className="w-4 h-4" />
-                                    {item.label}
+                                    <span>{item.label}</span>
+                                    <div className="flex gap-0.5 ml-0.5">
+                                        {item.roles.includes('system_admin') && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" title="システム管理者" />
+                                        )}
+                                        {item.roles.includes('admin') && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" title="管理者" />
+                                        )}
+                                        {item.roles.includes('user') && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" title="一般ユーザー" />
+                                        )}
+                                    </div>
                                 </Link>
                             );
                         })}
@@ -211,7 +234,18 @@ function AppLayout() {
                                             }`}
                                     >
                                         <Icon className="w-5 h-5" />
-                                        {item.label}
+                                        <span>{item.label}</span>
+                                        <div className="flex gap-1 ml-auto">
+                                            {item.roles.includes('system_admin') && (
+                                                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                            )}
+                                            {item.roles.includes('admin') && (
+                                                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                            )}
+                                            {item.roles.includes('user') && (
+                                                <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                            )}
+                                        </div>
                                     </Link>
                                 );
                             })}

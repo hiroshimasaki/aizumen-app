@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Users, Settings, Building, Zap, ChevronRight, Database } from 'lucide-react';
+import { Users, Settings, Building, Zap, ChevronRight, Database, Monitor, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import UserManagement from '../components/admin/UserManagement';
 import TenantSettings from '../components/admin/TenantSettings';
@@ -76,11 +76,21 @@ export default function AdminPage() {
                                         <Icon size={18} />
                                     </div>
                                     <div className="text-left">
-                                        <div className="text-sm font-bold">{tab.label}</div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-sm font-bold">{tab.label}</div>
+                                            <div className="flex gap-1">
+                                                {tab.roles.includes('system_admin') && (
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" title="システム管理者" />
+                                                )}
+                                                {tab.roles.includes('admin') && (
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]" title="管理者" />
+                                                )}
+                                            </div>
+                                        </div>
                                         <div className="text-[10px] opacity-70">{tab.desc}</div>
                                     </div>
                                 </div>
-                                <ChevronRight size={16} className={`transition-transform ${isActive ? 'text-blue-400' : 'text-slate-600'}`} />
+                                <ChevronRight size={16} className={`transition-transform shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-600'}`} />
                             </button>
                         );
                     })}
