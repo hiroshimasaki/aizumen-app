@@ -25,19 +25,19 @@ export default function CommercialTransaction() {
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">代表者</td>
-                                    <td className="p-5"><span className="text-amber-400">正木　裕士</span></td>
+                                    <td className="p-5">正木　裕士</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">所在地</td>
-                                    <td className="p-5"><span className="text-amber-400">要請があれば速やかに開示</span></td>
+                                    <td className="p-5">要請があれば速やかに開示</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">電話番号</td>
-                                    <td className="p-5"><span className="text-amber-400">要請があれば速やかに開示</span></td>
+                                    <td className="p-5">要請があれば速やかに開示</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">メールアドレス</td>
-                                    <td className="p-5"><span className="text-amber-400">fj081399@gmail.com</span></td>
+                                    <td className="p-5">fj081399@gmail.com</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">サービス名</td>
@@ -45,7 +45,7 @@ export default function CommercialTransaction() {
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">サービスURL</td>
-                                    <td className="p-5"><span className="text-amber-400">https://aizumen.vercel.app/</span></td>
+                                    <td className="p-5">https://aizumen.vercel.app/</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">販売価格</td>
