@@ -81,8 +81,8 @@ function AppLayout() {
 
     // サービス管理者（Super Admin / SU）専用メニュー
     if (isProfileLoaded && userRole === 'super_admin') {
-        navItems.push({ path: '/forum', label: 'フォーラム', icon: MessageSquare });
-        navItems.push({ path: '/super-admin', label: 'サービス管理', icon: UserCog });
+        navItems.push({ path: '/forum', label: 'フォーラム', icon: MessageSquare, roles: ['super_admin'] });
+        navItems.push({ path: '/super-admin', label: 'サービス管理', icon: UserCog, roles: ['super_admin'] });
     }
 
     // Close menu on route change
@@ -151,14 +151,17 @@ function AppLayout() {
                                     <Icon className="w-4 h-4" />
                                     <span>{item.label}</span>
                                     <div className="flex gap-0.5 ml-0.5">
-                                        {item.roles.includes('system_admin') && (
+                                        {item.roles?.includes('system_admin') && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500" title="システム管理者" />
                                         )}
-                                        {item.roles.includes('admin') && (
+                                        {item.roles?.includes('admin') && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-purple-500" title="管理者" />
                                         )}
-                                        {item.roles.includes('user') && (
+                                        {item.roles?.includes('user') && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-slate-400" title="一般ユーザー" />
+                                        )}
+                                        {item.roles?.includes('super_admin') && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" title="サービス管理者" />
                                         )}
                                     </div>
                                 </Link>
@@ -236,14 +239,17 @@ function AppLayout() {
                                         <Icon className="w-5 h-5" />
                                         <span>{item.label}</span>
                                         <div className="flex gap-1 ml-auto">
-                                            {item.roles.includes('system_admin') && (
+                                            {item.roles?.includes('system_admin') && (
                                                 <div className="w-2 h-2 rounded-full bg-amber-500" />
                                             )}
-                                            {item.roles.includes('admin') && (
+                                            {item.roles?.includes('admin') && (
                                                 <div className="w-2 h-2 rounded-full bg-purple-500" />
                                             )}
-                                            {item.roles.includes('user') && (
+                                            {item.roles?.includes('user') && (
                                                 <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                            )}
+                                            {item.roles?.includes('super_admin') && (
+                                                <div className="w-2 h-2 rounded-full bg-cyan-400" />
                                             )}
                                         </div>
                                     </Link>
