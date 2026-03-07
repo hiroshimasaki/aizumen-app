@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
     const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+    const [mfaLevel, setMfaLevel] = useState('aal1');
 
     // 最新の値をリスナーから参照するためのリファレンス
     const userRef = useRef(user);
@@ -26,6 +27,7 @@ export function AuthProvider({ children }) {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
+            setMfaLevel(session?.user?.app_metadata?.aal || 'aal1');
             if (session?.user) {
                 fetchProfile();
             } else {
@@ -38,6 +40,7 @@ export function AuthProvider({ children }) {
             (event, session) => {
                 console.log(`[AuthContext] Auth State Change: ${event}`, session?.user?.id);
                 setSession(session);
+                setMfaLevel(session?.user?.app_metadata?.aal || 'aal1');
 
                 if (session?.user) {
                     // ユーザーIDが同じであれば、既存のプロファイルを消さないように setUser する
@@ -72,11 +75,21 @@ export function AuthProvider({ children }) {
         // ただし、既にプロファイルがある場合はチラつき防止（画面リセット防止）のため false のままにする
         if (!userRef.current?.profile) setLoading(true);
 
-        console.log('[AuthContext] Fetching profile and credits...');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AuthContext] Fetching profile and credits...', {
+            userId: session?.user?.id,
+            hasAccessToken: !!session?.access_token,
+            tokenPrefix: session?.access_token ? session.access_token.substring(0, 10) : 'none'
+        });
+
         try {
+            // super_admin の場合はクレジット取得をスキップするか、ダミーをセットする
+            const isSU = userRef.current?.app_metadata?.role === 'super_admin';
+            
             const [profileRes, creditsRes] = await Promise.all([
                 api.get('/api/auth/me'),
-                api.get('/api/credits/balance').catch(() => ({ data: { balance: 0, monthly_quota: 0 } }))
+                isSU ? Promise.resolve({ data: { balance: 999999, monthly_quota: 0 } }) : 
+                      api.get('/api/credits/balance').catch(() => ({ data: { balance: 0, monthly_quota: 0 } }))
             ]);
 
             const profileData = profileRes.data.user;
@@ -91,6 +104,12 @@ export function AuthProvider({ children }) {
             setIsProfileLoaded(true);
         } catch (err) {
             console.error('プロフィールの取得に失敗しました:', err);
+            const msg = err.response?.data?.error || 'プロフィールの取得に失敗しました。';
+            // 401 の場合は自動ログアウト処理に任せる
+            if (err.response?.status !== 401) {
+                // api.js の interceptor での signOut より先に実行される可能性があるため注意
+                // ここでは単にログのみに留めるか、別の手段で通知
+            }
         } finally {
             setLoading(false);
         }
@@ -285,6 +304,7 @@ export function AuthProvider({ children }) {
         trialTimeLeft,
         isProfileLoaded,
         subscription,
+        mfaLevel,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

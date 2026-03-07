@@ -1,4 +1,4 @@
-database_passwordYzlQelp2TD0ynAV6
+DB_dev_password=YzlQelp2TD0ynAV6
 Stripe backup code elwu-twoq-idbq-xvow-zqha
 
 price id
@@ -8,3 +8,4 @@ pro price_1T636mCEPB1QGe1VdmQASUYs
 200 price_1T639UCEPB1QGe1VzdF3Je0r
 1000 price_1T63A4CEPB1QGe1VTsMlgDPl
 2000 price_1T63BzCEPB1QGe1VmkDG35q4
+

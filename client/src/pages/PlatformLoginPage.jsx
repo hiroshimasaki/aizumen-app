@@ -30,13 +30,12 @@ export default function PlatformLoginPage() {
         setError(null);
 
         try {
-            const { data: signInData, error: signInError } = await signIn(email, password, { isPlatformAdmin: true });
+            // signIn() は API レスポンスの data をそのまま返す（{ user, session } 形式）
+            const signInData = await signIn(email, password);
 
-            if (signInError) throw signInError;
-
-            // セッションとユーザー情報の取得が完了するのを待つ、または signInData からロールを確認する
-            // signInData.user.role または app_metadata.role を確認
-            const userRole = signInData?.user?.role || signInData?.user?.app_metadata?.role;
+            // サーバーから返されたユーザー情報でロールを確認
+            const userRole = signInData?.user?.role;
+            console.log('[PlatformLogin] signIn response:', { userRole, userId: signInData?.user?.id });
 
             if (userRole !== 'super_admin') {
                 // 権限がない場合は即座にサインアウトしてエラーを投げる
@@ -57,6 +56,7 @@ export default function PlatformLoginPage() {
             } else {
                 // MFA コード入力ステップへ
                 setStep('mfa');
+                setLoading(false); // MFAステップではボタンを有効にする
             }
             success = true;
         } catch (err) {
@@ -88,7 +88,9 @@ export default function PlatformLoginPage() {
 
             if (error) throw error;
 
-            // 認証成功 -> 管理画面へ
+            // 認証成功 -> プロフィールを最新化してから管理画面へ
+            const { fetchProfile } = useAuth(); // Hookのトップレベルで取得済みのはず
+            await fetchProfile();
             success = true;
             navigate('/super-admin');
         } catch (err) {
@@ -156,6 +158,14 @@ export default function PlatformLoginPage() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                     />
+                                </div>
+                                <div className="text-right mt-1.5">
+                                    <Link 
+                                        to="/reset-password?type=platform" 
+                                        className="text-xs font-bold text-slate-500 hover:text-blue-400 transition-colors"
+                                    >
+                                        パスワードをお忘れですか？
+                                    </Link>
                                 </div>
                             </div>
 

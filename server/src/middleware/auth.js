@@ -6,19 +6,43 @@ const { supabaseAdmin } = require('../config/supabase');
  * req.user, req.tenantId, req.userRole, req.accessToken を設定。
  */
 const authMiddleware = async (req, res, next) => {
+    console.log(`\n[Auth Middleware DEBUG] --- New Request ---`);
+    console.log(`[Auth Middleware DEBUG] Method: ${req.method}, URL: ${req.originalUrl}`);
+    console.log(`[Auth Middleware DEBUG] Authorization Header: ${req.headers.authorization ? 'Present' : 'Missing'}`);
+    
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.log('[Auth Middleware] Missing or invalid Authorization header');
             return res.status(401).json({ error: 'Authorization token required' });
         }
 
         const token = authHeader.replace('Bearer ', '');
+        console.log(`[Auth Middleware] Token received (first 10 chars): ${token.substring(0, 10)}...`);
 
-        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+        // トークン検証用に一時的なクライアントを作成
+        const { createUserClient } = require('../config/supabase');
+        const userClient = createUserClient(token);
+        const { data: { user }, error } = await userClient.auth.getUser();
 
         if (error || !user) {
-            return res.status(401).json({ error: 'Invalid or expired token' });
+            console.log('[Auth Middleware] Supabase getUser failed:', error?.message || 'No user found');
+            
+            // デバッグ用：トークンのペイロードをデコードして内容を確認
+            try {
+                const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));
+                console.log(`[Auth Middleware] Failed token payload:`, {
+                    sub: payload.sub,
+                    email: payload.email,
+                    role: payload.app_metadata?.role,
+                    aal: payload.aal
+                });
+            } catch (e) { /* ignore */ }
+
+            return res.status(401).json({ error: 'Invalid or expired token', code: 'INVALID_TOKEN' });
         }
+
+        console.log(`[Auth Middleware] User verified from Supabase: ${user.email} (${user.id})`);
 
         // ユーザーの有効状態とロールをDBで強制チェック
         // まず platform_admins (SU) をチェック
@@ -68,18 +92,27 @@ const authMiddleware = async (req, res, next) => {
             console.error('[Auth Middleware] Failed to decode JWT payload:', e.message);
         }
 
-        const clientType = req.headers['x-client-type'];
+        const clientType = req.headers['x-client-type'] || 'web';
         const activeSessionField = clientType === 'hotfolder' ? 'active_hotfolder_session_id' : 'active_session_id';
-        const activeSessionId = user.app_metadata?.[activeSessionField];
+        let activeSessionId = user.app_metadata?.[activeSessionField];
 
-        // アクティブセッションIDが登録されており、かつ現在のセッションIDと異なる場合は別端末ログイン扱い
+        console.log(`[Auth Middleware] Session check: current=${currentSessionId}, active=${activeSessionId}`);
+
         if (activeSessionId && currentSessionId && activeSessionId !== currentSessionId) {
-            console.log(`[Auth Middleware] MULTI_LOGIN DETECTED - User: ${user.id}, Device: ${clientType || 'web'}`);
-            console.log(`Current session in JWT: ${currentSessionId}`);
-            console.log(`Active session in DB (${activeSessionField}): ${activeSessionId}`);
-            return res.status(401).json({ error: 'Logged in from another device', code: 'MULTI_LOGIN' });
+            console.log(`[Auth Middleware] Session mismatch. Refreshing from DB...`);
+            const { data: latestUserData } = await supabaseAdmin.auth.admin.getUserById(user.id);
+            activeSessionId = latestUserData?.user?.app_metadata?.[activeSessionField];
+            console.log(`[Auth Middleware] DB Session: ${activeSessionId}`);
         }
 
+        if (activeSessionId && currentSessionId && activeSessionId !== currentSessionId) {
+            console.log(`[Auth Middleware] MULTI_LOGIN DETECTED - User: ${user.id}, Device: ${clientType}`);
+            return res.status(401).json({ 
+                error: 'Logged in from another device', 
+                code: 'MULTI_LOGIN',
+                details: 'This account is currently in use on another device.'
+            });
+        }
         // リクエストにユーザー情報を付加
         req.user = user;
         req.userId = user.id;
@@ -106,8 +139,8 @@ const authMiddleware = async (req, res, next) => {
  */
 const requireRole = (...roles) => {
     return (req, res, next) => {
-        // system_admin は常に許可
-        if (req.userRole === 'system_admin') {
+        // system_admin と super_admin は常に許可
+        if (req.userRole === 'system_admin' || req.userRole === 'super_admin') {
             return next();
         }
         if (!roles.includes(req.userRole)) {

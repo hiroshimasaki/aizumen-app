@@ -8,6 +8,8 @@ import api from './lib/api';
 // Auth pages
 import LoginPage from './components/auth/LoginPage';
 import SignUpPage from './components/auth/SignUpPage';
+import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
+import UpdatePasswordPage from './components/auth/UpdatePasswordPage';
 
 // Pages
 import QuotationsPage from './pages/QuotationsPage';
@@ -79,6 +81,7 @@ function AppLayout() {
 
     // サービス管理者（Super Admin / SU）専用メニュー
     if (isProfileLoaded && userRole === 'super_admin') {
+        navItems.push({ path: '/forum', label: 'フォーラム', icon: MessageSquare });
         navItems.push({ path: '/super-admin', label: 'サービス管理', icon: UserCog });
     }
 
@@ -330,9 +333,14 @@ function LandingRoute() {
         </div>
     );
     if (user) {
-        return userRole === 'super_admin'
-            ? <Navigate to="/super-admin" replace />
-            : <Navigate to="/quotations" replace />;
+        if (userRole === 'super_admin') {
+            // MFAが完了していない場合はフォーラムへ、完了していればサービス管理へ
+            const { mfaLevel } = useAuth();
+            return mfaLevel === 'aal2' 
+                ? <Navigate to="/super-admin" replace /> 
+                : <Navigate to="/forum" replace />;
+        }
+        return <Navigate to="/quotations" replace />;
     }
     return <LandingPage />;
 }
@@ -399,6 +407,8 @@ export default function App() {
                         {/* Public Routes */}
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/signup" element={<SignUpPage />} />
+                        <Route path="/reset-password" element={<ForgotPasswordPage />} />
+                        <Route path="/update-password" element={<UpdatePasswordPage />} />
                         <Route path="/agreement" element={<TermsOfService />} />
                         <Route path="/site-policy" element={<PrivacyPolicy />} />
                         <Route path="/commerce" element={<CommercialTransaction />} />

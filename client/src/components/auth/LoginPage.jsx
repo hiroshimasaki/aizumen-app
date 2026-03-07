@@ -26,13 +26,20 @@ export default function LoginPage() {
         setLoading(true);
         let success = false;
         try {
-            if (loginMode === 'employee') {
-                await signInWithCode(companyCode, employeeId, password);
-            } else {
-                await signIn(email, password);
+            const data = await (loginMode === 'employee' 
+                ? signInWithCode(companyCode, employeeId, password)
+                : signIn(email, password));
+            
+            if (data?.user?.role === 'super_admin') {
+                await signOut();
+                const suMsg = 'サービス管理者は専用のログイン画面からログインしてください。';
+                setError(suMsg);
+                await showAlert(suMsg, 'error');
+                return;
             }
+
             success = true;
-            navigate('/quotations');
+            navigate('/');
         } catch (err) {
             let msg = err.response?.data?.error || err.message || 'ログインに失敗しました。認証情報を確認してください。';
             if (msg.includes('Invalid credentials') || msg === 'Invalid login credentials' || msg.includes('Invalid email or password')) {
@@ -164,18 +171,20 @@ export default function LoginPage() {
 
                     {/* Links */}
                     <div className="mt-6 text-center space-y-2">
-                        <Link to="/reset-password" className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
-                            パスワードをお忘れですか？
-                        </Link>
-                        <div className="text-white/40 text-sm">
+                        {loginMode === 'admin' ? (
+                            <Link to="/reset-password" className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
+                                パスワードをお忘れですか？
+                            </Link>
+                        ) : (
+                            <div className="text-white/40 text-xs px-4 leading-relaxed">
+                                パスワードを忘れた場合は、<br />
+                                貴社のシステム管理者へ再設定を依頼してください。
+                            </div>
+                        )}
+                        <div className="text-white/40 text-sm pt-2">
                             アカウントをお持ちでない方は{' '}
                             <Link to="/signup" className="text-blue-400 hover:text-blue-300 transition-colors">
                                 新規登録
-                            </Link>
-                        </div>
-                        <div className="pt-4 border-t border-white/5">
-                            <Link to="/platform-login" className="text-white/20 hover:text-white/40 text-xs transition-colors">
-                                サービス管理者用ログイン
                             </Link>
                         </div>
                     </div>

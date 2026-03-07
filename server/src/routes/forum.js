@@ -29,6 +29,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
         }
 
         const { data, count, error } = await query
+            .order('is_announcement', { ascending: false }) // お知らせを最優先
             .order(sortBy, { ascending: sortDir === 'asc' })
             .range(from, to);
 
@@ -132,7 +133,7 @@ router.get('/:id', authMiddleware, async (req, res, next) => {
  */
 router.post('/', authMiddleware, async (req, res, next) => {
     try {
-        const { title, body, category = 'question' } = req.body;
+        const { title, body, category = 'question', is_announcement = false } = req.body;
 
         if (!title || !body) {
             throw new AppError('Title and body are required', 400, 'VALIDATION_ERROR');
@@ -150,6 +151,7 @@ router.post('/', authMiddleware, async (req, res, next) => {
                 category,
                 title,
                 body,
+                is_announcement: (is_announcement && req.userRole === 'super_admin') ? true : false,
             })
             .select()
             .single();
@@ -168,7 +170,7 @@ router.post('/', authMiddleware, async (req, res, next) => {
 router.put('/:id', authMiddleware, async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { title, body, category } = req.body;
+        const { title, body, category, is_announcement } = req.body;
 
         // 投稿者チェック
         const { data: post } = await supabaseAdmin
@@ -186,6 +188,9 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
         if (title !== undefined) updates.title = title;
         if (body !== undefined) updates.body = body;
         if (category !== undefined) updates.category = category;
+        if (is_announcement !== undefined && req.userRole === 'super_admin') {
+            updates.is_announcement = is_announcement;
+        }
 
         const { data, error } = await supabaseAdmin
             .from('forum_posts')
@@ -208,21 +213,33 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
 router.delete('/:id', authMiddleware, async (req, res, next) => {
     try {
         const { id } = req.params;
+        console.log(`[Forum API] DELETE post request - ID: ${id}, User: ${req.userId}, Role: ${req.userRole}`);
 
-        const { data: post } = await supabaseAdmin
+        const { data: post, error: fetchError } = await supabaseAdmin
             .from('forum_posts')
             .select('user_id')
             .eq('id', id)
-            .single();
+            .maybeSingle();
 
-        if (!post) throw new AppError('Post not found', 404, 'NOT_FOUND');
+        if (fetchError) {
+            console.error('[Forum API] Error fetching post:', fetchError);
+            throw new AppError('Failed to verify post existence', 500, 'FETCH_FAILED');
+        }
+
+        if (!post) {
+            console.log(`[Forum API] Post not found for deletion: ${id}`);
+            throw new AppError('Post not found', 404, 'NOT_FOUND');
+        }
+
         if (post.user_id !== req.userId && req.userRole !== 'super_admin') {
             throw new AppError('Permission denied', 403, 'FORBIDDEN');
         }
 
+        let resultError = null;
         if (req.userRole === 'super_admin' && post.user_id !== req.userId) {
             // 管理者による他人の投稿削除の場合は論理削除（文言変更）とする
-            const { error } = await supabaseAdmin
+            console.log(`[Forum API] Admin logical delete for post: ${id}`);
+            const { error: updateError } = await supabaseAdmin
                 .from('forum_posts')
                 .update({
                     title: '[管理者によって削除されました]',
@@ -230,19 +247,22 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id);
-            
-            if (error) throw new AppError('Failed to overwrite post', 500, 'UPDATE_FAILED');
+            resultError = updateError;
         } else {
             // 本人の場合は通常通り物理削除
-            const { error } = await supabaseAdmin
+            console.log(`[Forum API] Physical delete for post: ${id}`);
+            const { error: deleteError } = await supabaseAdmin
                 .from('forum_posts')
                 .delete()
                 .eq('id', id);
-            
-            if (error) throw new AppError('Failed to delete post', 500, 'DELETE_FAILED');
+            resultError = deleteError;
         }
 
-        if (error) throw new AppError('Failed to delete post', 500, 'DELETE_FAILED');
+        if (resultError) {
+            console.error('[Forum API] Deletion/Update error:', resultError);
+            throw new AppError('Failed to delete/update post', 500, 'DELETE_FAILED');
+        }
+
         res.json({ message: 'Post deleted' });
     } catch (err) {
         next(err);
@@ -573,12 +593,25 @@ router.post('/replies/:replyId/report', authMiddleware, async (req, res, next) =
  * ユーザーの表示情報を取得するヘルパー
  */
 async function getUserDisplayInfo(userId) {
-    // まずusersテーブルから取得
+    // まず platform_admins (SU) をチェック（不整合回避のため最優先）
+    const { data: pa } = await supabaseAdmin
+        .from('platform_admins')
+        .select('name')
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (pa) {
+        const defaultName = 'AiZumen 運営事務局';
+        const name = (pa.name && pa.name !== 'super_admin' && pa.name !== 'Admin' && pa.name !== 'admin') ? pa.name : defaultName;
+        return { userName: name, tenantName: 'AiZumen Platform' };
+    }
+
+    // 次に users テーブルから取得
     const { data: user } = await supabaseAdmin
         .from('users')
         .select('name, tenant_id')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
     let tenantName = '';
     if (user?.tenant_id) {
@@ -586,18 +619,8 @@ async function getUserDisplayInfo(userId) {
             .from('tenants')
             .select('name')
             .eq('id', user.tenant_id)
-            .single();
+            .maybeSingle();
         tenantName = tenant?.name || '';
-    }
-
-    // platform_adminsの場合
-    if (!user) {
-        const { data: pa } = await supabaseAdmin
-            .from('platform_admins')
-            .select('name')
-            .eq('id', userId)
-            .single();
-        return { userName: pa?.name || 'Admin', tenantName: 'AiZumen' };
     }
 
     return { userName: user?.name || 'User', tenantName };

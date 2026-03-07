@@ -19,12 +19,13 @@ export default function ProtectedRoute({ children, requiredRole }) {
     }
 
     // Super Admin (SU) のアクセス制限
-    // SU は /super-admin/* 以外の保護されたルートにアクセスしてはならない
-    const isSuperAdminRoute = window.location.pathname.startsWith('/super-admin') ||
-        window.location.pathname.startsWith('/platform-setup-mfa');
+    // SU は /super-admin/*, /forum 以外の保護されたルートにアクセスしてはならない
+    const isAllowedForSU = window.location.pathname.startsWith('/super-admin') ||
+        window.location.pathname.startsWith('/platform-setup-mfa') ||
+        window.location.pathname.startsWith('/forum');
 
-    if (userRole === 'super_admin' && !isSuperAdminRoute && requiredRole !== 'super_admin') {
-        return <Navigate to="/super-admin" replace />;
+    if (userRole === 'super_admin' && !isAllowedForSU && requiredRole !== 'super_admin') {
+        return <Navigate to="/" replace />;
     }
 
     if (requiredRole) {

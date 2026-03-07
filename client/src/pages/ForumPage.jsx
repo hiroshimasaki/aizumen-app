@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, ThumbsUp, Plus, Search, Filter, CheckCircle2, HelpCircle, Lightbulb, BookOpen, MoreHorizontal, Send, Edit2, Trash2, ArrowLeft, X, ChevronLeft, ChevronRight, Bug, Flag, AlertTriangle } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Plus, Search, Filter, CheckCircle2, HelpCircle, Lightbulb, BookOpen, MoreHorizontal, Send, Edit2, Trash2, ArrowLeft, X, ChevronLeft, ChevronRight, Bug, Flag, AlertTriangle, Megaphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import api from '../lib/api';
+import { cn } from '../lib/utils';
 
 const CATEGORIES = [
     { value: 'all', label: 'すべて', icon: Filter, color: 'slate' },
@@ -20,16 +21,27 @@ const maskText = (text) => {
     return text[0] + '*'.repeat(text.length - 2) + text[text.length - 1];
 };
 
+const getDisplayName = (name, tenantName, isAnnouncement = false) => {
+    const isSU = isAnnouncement || tenantName === 'AiZumen Platform';
+    if (isSU) {
+        const defaults = ['super_admin', 'Admin', 'admin', 'User', ''];
+        if (defaults.includes(name) || !name) return 'AiZumen 運営事務局';
+        return name;
+    }
+    return maskText(name);
+};
+
 const CATEGORY_STYLES = {
     question: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', label: '質問' },
     suggestion: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', label: '改善提案' },
     bug: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20', label: 'バグ報告' },
     tips: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', label: 'ノウハウ' },
     other: { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/20', label: 'その他' },
+    announcement: { bg: 'bg-indigo-500/20', text: 'text-indigo-300', border: 'border-indigo-500/30', label: 'お知らせ' },
 };
 
 export default function ForumPage() {
-    const { user } = useAuth();
+    const { user, userRole } = useAuth();
     const { showAlert, showConfirm } = useNotification();
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -162,7 +174,7 @@ export default function ForumPage() {
 
             {/* 新規投稿フォーム */}
             {showNewPostForm && (
-                <NewPostForm onClose={() => setShowNewPostForm(false)} onCreated={handlePostCreated} showAlert={showAlert} />
+                <NewPostForm onClose={() => setShowNewPostForm(false)} onCreated={handlePostCreated} showAlert={showAlert} userRole={userRole} />
             )}
 
             {/* 投稿一覧 */}
@@ -203,14 +215,25 @@ export default function ForumPage() {
 /** 投稿カード */
 function PostCard({ post, onClick, onLike }) {
     const cat = CATEGORY_STYLES[post.category] || CATEGORY_STYLES.other;
+    const isAnnouncement = post.is_announcement;
     return (
         <div
-            className="bg-slate-800/30 border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all cursor-pointer group"
+            className={cn(
+                "border rounded-2xl p-5 transition-all cursor-pointer group",
+                isAnnouncement 
+                    ? "bg-indigo-500/10 border-indigo-500/30 ring-1 ring-indigo-500/20" 
+                    : "bg-slate-800/30 border-white/5 hover:border-white/10"
+            )}
             onClick={onClick}
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
+                        {isAnnouncement && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                <Megaphone className="w-2.5 h-2.5" /> お知らせ
+                            </span>
+                        )}
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${cat.bg} ${cat.text} border ${cat.border}`}>{cat.label}</span>
                         {post.is_resolved && (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">解決済み</span>
@@ -222,8 +245,19 @@ function PostCard({ post, onClick, onLike }) {
             </div>
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
                 <div className="flex items-center gap-3 text-xs text-slate-500">
-                    <span className="font-medium text-slate-300">{maskText(post.user_name)}</span>
-                    {post.tenant_name && <span className="text-slate-600">@{maskText(post.tenant_name)}</span>}
+                    <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-slate-300">
+                            {getDisplayName(post.user_name, post.tenant_name, isAnnouncement)}
+                        </span>
+                        {(isAnnouncement || post.tenant_name === 'AiZumen Platform') && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-500 text-white uppercase tracking-wider shadow-sm shadow-blue-500/20">公式</span>
+                        )}
+                    </div>
+                    {post.tenant_name && post.tenant_name !== 'AiZumen Platform' && (
+                        <span className="text-slate-600">
+                            @{maskText(post.tenant_name)}
+                        </span>
+                    )}
                     <span>{new Date(post.created_at).toLocaleDateString('ja-JP')}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500">
@@ -243,17 +277,18 @@ function PostCard({ post, onClick, onLike }) {
 }
 
 /** 新規投稿フォーム */
-function NewPostForm({ onClose, onCreated, showAlert }) {
+function NewPostForm({ onClose, onCreated, showAlert, userRole }) {
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [category, setCategory] = useState('question');
+    const [isAnnouncement, setIsAnnouncement] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/api/forum', { title, body, category });
+            await api.post('/api/forum', { title, body, category, is_announcement: isAnnouncement });
             onCreated();
         } catch (err) {
             await showAlert('投稿に失敗しました', 'error');
@@ -291,6 +326,25 @@ function NewPostForm({ onClose, onCreated, showAlert }) {
                     rows={5} value={body} onChange={e => setBody(e.target.value)}
                     className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-all resize-none"
                 />
+                
+                {userRole === 'super_admin' && (
+                    <label className="flex items-center gap-2 cursor-pointer group w-fit">
+                        <div className="relative flex items-center">
+                            <input
+                                type="checkbox"
+                                checked={isAnnouncement}
+                                onChange={e => setIsAnnouncement(e.target.checked)}
+                                className="sr-only"
+                            />
+                            <div className={`w-10 h-5 rounded-full transition-colors ${isAnnouncement ? 'bg-indigo-600' : 'bg-slate-700'}`} />
+                            <div className={`absolute left-1 w-3 h-3 rounded-full bg-white transition-transform ${isAnnouncement ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </div>
+                        <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors flex items-center gap-1.5 ml-1">
+                            <Megaphone className={`w-4 h-4 ${isAnnouncement ? 'text-indigo-400' : 'text-slate-500'}`} />
+                            お知らせとして投稿する
+                        </span>
+                    </label>
+                )}
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={onClose} className="px-4 py-2 text-slate-400 font-medium rounded-xl hover:bg-white/5 transition-all">キャンセル</button>
                     <button type="submit" disabled={loading} className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 disabled:opacity-50 transition-all">
@@ -314,6 +368,7 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
     const [editPostTitle, setEditPostTitle] = useState('');
     const [editPostBody, setEditPostBody] = useState('');
     const [editPostCategory, setEditPostCategory] = useState('');
+    const [editIsAnnouncement, setEditIsAnnouncement] = useState(false);
     const [isUpdatingPost, setIsUpdatingPost] = useState(false);
 
     // 報告ダイアログの状態
@@ -321,6 +376,8 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
     const [reportReason, setReportReason] = useState('inappropriate');
     const [reportDetails, setReportDetails] = useState('');
     const [isReporting, setIsReporting] = useState(false);
+
+    const { userRole } = useAuth();
 
     const REPORT_REASONS = [
         { value: 'spam', label: 'スパム・宣伝' },
@@ -336,6 +393,7 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
         setEditPostTitle(post.title);
         setEditPostBody(post.body);
         setEditPostCategory(post.category);
+        setEditIsAnnouncement(post.is_announcement || false);
         setIsEditingPost(true);
     };
 
@@ -345,7 +403,8 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
             await api.put(`/api/forum/${post.id}`, {
                 title: editPostTitle,
                 body: editPostBody,
-                category: editPostCategory
+                category: editPostCategory,
+                is_announcement: editIsAnnouncement
             });
             setIsEditingPost(false);
             onRefresh();
@@ -456,6 +515,25 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
                             rows={8} value={editPostBody} onChange={e => setEditPostBody(e.target.value)}
                             className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-all resize-none"
                         />
+
+                        {userRole === 'super_admin' && (
+                            <label className="flex items-center gap-2 cursor-pointer group w-fit mt-2">
+                                <div className="relative flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={editIsAnnouncement}
+                                        onChange={e => setEditIsAnnouncement(e.target.checked)}
+                                        className="sr-only"
+                                    />
+                                    <div className={`w-10 h-5 rounded-full transition-colors ${editIsAnnouncement ? 'bg-indigo-600' : 'bg-slate-700'}`} />
+                                    <div className={`absolute left-1 w-3 h-3 rounded-full bg-white transition-transform ${editIsAnnouncement ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </div>
+                                <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors flex items-center gap-1.5 ml-1">
+                                    <Megaphone className={`w-4 h-4 ${editIsAnnouncement ? 'text-indigo-400' : 'text-slate-500'}`} />
+                                    お知らせとして表示
+                                </span>
+                            </label>
+                        )}
                         <div className="flex justify-end gap-2 mt-4">
                             <button onClick={() => setIsEditingPost(false)} className="px-4 py-2 text-slate-400 font-medium rounded-xl hover:bg-white/5 transition-all">キャンセル</button>
                             <button onClick={handleEditPost} disabled={isUpdatingPost || !editPostTitle.trim() || !editPostBody.trim()} className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 disabled:opacity-50 transition-all">
@@ -467,13 +545,29 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
             ) : (
                 <div className="bg-slate-800/30 border border-white/5 rounded-2xl p-6">
                     <div className="flex items-center gap-2 mb-3">
+                        {post.is_announcement && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                <Megaphone className="w-2.5 h-2.5" /> お知らせ
+                            </span>
+                        )}
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${cat.bg} ${cat.text} border ${cat.border}`}>{cat.label}</span>
                         {post.is_resolved && <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">解決済み</span>}
                     </div>
                     <h2 className="text-xl font-black text-white mb-2">{post.title}</h2>
                     <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-                        <span className="font-medium text-slate-300">{maskText(post.user_name)}</span>
-                        {post.tenant_name && <span>@{maskText(post.tenant_name)}</span>}
+                        <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-slate-300">
+                                {getDisplayName(post.user_name, post.tenant_name, post.is_announcement)}
+                            </span>
+                            {(post.is_announcement || post.tenant_name === 'AiZumen Platform') && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-500 text-white uppercase tracking-wider shadow-sm shadow-blue-500/20">公式</span>
+                            )}
+                        </div>
+                        {post.tenant_name && post.tenant_name !== 'AiZumen Platform' && (
+                            <span>
+                                @{maskText(post.tenant_name)}
+                            </span>
+                        )}
                         <span>{new Date(post.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                         {post.updated_at !== post.created_at && <span className="text-slate-600">(編集済み)</span>}
                     </div>
@@ -525,8 +619,19 @@ function PostDetail({ post, currentUserId, onBack, onLike, onDelete, onResolve, 
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
-                                        <span className="font-medium text-slate-300">{maskText(reply.user_name)}</span>
-                                        {reply.tenant_name && <span>@{maskText(reply.tenant_name)}</span>}
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-medium text-slate-300">
+                                                {getDisplayName(reply.user_name, reply.tenant_name)}
+                                            </span>
+                                            {reply.tenant_name === 'AiZumen Platform' && (
+                                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-500 text-white uppercase tracking-wider shadow-sm shadow-blue-500/20">公式</span>
+                                            )}
+                                        </div>
+                                        {reply.tenant_name && reply.tenant_name !== 'AiZumen Platform' && (
+                                            <span>
+                                                @{maskText(reply.tenant_name)}
+                                            </span>
+                                        )}
                                         <span>{new Date(reply.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                         {reply.updated_at !== reply.created_at && <span className="text-slate-600">(編集済み)</span>}
                                     </div>

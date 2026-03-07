@@ -51,7 +51,9 @@ router.post('/signup', async (req, res, next) => {
  * ログイン
  */
 router.post('/login', async (req, res, next) => {
-    console.log(`[Auth/Login] Request received from origin: ${req.headers.origin}, clientType: ${req.body.clientType}`);
+    console.log(`\n[Auth/Login DEBUG] --- New Login Request ---`);
+    console.log(`[Auth/Login DEBUG] Origin: ${req.headers.origin}`);
+    console.log(`[Auth/Login DEBUG] Body: ${JSON.stringify({ ...req.body, password: '***' })}`);
     try {
         const { email, password } = req.body;
 
@@ -71,20 +73,38 @@ router.post('/login', async (req, res, next) => {
             throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
         }
 
-        // ユーザーがアクティブかチェック
-        const { data: userProfile } = await supabaseAdmin
-            .from('users')
-            .select('is_active, name, role')
+        // ユーザーの有効状態とロールをDBでチェック
+        // まず platform_admins (SU) をチェック
+        const { data: platformAdmin } = await supabaseAdmin
+            .from('platform_admins')
+            .select('*')
             .eq('id', data.user.id)
             .single();
 
-        if (userProfile && !userProfile.is_active) {
-            throw new AppError('Account is deactivated', 403, 'ACCOUNT_DEACTIVATED');
+        let userRole = data.user.app_metadata?.role || 'user';
+        let userName = '';
+
+        if (platformAdmin) {
+            userRole = 'super_admin';
+            userName = platformAdmin.name || 'Platform Admin';
+        } else {
+            const { data: userProfile } = await supabaseAdmin
+                .from('users')
+                .select('is_active, name, role')
+                .eq('id', data.user.id)
+                .single();
+
+            if (userProfile && !userProfile.is_active) {
+                throw new AppError('Account is deactivated', 403, 'ACCOUNT_DEACTIVATED');
+            }
+            if (userProfile) {
+                userRole = userProfile.role;
+                userName = userProfile.name;
+            }
         }
 
         // HotFolderからのログイン時は権限チェックを実施
         const clientType = req.body.clientType || 'web';
-        const userRole = data.user.app_metadata?.role || 'user';
         if (clientType === 'hotfolder') {
             if (userRole !== 'system_admin' && userRole !== 'admin') {
                 console.log(`[Auth/Login] Blocked hotfolder login for user ${email} with role ${userRole}`);
@@ -105,7 +125,6 @@ router.post('/login', async (req, res, next) => {
         }
 
         if (sessionId) {
-            const clientType = req.body.clientType || 'web';
             const updateField = clientType === 'hotfolder' ? 'active_hotfolder_session_id' : 'active_session_id';
 
             // 最新のユーザー情報を取得して metadata の競合を避ける
@@ -117,7 +136,8 @@ router.post('/login', async (req, res, next) => {
             await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
                 app_metadata: {
                     ...currentMetadata,
-                    [updateField]: sessionId
+                    [updateField]: sessionId,
+                    role: userRole // メタデータのロールも同期させる
                 }
             });
             console.log(`[Auth/Login] Registered new ${clientType} session for user ${data.user.id}: ${sessionId}`);
@@ -127,9 +147,9 @@ router.post('/login', async (req, res, next) => {
             user: {
                 id: data.user.id,
                 email: data.user.email,
-                name: userProfile?.name || '',
-                role: data.user.app_metadata?.role || 'user',
-                tenantId: data.user.app_metadata?.tenant_id,
+                name: userName || '',
+                role: userRole,
+                tenantId: userRole === 'super_admin' ? null : data.user.app_metadata?.tenant_id,
             },
             session: data.session,
         });
@@ -138,7 +158,7 @@ router.post('/login', async (req, res, next) => {
             action: 'login_success',
             entityType: 'auth',
             description: `ログイン成功: ${email}`,
-            tenantId: data.user.app_metadata?.tenant_id,
+            tenantId: userRole === 'super_admin' ? null : data.user.app_metadata?.tenant_id,
             userId: data.user.id
         });
     } catch (err) {
@@ -333,19 +353,19 @@ router.put('/update-password', authMiddleware, async (req, res, next) => {
  */
 router.get('/me', authMiddleware, async (req, res, next) => {
     try {
-        // Super Admin (SU) の場合は専用のレスポンスを返す
-        if (req.userRole === 'super_admin') {
-            const { data: platformAdmin } = await supabaseAdmin
-                .from('platform_admins')
-                .select('*')
-                .eq('id', req.user.id)
-                .single();
+        // まず platform_admins (SU) をチェック（メタデータに頼らずDBを正解とする）
+        const { data: platformAdmin } = await supabaseAdmin
+            .from('platform_admins')
+            .select('*')
+            .eq('id', req.user.id)
+            .single();
 
+        if (platformAdmin) {
             return res.json({
                 user: {
                     id: req.user.id,
                     email: req.user.email,
-                    name: platformAdmin?.name || 'Platform Admin',
+                    name: platformAdmin.name || 'Platform Admin',
                     role: 'super_admin',
                     is_active: true,
                 },
