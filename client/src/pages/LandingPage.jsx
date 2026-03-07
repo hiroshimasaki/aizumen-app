@@ -359,7 +359,7 @@ export default function LandingPage() {
 
                     <div className="grid md:grid-cols-3 gap-8 relative z-10 items-center">
                         {/* Lite */}
-                        <div className="p-8 rounded-3xl bg-slate-800/40 border border-slate-700/80 hover:border-slate-500 transition-all flex flex-col md:h-[450px]">
+                        <div className="p-8 rounded-3xl bg-slate-800/40 border border-slate-700/80 hover:border-slate-500 transition-all flex flex-col md:min-h-[520px]">
                             <div className="mb-6">
                                 <h3 className="text-2xl font-bold text-white mb-1">Lite</h3>
                                 <p className="text-sm text-slate-400 mb-6 h-5">少人数向け</p>
@@ -379,7 +379,7 @@ export default function LandingPage() {
                         </div>
 
                         {/* Plus */}
-                        <div className="p-10 rounded-[2.5rem] bg-indigo-900/30 border border-indigo-500/50 shadow-2xl shadow-indigo-500/20 flex flex-col relative transform md:-translate-y-4 md:h-[500px] z-20 backdrop-blur-xl">
+                        <div className="p-10 rounded-[2.5rem] bg-indigo-900/30 border border-indigo-500/50 shadow-2xl shadow-indigo-500/20 flex flex-col relative transform md:-translate-y-4 md:min-h-[580px] z-20 backdrop-blur-xl">
                             <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-500/30">
                                 圧倒的人気
                             </div>
@@ -404,7 +404,7 @@ export default function LandingPage() {
                         </div>
 
                         {/* Pro */}
-                        <div className="p-8 rounded-3xl bg-slate-800/40 border border-slate-700/80 hover:border-slate-500 transition-all flex flex-col md:h-[450px]">
+                        <div className="p-8 rounded-3xl bg-slate-800/40 border border-slate-700/80 hover:border-slate-500 transition-all flex flex-col md:min-h-[520px]">
                             <div className="mb-6">
                                 <h3 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">Pro <Zap className="w-5 h-5 text-amber-400" /></h3>
                                 <p className="text-sm text-slate-400 mb-6 h-5">大容量・多人数による大規模運用へ</p>
