@@ -92,7 +92,7 @@ export default function HotFolderDownload() {
                     <div className="w-12 h-12 bg-slate-900 border border-slate-700 rounded-2xl flex items-center justify-center mb-4 font-black text-indigo-400 group-hover:scale-110 transition-transform">3</div>
                     <h3 className="text-lg font-bold text-white mb-2">一括解析・連携</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                        アプリの「一括解析」ボタンを押すと、すべてのファイルがクラウドへ転送され解析が始まります。
+                        アプリの「一括解析」ボタンを押すと、すべてのファイルがAiZumenへ転送され解析が始まります。
                     </p>
                 </div>
             </div>
