@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Monitor, FolderSync, Printer, ArrowRight, CheckCircle2, AlertCircle, ExternalLink, Info } from 'lucide-react';
+import { Download, Monitor, FolderSync, Printer, ArrowRight, CheckCircle2, AlertCircle, ExternalLink, Info, MessageSquare, Zap } from 'lucide-react';
 
 export default function HotFolderDownload() {
     return (
