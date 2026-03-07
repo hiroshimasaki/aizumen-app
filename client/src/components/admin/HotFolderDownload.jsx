@@ -16,10 +16,10 @@ export default function HotFolderDownload() {
                         </div>
                         <h2 className="text-3xl font-black text-white leading-tight">
                             ホットフォルダで<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">図面登録を自動化</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">帳票・注文書登録を自動化</span>
                         </h2>
                         <p className="text-slate-400 text-sm leading-relaxed max-w-lg mx-auto lg:mx-0">
-                            複合機でスキャンするだけで、AiZumenが自動的に図面を検知しAI解析を開始します。
+                            複合機でスキャンするだけで、AiZumenが自動的に帳票・注文書を検知しAI解析を開始します。
                             ブラウザを開く手間なく、現場のワークフローにシームレスに統合できます。
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2">
@@ -74,7 +74,7 @@ export default function HotFolderDownload() {
                     <div className="w-12 h-12 bg-slate-900 border border-slate-700 rounded-2xl flex items-center justify-center mb-4 font-black text-blue-400 group-hover:scale-110 transition-transform">1</div>
                     <h3 className="text-lg font-bold text-white mb-2">スキャン</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                        複合機で図面をスキャンし、PCの「監視フォルダ」へ直接保存されるよう設定します。
+                        複合機で帳票をスキャンし、PCの「監視フォルダ」へ直接保存されるよう設定します。
                     </p>
                 </div>
 
