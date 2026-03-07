@@ -1,17 +1,32 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { VertexAI } = require('@google-cloud/vertexai');
 
 /**
  * AI Document Analysis Service
- * Uses Gemini API to extract structured data from PDF or Images.
+ * Uses Vertex AI (Google Cloud) to extract structured data from PDF or Images.
  */
 class AIService {
     constructor() {
-        if (!process.env.GEMINI_API_KEY) {
-            console.error('[AIService] Error: GEMINI_API_KEY is not set');
+        const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
+        const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+
+        if (!projectId || !credentialsJson) {
+            console.error('[AIService] Error: GOOGLE_CLOUD_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS_JSON is not set');
+            return;
         }
-        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        // この環境のモデルリストに基づき最新の 2.5 モデルを使用
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        try {
+            const credentials = JSON.parse(credentialsJson);
+            this.vertexAI = new VertexAI({
+                project: projectId,
+                location: 'us-central1', // 日本で使用する場合も基本は us-central1 で問題ありません
+                googleAuthOptions: { credentials }
+            });
+
+            // エンタープライズ向けの安定したモデルを使用
+            this.model = this.vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash-002' });
+        } catch (error) {
+            console.error('[AIService] Initialization failed:', error);
+        }
     }
 
     /**
@@ -76,17 +91,22 @@ class AIService {
 日本語で回答してください。JSON以外の説明テキストは一切含めないでください。日付は可能な限り現在の年（2026年）を補完して回答してください。
 `;
 
-            const result = await this.model.generateContent([
-                prompt,
-                {
-                    inlineData: {
-                        data: fileBuffer.toString('base64'),
-                        mimeType: mimeType
-                    }
-                }
-            ]);
+            const response = await this.model.generateContent({
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                data: fileBuffer.toString('base64'),
+                                mimeType: mimeType
+                            }
+                        }
+                    ]
+                }]
+            });
 
-            const responseText = result.response.text();
+            const responseText = response.response.candidates[0].content.parts[0].text;
             return this.parseJsonResponse(responseText);
         } catch (error) {
             console.error('[AIService] Analysis failed:', error);
