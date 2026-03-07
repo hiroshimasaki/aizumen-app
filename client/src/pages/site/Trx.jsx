@@ -21,23 +21,23 @@ export default function CommercialTransaction() {
                             <tbody className="divide-y divide-white/5">
                                 <tr>
                                     <td className="p-5 font-bold text-white w-1/3 align-top">販売業者</td>
-                                    <td className="p-5">正木鉄工株式会社</td>
+                                    <td className="p-5">正木　裕士　個人（正木鉄工株式会社）</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">代表者</td>
-                                    <td className="p-5"><span className="text-amber-400">【要確認：代表者名を記入】</span></td>
+                                    <td className="p-5"><span className="text-amber-400">正木　裕士</span></td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">所在地</td>
-                                    <td className="p-5"><span className="text-amber-400">【要確認：所在地を記入】</span></td>
+                                    <td className="p-5"><span className="text-amber-400">要請があれば速やかに開示</span></td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">電話番号</td>
-                                    <td className="p-5"><span className="text-amber-400">【要確認：電話番号を記入】</span></td>
+                                    <td className="p-5"><span className="text-amber-400">要請があれば速やかに開示</span></td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">メールアドレス</td>
-                                    <td className="p-5"><span className="text-amber-400">【要確認：メールアドレスを記入】</span></td>
+                                    <td className="p-5"><span className="text-amber-400">fj081399@gmail.com</span></td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">サービス名</td>
@@ -45,7 +45,7 @@ export default function CommercialTransaction() {
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">サービスURL</td>
-                                    <td className="p-5"><span className="text-amber-400">【要確認：本番URLを記入】</span></td>
+                                    <td className="p-5"><span className="text-amber-400">https://aizumen.vercel.app/</span></td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">販売価格</td>
