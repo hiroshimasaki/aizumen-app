@@ -19,7 +19,7 @@ export default function TermsOfService() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第1条（適用）</h2>
-                        <p>本規約は、正木鉄工株式会社（以下「当社」）が提供するクラウド型業務支援サービス「AiZumen」（以下「本サービス」）の利用に関する条件を定めるものです。ご利用にあたり、本規約に同意いただいたものとみなします。</p>
+                        <p>本規約は、正木 裕士（以下「当方」）が提供するクラウド型業務支援サービス「AiZumen」（以下「本サービス」）の利用に関する条件を定めるものです。ご利用にあたり、本規約に同意いただいたものとみなします。</p>
                     </section>
 
                     <section>
@@ -36,7 +36,7 @@ export default function TermsOfService() {
                         <ol className="list-decimal pl-5 space-y-2">
                             <li>本サービスの利用にはアカウント登録が必要です。</li>
                             <li>登録情報は真実かつ正確であることを保証していただきます。</li>
-                            <li>アカウントの管理責任はユーザーご自身にあります。第三者による不正利用について、当社は一切責任を負いません。</li>
+                            <li>アカウントの管理責任はユーザーご自身にあります。第三者による不正利用について、当方は一切責任を負いません。</li>
                         </ol>
                     </section>
 
@@ -75,7 +75,7 @@ export default function TermsOfService() {
                     <section>
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第7条（サービスの変更・停止）</h2>
                         <ol className="list-decimal pl-5 space-y-2">
-                            <li>当方は、ユーザーへの事前通知なく,本サービスの内容を変更、追加、または廃止する場合があります。</li>
+                            <li>当方は、ユーザーへの事前通知なく、本サービスの内容を変更、追加、または廃止する場合があります。</li>
                             <li>システムメンテナンスや不可抗力により、サービスを一時的に停止する場合があります。</li>
                         </ol>
                     </section>
