@@ -66,16 +66,23 @@ const authMiddleware = async (req, res, next) => {
                 .single();
 
             if (dbError || !userProfile) {
-                return res.status(401).json({ error: 'User profile not found' });
-            }
+                // プロフィールがない場合は Auth の app_metadata からフォールバックを試みる
+                // これにより、users.js での自動プロフィール作成ロジックが機能するようになる
+                console.log(`[Auth Middleware] Profile missing in public.users for user: ${user.id}. Falling back to metadata.`);
+                role = user.app_metadata?.role || 'user';
+                profile = {
+                    tenant_id: user.app_metadata?.tenant_id || null,
+                    is_active: true
+                };
+            } else {
+                if (userProfile.is_active === false) {
+                    console.log(`[Auth Middleware] Access denied for deactivated user: ${user.id}`);
+                    return res.status(401).json({ error: 'Account is deactivated', code: 'USER_DEACTIVATED' });
+                }
 
-            if (userProfile.is_active === false) {
-                console.log(`[Auth Middleware] Access denied for deactivated user: ${user.id}`);
-                return res.status(401).json({ error: 'Account is deactivated', code: 'USER_DEACTIVATED' });
+                profile = userProfile;
+                role = userProfile.role;
             }
-
-            profile = userProfile;
-            role = userProfile.role;
         }
 
         // JWTのペイロードをデコードして session_id と aal を取得
