@@ -93,32 +93,37 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
 
         if (resendApiKey) {
             try {
-                await fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${resendApiKey}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        from: `AiZumen 運営事務局 <${senderEmail}>`,
-                        to: [email],
-                        subject: '[AiZumen] ご登録ありがとうございます - メールアドレスの確認',
-                        html: `
-                            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                                <h2 style="color: #1e293b; margin-bottom: 24px;">AiZumen へようこそ！</h2>
-                                <p style="color: #475569; line-height: 1.6;">会員登録ありがとうございます。以下のボタンをクリックしてメールアドレスを確定させてください。</p>
-                                <div style="margin: 32px 0;">
-                                    <a href="${actionLink}" style="background-color: #4F46E5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">メールアドレスを確定する</a>
+                // Node.js バージョンや環境によって fetch がない場合の備え
+                if (typeof fetch !== 'function') {
+                    console.warn('[Signup] global fetch is not available. Skipping email.');
+                } else {
+                    await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${resendApiKey}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            from: `AiZumen 運営事務局 <${senderEmail}>`,
+                            to: [email],
+                            subject: '[AiZumen] ご登録ありがとうございます - メールアドレスの確認',
+                            html: `
+                                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                                    <h2 style="color: #1e293b; margin-bottom: 24px;">AiZumen へようこそ！</h2>
+                                    <p style="color: #475569; line-height: 1.6;">会員登録ありがとうございます。以下のボタンをクリックしてメールアドレスを確定させてください。</p>
+                                    <div style="margin: 32px 0;">
+                                        <a href="${actionLink}" style="background-color: #4F46E5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">メールアドレスを確定する</a>
+                                    </div>
+                                    <p style="color: #64748b; font-size: 14px; margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                                        このメールに心当たりがない場合は、お手数ですが破棄してください。<br>
+                                        © AiZumen
+                                    </p>
                                 </div>
-                                <p style="color: #64748b; font-size: 14px; margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
-                                    このメールに心当たりがない場合は、お手数ですが破棄してください。<br>
-                                    © AiZumen
-                                </p>
-                            </div>
-                        `,
-                    }),
-                });
-                console.log('[Signup] Confirmation email sent via Resend for:', email);
+                            `,
+                        }),
+                    });
+                    console.log('[Signup] Confirmation email sent via Resend for:', email);
+                }
             } catch (sendErr) {
                 console.error('[Signup] Failed to send email via Resend:', sendErr.message);
             }
@@ -153,26 +158,34 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
     const SIGNUP_BONUS = 10;
     const initialBalance = initialPlanConfig.monthlyCredits + SIGNUP_BONUS;
 
-    const { error: aiCreditsError } = await supabaseAdmin.from('ai_credits').upsert({
-        tenant_id: tenant.id,
-        balance: initialBalance,
-        monthly_quota: initialPlanConfig.monthlyCredits,
-        purchased_balance: SIGNUP_BONUS,
-        last_reset_at: new Date().toISOString(),
-    }, { onConflict: 'tenant_id' });
+    try {
+        const { error: aiCreditsError } = await supabaseAdmin.from('ai_credits').upsert({
+            tenant_id: tenant.id,
+            balance: initialBalance,
+            monthly_quota: initialPlanConfig.monthlyCredits,
+            purchased_balance: SIGNUP_BONUS,
+            last_reset_at: new Date().toISOString(),
+        }, { onConflict: 'tenant_id' });
 
-    if (aiCreditsError) {
-        console.error('[Auth Service] Initial AI Credits upsert failed:', aiCreditsError);
+        if (aiCreditsError) {
+            console.error('[Auth Service] Initial AI Credits upsert failed:', aiCreditsError.message);
+            // DBカラム不足などがあっても、ユーザー作成自体は成功させたいので続行
+        } else {
+            // ボーナスクレジットのトランザクション記録
+            const { error: txError } = await supabaseAdmin.from('ai_credit_transactions').insert({
+                tenant_id: tenant.id,
+                user_id: authData.user.id,
+                type: 'signup_bonus',
+                amount: SIGNUP_BONUS,
+                description: '新規登録ボーナスクレジット',
+            });
+            if (txError) {
+                console.error('[Auth Service] Signup bonus transaction failed:', txError.message);
+            }
+        }
+    } catch (creditErr) {
+        console.error('[Auth Service] Critical error in credit initialization:', creditErr.message);
     }
-
-    // ボーナスクレジットのトランザクション記録
-    await supabaseAdmin.from('ai_credit_transactions').insert({
-        tenant_id: tenant.id,
-        user_id: authData.user.id,
-        type: 'signup_bonus',
-        amount: SIGNUP_BONUS,
-        description: '新規登録ボーナスクレジット',
-    });
 
     return {
         tenant,
