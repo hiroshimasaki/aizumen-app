@@ -37,6 +37,7 @@ export default function SuperAdminPage() {
     const [pendingReportsCount, setPendingReportsCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const [filterPlan, setFilterPlan] = useState('all');
     const [lastUpdated, setLastUpdated] = useState(new Date());
 
@@ -76,7 +77,7 @@ export default function SuperAdminPage() {
     const fetchData = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            const [statsRes, tenantsRes, healthRes, activitiesRes, usageRes, billingRes, pendingRes] = await Promise.all([
+            const [statsRes, tenantsRes, healthRes, activitiesRes, usageRes, billingRes, pendingRes, maintenanceRes] = await Promise.all([
                 api.get('/api/super-admin/stats'),
                 api.get('/api/super-admin/tenants'),
                 api.get('/api/super-admin/health').catch(() => ({ data: { db: 'error', storage: 'error', ai: 'error' } })),

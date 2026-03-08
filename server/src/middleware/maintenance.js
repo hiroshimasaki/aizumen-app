@@ -8,7 +8,7 @@ const maintenanceMiddleware = async (req, res, next) => {
     const skipPaths = [
         '/api/auth',
         '/api/health',
-        '/api/super-admin/maintenance', // 設定更新用
+        '/api/super-admin', // 管理者操作は常に許可（トグルOFFできなくなるのを防ぐ）
         '/api/webhook' // Stripe等の外部連携
     ];
 
