@@ -139,7 +139,7 @@ app.use('/api', (req, res) => {
 app.use(errorHandler);
 
 // --- Start Server ---
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`[AiZumen API] Server running on port ${PORT}`);
   console.log(`[AiZumen API] Environment: ${process.env.NODE_ENV || 'development'}`);
 

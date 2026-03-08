@@ -245,11 +245,55 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
         if (!priceId) throw new AppError('Price not configured', 500, 'PRICE_NOT_CONFIGURED');
 
         // 既存のサブスクリプションを確認
-        const { data: existingSub } = await supabaseAdmin
+        let { data: existingSub } = await supabaseAdmin
             .from('subscriptions')
             .select('stripe_subscription_id, stripe_customer_id, status, plan')
             .eq('tenant_id', req.tenantId)
             .maybeSingle();
+
+        // --- セルフヒーリング/重複防止ロジック ---
+        // DB上でアクティブでなくても、Stripe側にアクティブな契約があるか最終確認
+        if (existingSub?.stripe_customer_id && existingSub?.status !== 'active') {
+            console.log(`[Subscription/Checkout] DB status is '${existingSub.status}', checking Stripe...`);
+            const stripeSubs = await stripe.subscriptions.list({
+                customer: existingSub.stripe_customer_id,
+                status: 'active',
+                limit: 1
+            });
+
+            if (stripeSubs.data.length > 0) {
+                const actualSub = stripeSubs.data[0];
+                const actualPlan = actualSub.metadata?.plan || 'lite'; // メタデータがなければとりあえず最安プラン等で修復
+                
+                console.log(`[Subscription/Checkout] Found active sub on Stripe: ${actualSub.id}. Syncing DB...`);
+                
+                // DB状態をStripeに合わせる（修復）
+                await supabaseAdmin
+                    .from('subscriptions')
+                    .update({
+                        stripe_subscription_id: actualSub.id,
+                        status: 'active',
+                        plan: actualPlan,
+                        current_period_end: new Date(actualSub.current_period_end * 1000).toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('tenant_id', req.tenantId);
+                
+                await supabaseAdmin
+                    .from('tenants')
+                    .update({ plan: actualPlan, updated_at: new Date().toISOString() })
+                    .eq('id', req.tenantId);
+                
+                // 変数を更新して、下の「既存のアクティブな契約がある場合」のロジックに流す
+                existingSub = {
+                    ...existingSub,
+                    stripe_subscription_id: actualSub.id,
+                    status: 'active',
+                    plan: actualPlan
+                };
+            }
+        }
+        // ----------------------------------------
 
         // 既存のアクティブなサブスクリプションがある場合
         if (existingSub?.stripe_subscription_id && existingSub?.status === 'active') {
@@ -375,7 +419,8 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
                     tenant_id: req.tenantId,
                     plan,
                 }
-            }
+            },
+            allow_promotion_codes: true,
         };
 
         // 既存のStripe顧客IDがあれば紐付ける
@@ -656,6 +701,7 @@ router.post('/credits/purchase', authMiddleware, requireRole('system_admin'), as
                 tenant_id: req.tenantId,
                 credits: config.credits,
             },
+            allow_promotion_codes: true,
         };
 
         const session = await stripe.checkout.sessions.create(checkoutParams);
