@@ -21,10 +21,11 @@ api.interceptors.response.use(
     async (error) => {
         // メンテナンスモード (503 Service Unavailable)
         if (error.response?.status === 503 && error.response?.data?.maintenance) {
-            if (window.location.pathname !== '/maintenance') {
+            const publicUIPaths = ['/', '/agreement', '/site-policy', '/commerce', '/protection'];
+            if (window.location.pathname !== '/maintenance' && !publicUIPaths.includes(window.location.pathname)) {
                 window.location.href = '/maintenance';
             }
-            // メンテナンス画面遷移時はエラーを握り潰すか、rejectを返す
+            // メンテナンス画面遷移時または公共ページ表示時はエラーを返す（データ取得をブロック）
             return Promise.reject(error);
         }
 

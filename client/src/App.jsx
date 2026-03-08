@@ -420,8 +420,9 @@ export default function App() {
 
             // メンテナンスモードのハンドリング (503 Service Unavailable)
             if (error.response?.status === 503 && error.response?.data?.maintenance) {
-                // すでにメンテナンス画面にいる場合はスキップ
-                if (window.location.pathname !== '/maintenance') {
+                // 公共ページ（LPや法的表記）とメンテナンス画面自身はリダイレクトを避ける
+                const publicUIPaths = ['/', '/agreement', '/site-policy', '/commerce', '/protection'];
+                if (window.location.pathname !== '/maintenance' && !publicUIPaths.includes(window.location.pathname)) {
                     window.location.href = '/maintenance';
                 }
                 return;
