@@ -19,7 +19,7 @@ export default function TermsOfService() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第1条（適用）</h2>
-                        <p>本規約は、正木 裕士（以下「当方」）が提供するクラウド型業務支援サービス「AiZumen」（以下「本サービス」）の利用に関する条件を定めるものです。ご利用にあたり、本規約に同意いただいたものとみなします。</p>
+                        <p>本規約は、AiZumen（代表：正木 裕士、以下「当方」）が提供するクラウド型業務支援サービス「AiZumen」（以下「本サービス」）の利用に関する条件を定めるものです。ご利用にあたり、本規約に同意いただいたものとみなします。</p>
                     </section>
 
                     <section>

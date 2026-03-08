@@ -94,7 +94,8 @@ export default function DataProtectionPolicy() {
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">7. お問い合わせ</h2>
                         <p>データの取り扱いに関するご質問・ご相談は、以下までお問い合わせください。</p>
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 mt-4">
-                            <p>正木 裕士</p>
+                            <h3 className="text-xl font-bold text-white mb-2">AiZumen</h3>
+                            <p>代表：正木 裕士</p>
                             <p>Email: <span className="text-white">fj081399@gmail.com</span></p>
                         </div>
                     </section>

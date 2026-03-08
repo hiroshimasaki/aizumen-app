@@ -111,7 +111,7 @@ export default function SignUpPage() {
             value: 'lite',
             label: 'Lite',
             desc: '少人数向け',
-            price: '¥10,000 / 月',
+            price: '¥10,000 / 月 (税込)',
             users: '2名まで',
             ai: '毎月100回'
         },
@@ -119,7 +119,7 @@ export default function SignUpPage() {
             value: 'plus',
             label: 'Plus',
             desc: '標準的なチーム向け',
-            price: '¥30,000 / 月',
+            price: '¥30,000 / 月 (税込)',
             users: '10名まで',
             ai: '毎月500回'
         },
@@ -127,7 +127,7 @@ export default function SignUpPage() {
             value: 'pro',
             label: 'Pro',
             desc: '大容量・多人数向け',
-            price: '¥50,000 / 月',
+            price: '¥50,000 / 月 (税込)',
             users: '20名まで',
             ai: '毎月1,000回'
         },

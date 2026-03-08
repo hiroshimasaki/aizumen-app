@@ -21,7 +21,7 @@ export default function CommercialTransaction() {
                             <tbody className="divide-y divide-white/5">
                                 <tr>
                                     <td className="p-5 font-bold text-white w-1/3 align-top">販売業者</td>
-                                    <td className="p-5">正木 裕士（正木鉄工株式会社 所属）</td>
+                                    <td className="p-5">AiZumen</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">代表者</td>
@@ -54,7 +54,13 @@ export default function CommercialTransaction() {
                                             <li>Lite プラン: 月額 ¥10,000（税込）</li>
                                             <li>Plus プラン: 月額 ¥30,000（税込）</li>
                                             <li>Pro プラン: 月額 ¥50,000（税込）</li>
-                                            <li>AIクレジット追加購入: 100クレジット ¥1,000（税込）</li>
+                                            <li>AIクレジット追加購入:
+                                                <ul className="list-circle pl-5 mt-1 space-y-0.5 text-xs text-slate-400">
+                                                    <li>200 クレジット: ¥2,000（税込）</li>
+                                                    <li>1,200 クレジット: ¥10,000（税込）</li>
+                                                    <li>2,500 クレジット: ¥20,000（税込）</li>
+                                                </ul>
+                                            </li>
                                         </ul>
                                     </td>
                                 </tr>

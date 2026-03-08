@@ -390,7 +390,7 @@ export default function Billing() {
                                 <h4 className="text-lg font-bold text-white mb-1">{p.name}</h4>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-2xl font-black text-white">¥{p.price}</span>
-                                    <span className="text-xs text-slate-500">/ 月 (税別)</span>
+                                    <span className="text-xs text-slate-500">/ 月 (税込)</span>
                                 </div>
                             </div>
                             <ul className="space-y-3 mb-6">
@@ -451,8 +451,8 @@ export default function Billing() {
                                                 <Zap size={40} className="text-amber-500" />
                                             </div>
                                             <span className="text-xs font-bold text-slate-500 mb-1 relative z-10">{pack.name}</span>
-                                            <span className="text-xl font-black text-white mb-2 relative z-10">¥{pack.price}</span>
-                                            <div className="text-[10px] font-bold px-4 py-1.5 bg-amber-500/10 text-amber-500 rounded-lg group-hover/pack:bg-amber-500 group-hover/pack:text-white transition-all relative z-10">
+                                            <span className="text-xl font-black text-white mb-2 relative z-10">¥{pack.price} (税込)</span>
+                                            <div className="text-[10px] font-bold px-4 py-1.5 bg-amber-500/10 text-amber-400 rounded-lg group-hover/pack:bg-amber-500 group-hover/pack:text-white transition-all relative z-10">
                                                 {processing === `credit-${pack.amount}` ? '通信中...' : (pm ? '今すぐチャージ' : '購入する')}
                                             </div>
                                         </button>

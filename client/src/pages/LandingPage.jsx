@@ -365,7 +365,7 @@ export default function LandingPage() {
                                 <p className="text-sm text-slate-400 mb-6 h-5">少人数向け</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-4xl font-black text-white">¥10,000</span>
-                                    <span className="text-sm text-slate-500">/ 月</span>
+                                    <span className="text-sm text-slate-500">/ 月 (税込)</span>
                                 </div>
                             </div>
                             <div className="w-full h-px bg-slate-700/50 mb-6"></div>
@@ -388,7 +388,7 @@ export default function LandingPage() {
                                 <p className="text-sm text-indigo-300 mb-6 h-5">標準的なチーム運用向け</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-5xl font-black text-white drop-shadow-md">¥30,000</span>
-                                    <span className="text-sm text-indigo-300 font-medium">/ 月</span>
+                                    <span className="text-sm text-indigo-300 font-medium">/ 月 (税込)</span>
                                 </div>
                             </div>
                             <div className="w-full h-px bg-indigo-500/30 mb-6"></div>
@@ -410,7 +410,7 @@ export default function LandingPage() {
                                 <p className="text-sm text-slate-400 mb-6 h-5">大容量・多人数による大規模運用へ</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-4xl font-black text-white">¥50,000</span>
-                                    <span className="text-sm text-slate-500">/ 月</span>
+                                    <span className="text-sm text-slate-500">/ 月 (税込)</span>
                                 </div>
                             </div>
                             <div className="w-full h-px bg-slate-700/50 mb-6"></div>
@@ -423,6 +423,38 @@ export default function LandingPage() {
                             </ul>
                             <Link to="/signup" className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-center transition-all border border-white/5">無料で試す</Link>
                         </div>
+                    </div>
+                </section>
+
+                {/* AI Credits Section for Public View */}
+                <section className="max-w-7xl mx-auto px-4 md:px-8 py-20 border-t border-white/5 relative">
+                    <div className="absolute top-1/2 left-0 w-64 h-64 bg-amber-500/5 blur-[100px] pointer-events-none"></div>
+                    <div className="text-center mb-12 relative z-10">
+                        <h2 className="text-2xl md:text-3xl font-black text-white mb-4 flex items-center justify-center gap-3">
+                            <Zap className="w-8 h-8 text-amber-400" />
+                            AIクレジットの追加購入
+                        </h2>
+                        <p className="text-slate-400 max-w-2xl mx-auto">
+                            月間の付与分を超えて解析を行いたい場合は、必要な分だけクレジットを追加購入できます。<br className="hidden md:block" />
+                            購入したクレジットに有効期限はありません。
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto relative z-10">
+                        {[
+                            { name: '200クレジット', price: '2,000' },
+                            { name: '1200クレジット', bonus: '(+200ボーナス)', price: '10,000' },
+                            { name: '2500クレジット', bonus: '(+500ボーナス)', price: '20,000' },
+                        ].map((pack, i) => (
+                            <div key={i} className="p-6 rounded-2xl bg-slate-900/50 border border-white/5 hover:border-amber-500/30 transition-all text-center group">
+                                <div className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">{pack.name} {pack.bonus && <span className="text-amber-500/80 text-[10px]">{pack.bonus}</span>}</div>
+                                <div className="text-3xl font-black text-white mb-0 flex items-baseline justify-center gap-1">
+                                    <span className="text-sm font-medium text-slate-400">¥</span>
+                                    {pack.price}
+                                    <span className="text-xs font-medium text-slate-500">(税込)</span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </section>
 
