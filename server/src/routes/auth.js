@@ -123,6 +123,7 @@ router.post('/login', async (req, res, next) => {
         });
 
         if (error) {
+            console.error('[Auth/Login] Supabase Error:', error.message);
             throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
         }
 
@@ -343,6 +344,7 @@ router.post('/logout', authMiddleware, async (req, res, next) => {
 /**
  * POST /api/auth/reset-password
  * パスワードリセット要求
+ * Supabase組み込みメール送信の代わりに generateLink + Resend API で送信
  */
 router.post('/reset-password', async (req, res, next) => {
     try {
@@ -351,12 +353,63 @@ router.post('/reset-password', async (req, res, next) => {
             throw new AppError('Email is required', 400, 'VALIDATION_ERROR');
         }
 
-        const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-            redirectTo: `${process.env.APP_URL}/update-password`,
+        const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+
+        // generateLink でリカバリーリンクを生成（メール送信は行わない）
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'recovery',
+            email: email,
+            options: {
+                redirectTo: `${appUrl}/update-password`,
+            }
         });
 
-        if (error) {
-            console.error('[Auth] Password reset error:', error.message);
+        if (linkError) {
+            // ユーザーが存在しない場合もここに来る可能性があるが、
+            // セキュリティ上、成功時と同じレスポンスを返す
+            console.log('[Auth] generateLink skipped (user may not exist):', linkError.message);
+        } else if (linkData?.properties?.action_link) {
+            // Resend API でメールを直接送信
+            const resendApiKey = process.env.RESEND_API_KEY;
+            const senderEmail = process.env.RESEND_FROM_EMAIL || 'info@aizumen.com';
+            const actionLink = linkData.properties.action_link;
+
+            if (!resendApiKey) {
+                console.error('[Auth] RESEND_API_KEY not set. Cannot send reset email.');
+            } else {
+                try {
+                    const response = await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${resendApiKey}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            from: `AiZumen 運営事務局 <${senderEmail}>`,
+                            to: [email],
+                            subject: '[AiZumen] パスワード再設定のご案内',
+                            html: `
+                                <h2>パスワードの再設定</h2>
+                                <p>以下のボタンをクリックして、新しいパスワードを設定してください。</p>
+                                <p>
+                                    <a href="${actionLink}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">パスワードを再設定する</a>
+                                </p>
+                                <p style="color: #666; font-size: 14px; margin-top: 20px;">このメールに心当たりがない場合は、無視していただいて構いません。</p>
+                                <p style="color: #999; font-size: 12px;">© AiZumen</p>
+                            `,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        console.error('[Auth] Resend API error:', response.status, errBody);
+                    } else {
+                        console.log('[Auth] Password reset email sent via Resend for:', email);
+                    }
+                } catch (sendErr) {
+                    console.error('[Auth] Failed to send email via Resend:', sendErr.message);
+                }
+            }
         }
 
         // セキュリティ：メールが存在するかどうかに関わらず同じレスポンス

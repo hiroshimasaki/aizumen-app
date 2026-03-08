@@ -6,7 +6,7 @@ import { Building2, User, Lock, Mail } from 'lucide-react';
 import api from '../../lib/api';
 
 export default function LoginPage() {
-    const { signIn, signInWithCode } = useAuth();
+    const { signIn, signInWithCode, signOut } = useAuth();
     const { showAlert } = useNotification();
     const navigate = useNavigate();
 

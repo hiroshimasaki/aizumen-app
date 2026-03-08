@@ -23,12 +23,17 @@ export function AuthProvider({ children }) {
     }, [user, isProfileLoaded]);
 
     useEffect(() => {
+        // パスワードリセット等の公開認証ページではfetchProfileをスキップ
+        // （セッション確立前にAPIを叩いて401 → SIGNED_OUT の連鎖を防ぐ）
+        const publicAuthPaths = ['/update-password', '/reset-password', '/login', '/signup', '/platform-login'];
+        const isPublicAuthPage = publicAuthPaths.includes(window.location.pathname);
+
         // 初期セッション確認
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
             setMfaLevel(session?.user?.app_metadata?.aal || 'aal1');
-            if (session?.user) {
+            if (session?.user && !isPublicAuthPage) {
                 fetchProfile();
             } else {
                 setLoading(false);
@@ -50,6 +55,9 @@ export function AuthProvider({ children }) {
                         }
                         return session.user;
                     });
+
+                    // 公開認証ページではfetchProfileをスキップ
+                    if (isPublicAuthPage) return;
 
                     // 最新の ref を参照して、既にプロフィールがある場合は不必要な fetch を避ける
                     if (!isProfileLoadedRef.current || event === 'SIGNED_IN' || event === 'TOKEN_REFRESH') {

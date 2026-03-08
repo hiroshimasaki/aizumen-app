@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, CheckCircle2, Loader2, KeyRound, AlertCircle } from 'lucide-react';
 import { useNotification } from '../../contexts/NotificationContext';
-import api from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 
 /**
  * 新パスワード設定画面
  * パスワードリセットメールのリダイレクト先として使用
+ * Supabaseクライアントで直接パスワード更新（サーバーAPI不要）
  */
 export default function UpdatePasswordPage() {
     const navigate = useNavigate();
@@ -18,15 +19,23 @@ export default function UpdatePasswordPage() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState(null);
+    const [sessionReady, setSessionReady] = useState(false);
 
-    // メールリンクから戻ってきた際のフラグメント（access_token）をチェック
+    // リカバリーリンクからのセッション確立を待つ
     useEffect(() => {
-        // Supabase Auth はリセットリンククリック時に URL の Hash に access_token を乗せる
-        // これによってセッションが確立されている状態になる必要がある
-        if (!window.location.hash.includes('access_token=') && !window.location.search.includes('type=recovery')) {
-            // トークンがない、かつリカバリータイプでない場合は不正アクセス
-            // ただし、既にセッションが確立されている場合はパスワード変更として使える
-        }
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('[UpdatePassword] Auth event:', event);
+            if (event === 'PASSWORD_RECOVERY' || (session && event === 'SIGNED_IN')) {
+                setSessionReady(true);
+            }
+        });
+
+        // 既にセッションがある場合
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) setSessionReady(true);
+        });
+
+        return () => subscription.unsubscribe();
     }, [location]);
 
     const handleSubmit = async (e) => {
@@ -45,7 +54,10 @@ export default function UpdatePasswordPage() {
 
         setLoading(true);
         try {
-            await api.put('/api/auth/update-password', { password });
+            // Supabaseクライアントで直接パスワード更新（リカバリーセッション使用）
+            const { error: updateError } = await supabase.auth.updateUser({ password });
+            if (updateError) throw updateError;
+
             setSuccess(true);
             
             // 3秒後にログイン画面へ
@@ -53,7 +65,7 @@ export default function UpdatePasswordPage() {
                 navigate('/login');
             }, 3000);
         } catch (err) {
-            const msg = err.response?.data?.error || 'パスワードの更新に失敗しました。リンクの有効期限が切れている可能性があります。';
+            const msg = err.message || 'パスワードの更新に失敗しました。リンクの有効期限が切れている可能性があります。';
             setError(msg);
             showAlert(msg, 'error');
         } finally {

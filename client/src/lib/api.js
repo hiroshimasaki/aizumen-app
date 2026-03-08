@@ -34,9 +34,13 @@ api.interceptors.response.use(
                                  error.config?.url?.includes('/api/auth/login-with-code') ||
                                  error.config?.url?.includes('/api/auth/signup');
             const isLoginPage = window.location.pathname === '/login' || 
-                               window.location.pathname === '/platform-login';
-
-            if (isAuthRequest || isLoginPage) {
+                               window.location.pathname === '/platform-login' ||
+                               window.location.pathname === '/signup';
+            
+            const publicUIPaths = ['/', '/agreement', '/site-policy', '/commerce', '/protection', '/update-password', '/reset-password'];
+            const isPublicPage = isLoginPage || publicUIPaths.includes(window.location.pathname);
+            
+            if (isAuthRequest || isPublicPage) {
                 // ログイン画面での認証失敗時は自動リダイレクト（リロード）を避ける
                 // これにより React の状態（表示中のアラート等）が維持される
                 return Promise.reject(error);

@@ -57,7 +57,7 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        email_confirm: true, // メール確認をスキップ（開発用、本番では要検討）
+        email_confirm: false, // 本番環境ではメール確認を必須とする
         app_metadata: {
             tenant_id: tenant.id,
             role: 'system_admin',
@@ -71,6 +71,58 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
             throw new AppError('Email already registered', 409, 'DUPLICATE_EMAIL');
         }
         throw new AppError('Failed to create user account', 500, 'AUTH_CREATION_FAILED');
+    }
+
+    // 独自送信：confirmation_link を生成して Resend API で送信
+    // Supabase 組み込みのメール送信が 500 エラーになるため、generateLink を使用
+    const appUrl = (process.env.APP_URL || 'https://aizumen.com').replace(/\/$/, '');
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'signup',
+        email,
+        options: {
+            redirectTo: `${appUrl}/login?signup=success`,
+        }
+    });
+
+    if (linkError) {
+        console.error('[Signup] generateLink error:', linkError.message);
+    } else if (linkData?.properties?.action_link) {
+        const resendApiKey = process.env.RESEND_API_KEY;
+        const senderEmail = process.env.RESEND_FROM_EMAIL || 'info@aizumen.com';
+        const actionLink = linkData.properties.action_link;
+
+        if (resendApiKey) {
+            try {
+                await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${resendApiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: `AiZumen 運営事務局 <${senderEmail}>`,
+                        to: [email],
+                        subject: '[AiZumen] ご登録ありがとうございます - メールアドレスの確認',
+                        html: `
+                            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                                <h2 style="color: #1e293b; margin-bottom: 24px;">AiZumen へようこそ！</h2>
+                                <p style="color: #475569; line-height: 1.6;">会員登録ありがとうございます。以下のボタンをクリックしてメールアドレスを確定させてください。</p>
+                                <div style="margin: 32px 0;">
+                                    <a href="${actionLink}" style="background-color: #4F46E5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">メールアドレスを確定する</a>
+                                </div>
+                                <p style="color: #64748b; font-size: 14px; margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                                    このメールに心当たりがない場合は、お手数ですが破棄してください。<br>
+                                    © AiZumen
+                                </p>
+                            </div>
+                        `,
+                    }),
+                });
+                console.log('[Signup] Confirmation email sent via Resend for:', email);
+            } catch (sendErr) {
+                console.error('[Signup] Failed to send email via Resend:', sendErr.message);
+            }
+        }
     }
 
     // usersテーブルにプロフィール情報を保存
