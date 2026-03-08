@@ -238,7 +238,7 @@ export default function PlatformLoginPage() {
                 </div>
 
                 <p className="text-center mt-8 text-xs text-slate-600 font-medium uppercase tracking-widest">
-                    &copy; {new Date().getFullYear()} AiZumen Security Infrastructure
+                    &copy; {new Date().getFullYear()} AiZumen
                 </p>
             </div>
         </div>
