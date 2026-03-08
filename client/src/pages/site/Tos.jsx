@@ -67,7 +67,7 @@ export default function TermsOfService() {
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第6条（コンテンツの取扱い）</h2>
                         <ol className="list-decimal pl-5 space-y-2">
                             <li>ユーザーがアップロードしたコンテンツの著作権等の知的財産権は、ユーザーに帰属します。</li>
-                            <li>当社は、サービス提供に必要な範囲でコンテンツにアクセスすることがあります（AI解析処理を含む）。</li>
+                            <li>当方は、サービス提供に必要な範囲でコンテンツにアクセスすることがあります（AI解析処理を含む）。</li>
                             <li>ユーザーのコンテンツをAIの学習データとして使用することはありません。</li>
                         </ol>
                     </section>
@@ -75,7 +75,7 @@ export default function TermsOfService() {
                     <section>
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第7条（サービスの変更・停止）</h2>
                         <ol className="list-decimal pl-5 space-y-2">
-                            <li>当社は、ユーザーへの事前通知なく、本サービスの内容を変更、追加、または廃止する場合があります。</li>
+                            <li>当方は、ユーザーへの事前通知なく,本サービスの内容を変更、追加、または廃止する場合があります。</li>
                             <li>システムメンテナンスや不可抗力により、サービスを一時的に停止する場合があります。</li>
                         </ol>
                     </section>
@@ -83,9 +83,9 @@ export default function TermsOfService() {
                     <section>
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第8条（免責事項）</h2>
                         <ol className="list-decimal pl-5 space-y-2">
-                            <li>当社は、本サービスの正確性、完全性、有用性を保証するものではありません。</li>
+                            <li>当方は、本サービスの正確性、完全性、有用性を保証するものではありません。</li>
                             <li>AI解析結果はあくまで参考値であり、最終的な判断はユーザーの責任において行ってください。</li>
-                            <li>本サービスの利用により生じた損害について、当社の故意または重大な過失によるものを除き、責任を負いません。</li>
+                            <li>本サービスの利用により生じた損害について、当方の故意または重大な過失によるものを除き、責任を負いません。</li>
                         </ol>
                     </section>
 
@@ -93,7 +93,7 @@ export default function TermsOfService() {
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第9条（契約の解除）</h2>
                         <ol className="list-decimal pl-5 space-y-2">
                             <li>ユーザーは、いつでも本サービスの利用を停止し、アカウントを削除することができます。</li>
-                            <li>当社は、ユーザーが本規約に違反した場合、事前の通知なくアカウントを停止または削除できるものとします。</li>
+                            <li>当方は、ユーザーが本規約に違反した場合、事前の通知なくアカウントを停止または削除できるものとします。</li>
                         </ol>
                     </section>
 
@@ -101,7 +101,7 @@ export default function TermsOfService() {
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第10条（準拠法・管轄裁判所）</h2>
                         <ol className="list-decimal pl-5 space-y-2">
                             <li>本規約の解釈については、日本法を準拠法とします。</li>
-                            <li>本サービスに関する紛争については、当社の本店所在地を管轄する裁判所を第一審の専属的合意管轄裁判所とします。</li>
+                            <li>本サービスに関する紛備については、当方の所在地を管轄する裁判所を第一審の専属的合意管轄裁判所とします。</li>
                         </ol>
                     </section>
 

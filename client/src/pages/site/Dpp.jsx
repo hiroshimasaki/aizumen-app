@@ -17,7 +17,7 @@ export default function DataProtectionPolicy() {
 
                 <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 mb-12">
                     <p className="text-sm text-indigo-200 leading-relaxed">
-                        AiZumenは、製造業のお客様が扱う図面・注文書等の機密性の高いデータを取り扱います。当社は、お預かりするすべてのデータを厳格に管理し、お客様のビジネスの安全を最優先に考えています。
+                        AiZumenは、製造業のお客様が扱う図面・注文書等の機密性の高いデータを取り扱います。当方は、お預かりするすべてのデータを厳格に管理し、お客様のビジネスの安全を最優先に考えています。
                     </p>
                 </div>
 
@@ -25,7 +25,7 @@ export default function DataProtectionPolicy() {
 
                     <section>
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">1. 基本方針</h2>
-                        <p>当社は、お客様からお預かりした一切のデータ（注文書、図面、取引先情報、金額情報等）を、厳重な秘密情報として取り扱います。当社の従業員および業務委託先に対しても、秘密保持義務を課しています。</p>
+                        <p>当方は、お客様からお預かりした一切のデータ（注文書、図面、取引先情報、金額情報等）を、厳重な秘密情報として取り扱います。当方の従業員および業務委託先に対しても、秘密保持義務を課しています。</p>
                     </section>
 
                     <section>
@@ -94,8 +94,8 @@ export default function DataProtectionPolicy() {
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">7. お問い合わせ</h2>
                         <p>データの取り扱いに関するご質問・ご相談は、以下までお問い合わせください。</p>
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 mt-4">
-                            <p>正木鉄工株式会社</p>
-                            <p>Email: <span className="text-amber-400">【要確認：メールアドレスを記入】</span></p>
+                            <p>正木 裕士</p>
+                            <p>Email: <span className="text-amber-400">fj081399@gmail.com</span></p>
                         </div>
                     </section>
 
