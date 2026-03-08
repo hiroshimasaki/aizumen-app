@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotification } from '../../contexts/NotificationContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Check, AlertCircle, Building2, User, Mail, Lock, Zap, CheckCircle2, Sparkles } from 'lucide-react';
 import api from '../../lib/api';
 
 export default function SignUpPage() {
     const { signUp } = useAuth();
+    const { showAlert } = useNotification();
     const navigate = useNavigate();
 
     // メンテナンスチェック
@@ -91,7 +93,13 @@ export default function SignUpPage() {
             if (result.checkoutUrl) {
                 window.location.href = result.checkoutUrl;
             } else {
-                navigate('/quotations');
+                // メール確認が必要な場合（セッションが返ってこない場合）は通知を表示
+                if (!result.session) {
+                    await showAlert('アカウントを作成しました。確認メールを送信しましたので、内容を確認してアカウントを有効化してください。', 'success');
+                    navigate('/login');
+                } else {
+                    navigate('/quotations');
+                }
             }
         } catch (err) {
             console.error(err);
