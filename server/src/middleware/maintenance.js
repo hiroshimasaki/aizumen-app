@@ -4,17 +4,31 @@ const { supabaseAdmin } = require('../config/supabase');
  * メンテナンスモードを確認するミドルウェア
  */
 const maintenanceMiddleware = async (req, res, next) => {
-    // 公開パスやプラットフォーム管理用パスはスキップ（再帰ループ防止・SUログイン確保）
-    const skipPaths = [
-        '/api/auth',
+    // 公開パス（認証不要・状態確認用）
+    const publicPaths = [
+        '/api/sys/status',
         '/api/health',
-        '/api/super-admin', // 管理者操作は常に許可（トグルOFFできなくなるのを防ぐ）
-        '/api/webhook' // Stripe等の外部連携
+        '/api/webhook',
+        '/api/auth/report-error',
+        '/api/auth/login' // SUがログインしてメンテナンス解除できるようにするため
     ];
 
-    if (skipPaths.some(path => req.path.startsWith(path))) {
+    // 管理者操作パス（メンテナンス中も許可）
+    const superAdminPaths = [
+        '/api/super-admin'
+    ];
+
+    // 公開パスは常に許可
+    if (publicPaths.some(path => req.path.startsWith(path))) {
         return next();
     }
+
+    // 管理者パスも常に許可（内部で権限チェックがあるため）
+    if (superAdminPaths.some(path => req.path.startsWith(path))) {
+        return next();
+    }
+
+    // 注意: /api/auth はここに含まれないため、一般ユーザーの /api/auth/me などはメンテナンス時に 503 になる
 
     try {
         // 設定をキャッシュせず、都度最新の状態を確認（運用上の即時性重視）

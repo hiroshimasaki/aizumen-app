@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { LogOut, Database, BarChart3, Settings, Zap, Menu, X, CalendarDays, TrendingUp, AlertTriangle, UserCog, MessageSquare } from 'lucide-react';
 import api from './lib/api';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 // Auth pages
 import LoginPage from './components/auth/LoginPage';
@@ -364,28 +365,6 @@ function AppLayout() {
     );
 }
 
-import { NotificationProvider } from './contexts/NotificationContext';
-
-function LandingRoute() {
-    const { user, loading, userRole } = useAuth();
-    if (loading) return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-            <div className="w-8 h-8 rounded-full border-4 border-slate-700 border-t-blue-500 animate-spin"></div>
-        </div>
-    );
-    if (user) {
-        if (userRole === 'super_admin') {
-            // MFAが完了していない場合はフォーラムへ、完了していればサービス管理へ
-            const { mfaLevel } = useAuth();
-            return mfaLevel === 'aal2' 
-                ? <Navigate to="/super-admin" replace /> 
-                : <Navigate to="/forum" replace />;
-        }
-        return <Navigate to="/quotations" replace />;
-    }
-    return <LandingPage />;
-}
-
 /**
  * ページ遷移時に自動的に最上部へスクロールするコンポーネント
  */
@@ -409,7 +388,24 @@ function MaintenanceRoute() {
     return <MaintenancePage message={message} />;
 }
 
-import { useSearchParams } from 'react-router-dom';
+function LandingRoute() {
+    const { user, loading, userRole, mfaLevel } = useAuth();
+    if (loading) return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full border-4 border-slate-700 border-t-blue-500 animate-spin"></div>
+        </div>
+    );
+    if (user) {
+        if (userRole === 'super_admin') {
+            // MFAが完了していない場合はフォーラムへ、完了していればサービス管理へ
+            return mfaLevel === 'aal2' 
+                ? <Navigate to="/super-admin" replace /> 
+                : <Navigate to="/forum" replace />;
+        }
+        return <Navigate to="/quotations" replace />;
+    }
+    return <LandingPage />;
+}
 
 export default function App() {
     useEffect(() => {
