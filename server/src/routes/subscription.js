@@ -103,7 +103,7 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
             .from('subscriptions')
             .select('stripe_subscription_id, stripe_customer_id')
             .eq('tenant_id', req.tenantId)
-            .single();
+            .maybeSingle();
 
         const results = {
             paymentMethod: null,
@@ -115,7 +115,7 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
         const stripePromises = [];
 
         // 1. サブスクリプション詳細（キャンセル予約等）の確認
-        if (sub.stripe_subscription_id) {
+        if (sub && sub.stripe_subscription_id) {
             stripePromises.push(
                 stripe.subscriptions.retrieve(sub.stripe_subscription_id)
                     .then(async (stripeSub) => {
@@ -169,7 +169,7 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
         }
 
         // 2. 支払い方法（カード情報）の取得
-        if (sub.stripe_customer_id) {
+        if (sub && sub.stripe_customer_id) {
             stripePromises.push(
                 stripe.customers.retrieve(sub.stripe_customer_id, {
                     expand: ['invoice_settings.default_payment_method']
