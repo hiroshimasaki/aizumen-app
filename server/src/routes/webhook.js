@@ -72,8 +72,13 @@ const { grantCredits, updateCreditsOnPlanChange } = require('../services/creditS
  * チェックアウト完了時の処理
  */
 async function handleCheckoutCompleted(session) {
+    console.log(`[Webhook/Checkout] Processing session: ${session.id}, Metadata:`, session.metadata);
     const { type, tenant_id, plan, credits } = session.metadata || {};
-    if (!tenant_id) return;
+    
+    if (!tenant_id) {
+        console.error(`[Webhook/Checkout] Missing tenant_id in session metadata for: ${session.id}`);
+        return;
+    }
 
     if (type === 'subscription') {
         const { getPlanConfig } = require('../config/stripe');
