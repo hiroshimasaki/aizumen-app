@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.local
 .env.production
+docs/secret_key.md
 
 # Build
 client/dist/
