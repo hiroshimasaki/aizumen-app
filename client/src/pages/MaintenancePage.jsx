@@ -1,11 +1,13 @@
 import { Zap, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * メンテナンス中ページ
  */
 export default function MaintenancePage({ message }) {
     const navigate = useNavigate();
+    const { user, signOut } = useAuth();
 
     return (
         <div className="min-h-screen bg-[#000000] flex items-center justify-center p-6 font-sans">
@@ -40,18 +42,30 @@ export default function MaintenancePage({ message }) {
                 {/* Footer / Actions */}
                 <div className="pt-8 flex flex-col items-center gap-4">
                     <button 
-                        onClick={() => window.location.reload()}
+                        onClick={() => window.location.href = '/'}
                         className="px-8 py-3 bg-white text-black font-bold rounded-full text-sm hover:bg-slate-200 transition-all active:scale-95 shadow-xl shadow-white/5"
                     >
-                        再読み込み
+                        再読み込みして状況を確認
                     </button>
                     
-                    <button 
-                        onClick={() => navigate('/')}
-                        className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-bold"
-                    >
-                        <ArrowLeft size={14} /> トップページへ
-                    </button>
+                    {user ? (
+                        <button 
+                            onClick={async () => {
+                                await signOut();
+                                window.location.href = '/';
+                            }}
+                            className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-bold"
+                        >
+                            <ArrowLeft size={14} /> ログアウトしてトップページ（LP）へ戻る
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={() => window.location.href = '/'}
+                            className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-bold"
+                        >
+                            <ArrowLeft size={14} /> トップページへ戻る
+                        </button>
+                    )}
                 </div>
 
                 {/* App Branding */}
