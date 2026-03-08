@@ -13,12 +13,8 @@ export default function LoginPage() {
     // メンテナンスチェック
     useEffect(() => {
         api.get('/api/sys/status').then(res => {
-            if (res.data?.maintenance?.enabled) {
-                const params = new URLSearchParams();
-                if (res.data.maintenance.message) {
-                    params.set('m', res.data.maintenance.message);
-                }
-                window.location.href = `/maintenance?${params.toString()}`;
+            if (res.data?.maintenance) {
+                window.location.href = '/maintenance';
             }
         }).catch(err => console.error('Failed to check sys status', err));
     }, []);

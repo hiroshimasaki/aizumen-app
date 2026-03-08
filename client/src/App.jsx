@@ -380,12 +380,9 @@ function ScrollToTop() {
 
 /**
  * メンテナンスページ用ルート
- * URLクエリからメッセージを取得して表示する
  */
 function MaintenanceRoute() {
-    const [searchParams] = useSearchParams();
-    const message = searchParams.get('m');
-    return <MaintenancePage message={message} />;
+    return <MaintenancePage />;
 }
 
 function LandingRoute() {
@@ -425,11 +422,7 @@ export default function App() {
             if (error.response?.status === 503 && error.response?.data?.maintenance) {
                 // すでにメンテナンス画面にいる場合はスキップ
                 if (window.location.pathname !== '/maintenance') {
-                    const params = new URLSearchParams();
-                    if (error.response.data.message) {
-                        params.set('m', error.response.data.message);
-                    }
-                    window.location.href = `/maintenance?${params.toString()}`;
+                    window.location.href = '/maintenance';
                 }
                 return;
             }

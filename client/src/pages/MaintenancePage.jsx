@@ -1,13 +1,45 @@
+import { useState, useEffect } from 'react';
 import { Zap, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../lib/api';
 
 /**
  * メンテナンス中ページ
  */
-export default function MaintenancePage({ message }) {
+export default function MaintenancePage() {
     const navigate = useNavigate();
     const { user, signOut } = useAuth();
+    const [statusMessage, setStatusMessage] = useState("");
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+            try {
+                const { data } = await api.get('/api/sys/status');
+                if (data.maintenance) {
+                    setStatusMessage(data.message);
+                } else {
+                    // メンテナンスが終了していればトップへ
+                    window.location.href = '/';
+                }
+            } catch (err) {
+                console.error('Failed to fetch system status:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStatus();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#000000] flex items-center justify-center p-6 font-sans">
+                <div className="w-8 h-8 rounded-full border-4 border-slate-700 border-t-blue-500 animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#000000] flex items-center justify-center p-6 font-sans">
@@ -31,7 +63,7 @@ export default function MaintenancePage({ message }) {
                     </h1>
                     <div className="space-y-4">
                         <p className="text-slate-400 text-sm leading-relaxed px-4">
-                            {message || "現在システムメンテナンス中です。より良いサービス提供のため、アップデートを行っております。"}
+                            {statusMessage || "現在システムメンテナンス中です。より良いサービス提供のため、アップデートを行っております。"}
                         </p>
                         <div className="py-3 px-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] text-slate-500 font-medium inline-block mx-auto uppercase tracking-widest">
                             Estimated recovery: SOON

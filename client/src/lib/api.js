@@ -22,11 +22,7 @@ api.interceptors.response.use(
         // メンテナンスモード (503 Service Unavailable)
         if (error.response?.status === 503 && error.response?.data?.maintenance) {
             if (window.location.pathname !== '/maintenance') {
-                const params = new URLSearchParams();
-                if (error.response.data.message) {
-                    params.set('m', error.response.data.message);
-                }
-                window.location.href = `/maintenance?${params.toString()}`;
+                window.location.href = '/maintenance';
             }
             // メンテナンス画面遷移時はエラーを握り潰すか、rejectを返す
             return Promise.reject(error);
