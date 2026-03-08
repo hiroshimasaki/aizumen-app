@@ -21,19 +21,19 @@ export default function CommercialTransaction() {
                             <tbody className="divide-y divide-white/5">
                                 <tr>
                                     <td className="p-5 font-bold text-white w-1/3 align-top">販売業者</td>
-                                    <td className="p-5">正木　裕士　個人（正木鉄工株式会社）</td>
+                                    <td className="p-5">正木 裕士（正木鉄工株式会社 所属）</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">代表者</td>
-                                    <td className="p-5">正木　裕士</td>
+                                    <td className="p-5">正木 裕士</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">所在地</td>
-                                    <td className="p-5">要請があれば速やかに開示</td>
+                                    <td className="p-5">広島県福山市草戸町３－７－２３</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">電話番号</td>
-                                    <td className="p-5">要請があれば速やかに開示</td>
+                                    <td className="p-5">090-7770-0951</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">メールアドレス</td>
