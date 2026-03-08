@@ -78,16 +78,21 @@ export default function SignUpPage() {
 
         setLoading(true);
         try {
-            await signUp({
+            const result = await signUp({
                 email: form.email,
                 password: form.password,
                 userName: form.userName,
                 companyName: form.companyName,
                 companyCode: form.companyCode,
-                // SignUpService forces free plan logically, but we pass it anyway
                 plan: form.plan,
             });
-            navigate('/quotations');
+
+            // 有料プランの場合は決済画面へリダイレクト
+            if (result.checkoutUrl) {
+                window.location.href = result.checkoutUrl;
+            } else {
+                navigate('/quotations');
+            }
         } catch (err) {
             console.error(err);
             setGlobalError(err.response?.data?.error || err.message || 'アカウント作成に失敗しました。時間をおいて再試行してください。');

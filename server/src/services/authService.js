@@ -32,7 +32,7 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
         .insert({
             name: companyName,
             slug: slug,
-            plan: plan,
+            plan: 'free', // 決済完了までは常にfreeから開始
             trial_ends_at: trialEndsAt,
         })
         .select()

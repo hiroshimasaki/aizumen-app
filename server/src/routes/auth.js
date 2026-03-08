@@ -35,11 +35,42 @@ router.post('/signup', async (req, res, next) => {
             password,
         });
 
+        // 有料プランの場合はStripeセッションを作成
+        let checkoutUrl = null;
+        if (plan && plan !== 'free') {
+            const { stripe, PLAN_CONFIG } = require('../config/stripe');
+            const planConfig = PLAN_CONFIG[plan];
+            
+            if (planConfig && planConfig.priceId) {
+                const session = await stripe.checkout.sessions.create({
+                    mode: 'subscription',
+                    payment_method_types: ['card'],
+                    line_items: [{ price: planConfig.priceId, quantity: 1 }],
+                    success_url: `${process.env.APP_URL}/admin?tab=billing&success=true`,
+                    cancel_url: `${process.env.APP_URL}/admin?tab=billing&canceled=true`,
+                    metadata: {
+                        type: 'subscription',
+                        tenant_id: result.tenant.id,
+                        plan: plan,
+                    },
+                    subscription_data: {
+                        metadata: {
+                            tenant_id: result.tenant.id,
+                            plan: plan,
+                        }
+                    },
+                    customer_email: email,
+                });
+                checkoutUrl = session.url;
+            }
+        }
+
         res.status(201).json({
             message: 'Account created successfully',
             tenant: result.tenant,
             user: result.user,
             session: signInError ? null : signInData.session,
+            checkoutUrl, // 決済画面のURLを返す
         });
     } catch (err) {
         next(err);
