@@ -105,10 +105,10 @@ export default function SuperAdminPage() {
         }
     };
 
-    const handleMaintenanceToggle = () => {
+    const handleOpenMaintenanceModal = (shouldToggle = false) => {
         setMaintenanceForm({
-            enabled: !maintenanceSettings.enabled,
-            message: maintenanceSettings.message || ( !maintenanceSettings.enabled ? '現在システムメンテナンス中です。終了までしばらくお待ちください。' : '' )
+            enabled: shouldToggle ? !maintenanceSettings.enabled : !!maintenanceSettings.enabled,
+            message: maintenanceSettings.message || (shouldToggle && !maintenanceSettings.enabled ? '現在システムメンテナンス中です。終了までしばらくお待ちください。' : '')
         });
         setIsMaintenanceModalOpen(true);
     };
@@ -411,7 +411,7 @@ export default function SuperAdminPage() {
                                             <div className={cn(
                                                 "w-10 h-6 p-1 rounded-full transition-colors cursor-pointer",
                                                 maintenanceSettings.enabled ? "bg-red-500" : "bg-slate-700"
-                                            )} onClick={handleMaintenanceToggle}>
+                                            )} onClick={() => handleOpenMaintenanceModal(true)}>
                                                 <div className={cn(
                                                     "w-4 h-4 bg-white rounded-full transition-transform shadow-sm",
                                                     maintenanceSettings.enabled ? "translate-x-4" : "translate-x-0"
@@ -422,7 +422,7 @@ export default function SuperAdminPage() {
                                             </span>
                                         </div>
                                         <button 
-                                            onClick={handleMaintenanceToggle}
+                                            onClick={() => handleOpenMaintenanceModal(false)}
                                             className="text-[10px] text-slate-500 hover:text-white uppercase font-bold tracking-tighter transition-colors"
                                         >
                                             Configure

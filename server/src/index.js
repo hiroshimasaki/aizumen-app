@@ -82,9 +82,13 @@ app.get('/api/sys/status', async (req, res) => {
       .select('value')
       .eq('key', 'maintenance_mode')
       .maybeSingle();
-    res.json({ maintenance: data?.value || { enabled: false, message: '' } });
+    const settings = data?.value || { enabled: false, message: '' };
+    res.json({ 
+      maintenance: !!settings.enabled, 
+      message: settings.message || '' 
+    });
   } catch (err) {
-    res.json({ maintenance: { enabled: false, message: '' } });
+    res.json({ maintenance: false, message: '' });
   }
 });
 
