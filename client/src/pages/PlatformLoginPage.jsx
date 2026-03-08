@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase';
  */
 export default function PlatformLoginPage() {
     const navigate = useNavigate();
-    const { signIn } = useAuth();
+    const { signIn, fetchProfile } = useAuth();
     const { showAlert } = useNotification();
 
     const [step, setStep] = useState('login'); // 'login' | 'mfa'
@@ -33,8 +33,8 @@ export default function PlatformLoginPage() {
             // signIn() は API レスポンスの data をそのまま返す（{ user, session } 形式）
             const signInData = await signIn(email, password);
 
-            // サーバーから返されたユーザー情報でロールを確認
-            const userRole = signInData?.user?.role;
+            // Supabaseでは role は通常 authenticated になるため、app_metadata の role を優先
+            const userRole = signInData?.user?.app_metadata?.role || signInData?.user?.role;
             console.log('[PlatformLogin] signIn response:', { userRole, userId: signInData?.user?.id });
 
             if (userRole !== 'super_admin') {
@@ -79,7 +79,9 @@ export default function PlatformLoginPage() {
 
         try {
             const { data: factors } = await supabase.auth.mfa.listFactors();
-            const factorId = factors.all[0].id; // 最初の検証済み要素を使用
+            const factorId = factors?.all[0]?.id; // 最初の検証済み要素を使用
+            
+            if (!factorId) throw new Error('MFA要素が見つかりません');
 
             const { error } = await supabase.auth.mfa.challengeAndVerify({
                 factorId,
@@ -89,11 +91,11 @@ export default function PlatformLoginPage() {
             if (error) throw error;
 
             // 認証成功 -> プロフィールを最新化してから管理画面へ
-            const { fetchProfile } = useAuth(); // Hookのトップレベルで取得済みのはず
             await fetchProfile();
             success = true;
             navigate('/super-admin');
         } catch (err) {
+            console.error('[PlatformLogin] MFA Verify Error:', err);
             const msg = '認証コードが正しくありません';
             setError(msg);
             await showAlert(msg, 'error');
