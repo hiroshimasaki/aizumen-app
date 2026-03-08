@@ -109,7 +109,7 @@ export default function PrivacyPolicy() {
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">9. お問い合わせ窓口</h2>
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5">
                             <p>正木 裕士</p>
-                            <p>Email: <span className="text-amber-400">fj081399@gmail.com</span></p>
+                            <p>Email: <span className="text-white">fj081399@gmail.com</span></p>
                         </div>
                     </section>
 

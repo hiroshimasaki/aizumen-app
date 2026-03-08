@@ -95,7 +95,7 @@ export default function DataProtectionPolicy() {
                         <p>データの取り扱いに関するご質問・ご相談は、以下までお問い合わせください。</p>
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 mt-4">
                             <p>正木 裕士</p>
-                            <p>Email: <span className="text-amber-400">fj081399@gmail.com</span></p>
+                            <p>Email: <span className="text-white">fj081399@gmail.com</span></p>
                         </div>
                     </section>
 

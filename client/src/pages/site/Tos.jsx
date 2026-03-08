@@ -101,7 +101,7 @@ export default function TermsOfService() {
                         <h2 className="text-lg font-bold text-white border-b border-white/10 pb-2 mb-4">第10条（準拠法・管轄裁判所）</h2>
                         <ol className="list-decimal pl-5 space-y-2">
                             <li>本規約の解釈については、日本法を準拠法とします。</li>
-                            <li>本サービスに関する紛備については、当方の所在地を管轄する裁判所を第一審の専属的合意管轄裁判所とします。</li>
+                            <li>本サービスに関する紛争については、当方の所在地を管轄する裁判所を第一審の専属的合意管轄裁判所とします。</li>
                         </ol>
                     </section>
 
