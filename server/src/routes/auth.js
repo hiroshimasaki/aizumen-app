@@ -52,7 +52,7 @@ router.post('/signup', async (req, res, next) => {
                         mode: 'subscription',
                         payment_method_types: ['card'],
                         line_items: [{ price: planConfig.priceId, quantity: 1 }],
-                        success_url: `${baseUrl}/admin?tab=billing&success=true`,
+                        success_url: `${baseUrl}/admin?tab=billing&success=true&session_id={CHECKOUT_SESSION_ID}`,
                         cancel_url: `${baseUrl}/admin?tab=billing&canceled=true`,
                         metadata: {
                             type: 'subscription',
