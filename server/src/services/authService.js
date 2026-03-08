@@ -149,10 +149,15 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
         throw new AppError('Failed to create user profile', 500, 'PROFILE_CREATION_FAILED');
     }
 
-    // テナント設定を初期化
-    await supabaseAdmin.from('tenant_settings').insert({
-        tenant_id: tenant.id,
-    });
+    // テナント設定を初期化（失敗してもメインの処理は続行）
+    try {
+        await supabaseAdmin.from('tenant_settings').insert({
+            tenant_id: tenant.id,
+        });
+        console.log('[Auth Service] tenant_settings initialized for:', tenant.id);
+    } catch (err) {
+        console.error('[Auth Service] Failed to initialize tenant_settings:', err.message);
+    }
 
     // AIクレジットを初期化（サインアップボーナス込み。初期プランの月間枠を使用）
     const SIGNUP_BONUS = 10;
