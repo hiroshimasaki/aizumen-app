@@ -240,9 +240,9 @@ export default function Billing() {
                                     <div className="w-48 h-3 bg-amber-500/10 rounded animate-pulse" />
                                 ) : null}
                             </div>
-                            <p className="text-xs text-slate-400 whitespace-nowrap mt-1">
+                            <p className="text-xs text-slate-400 mt-1">
                                  {subscription?.subscription?.status === 'active' || subscription?.subscription?.status === 'trialing' ? 'サブスクリプション有効' : 
-                                  (tenant?.plan && tenant.plan !== 'free') ? 'サブスクリプション確認中 / 有効' : '無料トライアル / 制限中'}
+                                  (tenant?.plan && tenant.plan !== 'free') ? '有効 (決済確認中)' : '無料トライアル / 制限中'}
                             </p>
                         </div>
                     </div>
