@@ -22,14 +22,14 @@ const maintenanceMiddleware = async (req, res, next) => {
             .from('system_settings')
             .select('value')
             .eq('key', 'maintenance_mode')
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('[MaintenanceMiddleware] Error fetching settings:', error.message);
-            return next(); // DBエラー時はサービス継続を優先（または安全側に倒すか検討）
+            return next(); // DBエラー時はサービス継続を優先
         }
 
-        const settings = data?.value || {};
+        const settings = data?.value || { enabled: false, message: '' };
 
         if (settings.enabled) {
             // トークンから platform_admin 権限を確認（ログイン済みの場合のみ）
