@@ -65,6 +65,11 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
     });
 
     if (authError) {
+        console.error('[Auth Service] User creation failed in Supabase Auth:', {
+            message: authError.message,
+            status: authError.status,
+            code: authError.code
+        });
         // ロールバック：テナントを削除
         await supabaseAdmin.from('tenants').delete().eq('id', tenant.id);
         if (authError.message?.includes('already been registered')) {

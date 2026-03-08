@@ -32,6 +32,9 @@ const maintenanceMiddleware = require('./middleware/maintenance');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// --- Proxy Trust (Railway/Load Balancers) ---
+app.set('trust proxy', 1);
+
 // --- Rate Limiting ---
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分
