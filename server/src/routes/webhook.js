@@ -93,7 +93,7 @@ async function handleCheckoutCompleted(session) {
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
 
         // DBにサブスクリプション情報を保存
-        await supabaseAdmin
+        const { error: subError } = await supabaseAdmin
             .from('subscriptions')
             .upsert({
                 tenant_id,
@@ -106,6 +106,11 @@ async function handleCheckoutCompleted(session) {
                 current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             }, { onConflict: 'tenant_id' });
+
+        if (subError) {
+            console.error(`[Webhook/DB] Error upserting subscription for tenant ${tenant_id}:`, subError);
+            throw subError; // catchブロックで拾わせる
+        }
 
         // テナントのプランを更新し、無料トライアルを終了(null)にする
         await supabaseAdmin
