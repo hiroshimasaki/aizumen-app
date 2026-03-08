@@ -33,14 +33,37 @@ const maintenanceMiddleware = async (req, res, next) => {
 
         if (settings.enabled) {
             // トークンから platform_admin 権限を確認（ログイン済みの場合のみ）
-            // authMiddleware の前で実行される可能性があるため、自前で最小限のチェックを行うか、
-            // authMiddleware の後に配置する構成にする。
-            // ここでは「権限があればスキップ」のロジックを入れる。
+            let isSuperAdmin = false;
+            const authHeader = req.headers.authorization;
             
-            // 注意: このミドルウェアは認証系ミドルウェアの後、または
-            // トークンをデコードできる状態で動かす必要がある。
-            const userRole = req.user?.role;
-            if (userRole === 'platform_admin' || userRole === 'super_admin') {
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                try {
+                    const token = authHeader.replace('Bearer ', '');
+                    const payloadBase64 = token.split('.')[1];
+                    if (payloadBase64) {
+                        const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+                        const userId = payload.sub;
+                        const role = payload.app_metadata?.role;
+                        
+                        // JWTのクレームにroleがあればそれを優先
+                        if (role === 'super_admin' || role === 'platform_admin') {
+                            isSuperAdmin = true;
+                        } else if (userId) {
+                            // なければDB(platform_admins)から確認
+                            const { data: adminUser } = await supabaseAdmin
+                                .from('platform_admins')
+                                .select('id')
+                                .eq('id', userId)
+                                .maybeSingle();
+                            if (adminUser) isSuperAdmin = true;
+                        }
+                    }
+                } catch (e) {
+                    console.error('[MaintenanceMiddleware] Token decode error:', e.message);
+                }
+            }
+
+            if (isSuperAdmin) {
                 return next();
             }
 
