@@ -59,7 +59,7 @@ export default function UserManagement() {
                 // Determine max users from tenant plan if subscription data is missing
                 const { data: tenant } = await api.get('/api/settings/company');
                 if (tenant?.plan === 'plus') setMaxUsers(10);
-                else if (tenant?.plan === 'pro') setMaxUsers(50);
+                else if (tenant?.plan === 'pro') setMaxUsers(20);
                 else if (tenant?.plan === 'lite') setMaxUsers(2);
                 else setMaxUsers(1);
             }
