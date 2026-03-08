@@ -79,6 +79,25 @@ router.put('/', authMiddleware, requireRole('admin'), async (req, res, next) => 
 });
 
 /**
+ * GET /api/settings/company
+ * 企業名・連絡先取得（一般からのアクセスも可。プラン等の判定に使用）
+ */
+router.get('/company', authMiddleware, async (req, res, next) => {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('tenants')
+            .select('*')
+            .eq('id', req.tenantId)
+            .single();
+
+        if (error) throw new AppError('Failed to fetch company info', 500, 'FETCH_FAILED');
+        res.json(data);
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
  * PUT /api/settings/company
  * 企業名・連絡先更新（admin専用）
  */

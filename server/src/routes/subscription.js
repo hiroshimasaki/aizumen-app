@@ -383,7 +383,7 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
 
             await supabaseAdmin
                 .from('tenants')
-                .update({ plan, updated_at: new Date().toISOString() })
+                .update({ plan, trial_ends_at: null, updated_at: new Date().toISOString() })
                 .eq('id', req.tenantId);
 
             // AIクレジットも更新（差分付与ロジックを呼び出し）
@@ -506,10 +506,10 @@ router.post('/checkout/verify', authMiddleware, requireRole('system_admin'), asy
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             }, { onConflict: 'tenant_id' });
 
-        // テナントのプランを更新
+        // テナントのプランを更新し、無料トライアルを終了(null)にする
         await supabaseAdmin
             .from('tenants')
-            .update({ plan, updated_at: new Date().toISOString() })
+            .update({ plan, trial_ends_at: null, updated_at: new Date().toISOString() })
             .eq('id', tenant_id);
 
         // AIクレジットの月間枠を更新し、付与
