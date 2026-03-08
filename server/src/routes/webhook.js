@@ -108,7 +108,7 @@ async function handleCheckoutCompleted(session) {
             }, { onConflict: 'tenant_id' });
 
         if (subError) {
-            console.error(`[Webhook/DB] Error upserting subscription for tenant ${tenant_id}:`, subError);
+            console.error(`[Webhook/DB] Error upserting subscription for tenant ${tenant_id}:`, JSON.stringify(subError, null, 2));
             throw subError; // catchブロックで拾わせる
         }
 
