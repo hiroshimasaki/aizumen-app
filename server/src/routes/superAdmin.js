@@ -72,7 +72,8 @@ router.get('/tenants', async (req, res) => {
                 created_at,
                 subscriptions (
                     status,
-                    current_period_end
+                    current_period_end,
+                    plan
                 ),
                 ai_credits (
                     balance,
@@ -95,20 +96,27 @@ router.get('/tenants', async (req, res) => {
         }, {}) || {};
 
         // 扱いやすいようにフラットに整形
-        const formattedTenants = tenants.map(t => ({
-            id: t.id,
-            name: t.name,
-            slug: t.slug,
-            plan: t.plan,
-            createdAt: t.created_at,
-            status: t.subscriptions?.status || 'no_subscription',
-            expiryDate: t.subscriptions?.current_period_end,
-            creditBalance: t.ai_credits?.balance || 0,
-            monthlyQuota: t.ai_credits?.monthly_quota || 0,
-            purchasedBalance: t.ai_credits?.purchased_balance || 0,
-            storageUsage: storageMap[t.id] || 0,
-            maxStorageGB: PLAN_CONFIG[t.plan]?.maxStorageGB || 1 // 設定ファイルから取得
-        }));
+        const formattedTenants = tenants.map(t => {
+            const sub = t.subscriptions && t.subscriptions.length > 0 ? t.subscriptions[0] : null;
+            const planKey = t.plan || 'free';
+            const config = PLAN_CONFIG[planKey];
+
+            return {
+                id: t.id,
+                name: t.name,
+                slug: t.slug,
+                plan: t.plan,
+                createdAt: t.created_at,
+                status: sub?.status || 'no_subscription',
+                expiryDate: sub?.current_period_end,
+                amount: config?.amount || 0,
+                creditBalance: t.ai_credits?.balance || 0,
+                monthlyQuota: t.ai_credits?.monthly_quota || 0,
+                purchasedBalance: t.ai_credits?.purchased_balance || 0,
+                storageUsage: storageMap[t.id] || 0,
+                maxStorageGB: config?.maxStorageGB || 1
+            };
+        });
 
         res.json(formattedTenants);
     } catch (err) {

@@ -266,6 +266,7 @@ export default function SuperAdminPage() {
                                             <tr>
                                                 <th className="px-6 py-3 w-[25%]">Tenant Identity</th>
                                                 <th className="px-4 py-3 text-center w-[10%]">Plan</th>
+                                                <th className="px-4 py-3 text-right w-[10%]">Amount</th>
                                                 <th className="px-4 py-3 w-[20%]">Usage</th>
                                                 <th className="px-4 py-3 text-center w-[10%]">Status</th>
                                                 <th className="px-4 py-3 text-center w-[15%]">Renewal</th>
@@ -299,6 +300,11 @@ export default function SuperAdminPage() {
                                                                 planColors[tenant.plan] || planColors.free
                                                             )}>
                                                                 {(tenant.plan || 'free')}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <span className="text-[11px] font-mono text-slate-300">
+                                                                {tenant.amount > 0 ? `¥${tenant.amount.toLocaleString()}` : '--'}
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3">

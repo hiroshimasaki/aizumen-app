@@ -221,7 +221,14 @@ export default function Billing() {
                             <Package className="text-indigo-400" size={24} />
                         </div>
                         <div>
-                            <h4 className="text-xl font-bold text-white capitalize">{currentPlanId} プラン</h4>
+                            <div className="flex items-baseline gap-2">
+                                <h4 className="text-xl font-bold text-white capitalize">{currentPlanId} プラン</h4>
+                                {subscription?.plan?.amount > 0 && (
+                                    <span className="text-sm font-medium text-slate-400">
+                                        (¥{subscription.plan.amount.toLocaleString()} / 月)
+                                    </span>
+                                )}
+                            </div>
                             <div className="min-h-[32px] flex flex-col justify-center"> {/* レイアウトシフトを防止するための高さ確保 */}
                                 {(stripeDetails?.pending_plan || subscription?.subscription?.pending_plan) ? (
                                     <div className="flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
@@ -246,7 +253,7 @@ export default function Billing() {
                             </p>
                         </div>
                     </div>
-                    {subscription?.subscription?.current_period_end && subscription?.subscription?.status === 'active' && (
+                    {subscription?.subscription?.current_period_end && (subscription?.subscription?.status === 'active' || subscription?.subscription?.status === 'trialing') && (
                         <div className="mt-3 pt-3 border-t border-slate-700/50 flex items-center gap-2">
                             {(() => {
                                 // Stripeの詳細情報が読み込まれている場合はそれを優先、そうでなければDBの値を参照
