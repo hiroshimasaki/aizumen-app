@@ -100,7 +100,6 @@ async function handleCheckoutCompleted(session) {
                 stripe_customer_id: session.customer,
                 stripe_subscription_id: session.subscription,
                 plan: plan.toLowerCase(), // 正規化して保存
-                max_users: planConfig.maxUsers,
                 status: 'active',
                 cancel_at_period_end: subscription.cancel_at_period_end || false,
                 current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
