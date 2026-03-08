@@ -706,4 +706,56 @@ router.delete('/forum/reports/:id/content', async (req, res) => {
     }
 });
 
+/**
+ * メンテナンスモードの設定取得
+ * GET /api/super-admin/maintenance
+ */
+router.get('/maintenance', async (req, res) => {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'maintenance_mode')
+            .single();
+
+        if (error) throw error;
+        res.json(data.value);
+    } catch (err) {
+        console.error('[SuperAdmin API] Maintenance Get Error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch maintenance settings' });
+    }
+});
+
+/**
+ * メンテナンスモードの設定更新
+ * POST /api/super-admin/maintenance
+ */
+router.post('/maintenance', async (req, res) => {
+    try {
+        const { enabled, message } = req.body;
+        
+        const newValue = {
+            enabled: !!enabled,
+            message: message || '',
+            started_at: enabled ? new Date().toISOString() : null
+        };
+
+        const { data, error } = await supabaseAdmin
+            .from('system_settings')
+            .update({ 
+                value: newValue,
+                updated_at: new Date().toISOString()
+            })
+            .eq('key', 'maintenance_mode')
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data.value);
+    } catch (err) {
+        console.error('[SuperAdmin API] Maintenance Update Error:', err.message);
+        res.status(500).json({ error: 'Failed to update maintenance settings' });
+    }
+});
+
 module.exports = router;

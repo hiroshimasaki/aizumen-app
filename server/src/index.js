@@ -27,6 +27,7 @@ const forumRoutes = require('./routes/forum');
 const { errorHandler } = require('./middleware/errorHandler');
 const { checkTenant } = require('./middleware/auth');
 const accessLogMiddleware = require('./middleware/accessLog');
+const maintenanceMiddleware = require('./middleware/maintenance');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -71,6 +72,7 @@ app.use(accessLogMiddleware); // ここに追加
 
 app.use('/api/', apiLimiter);
 app.use('/api/ocr/', ocrLimiter);
+app.use(maintenanceMiddleware); // 全APIに適用（authMiddlewareの前でも内部でパス除外される）
 
 // --- Health Check ---
 app.get('/api/health', async (req, res) => {
