@@ -66,6 +66,7 @@ router.post('/signup', async (req, res, next) => {
                             }
                         },
                         customer_email: email,
+                        allow_promotion_codes: true,
                     });
                     checkoutUrl = session.url;
                     console.log(`[Stripe] Session created successfully: ${session.id}`);

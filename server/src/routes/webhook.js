@@ -63,7 +63,7 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
     res.json({ received: true });
 });
 
-const { grantCredits } = require('../services/creditService');
+const { grantCredits, updateCreditsOnPlanChange } = require('../services/creditService');
 
 /**
  * チェックアウト完了時の処理
@@ -94,10 +94,10 @@ async function handleCheckoutCompleted(session) {
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             }, { onConflict: 'tenant_id' });
 
-        // テナントのプランを更新
+        // テナントのプランを更新し、無料トライアルを終了(null)にする
         await supabaseAdmin
             .from('tenants')
-            .update({ plan, updated_at: new Date().toISOString() })
+            .update({ plan, trial_ends_at: null, updated_at: new Date().toISOString() })
             .eq('id', tenant_id);
 
         // AIクレジットの月間枠を更新し、付与
@@ -190,10 +190,15 @@ async function handleSubscriptionUpdated(subscription) {
         .update(updates)
         .eq('stripe_subscription_id', subscription.id);
 
-    // テナント本体のプラン区分も更新
+    // テナント本体のプラン区分とトライアル状態を更新
+    const tenantUpdates = { plan: newPlan, updated_at: new Date().toISOString() };
+    if (newPlan !== 'free') {
+        tenantUpdates.trial_ends_at = null;
+    }
+
     await supabaseAdmin
         .from('tenants')
-        .update({ plan: newPlan, updated_at: new Date().toISOString() })
+        .update(tenantUpdates)
         .eq('id', tenant_id);
 
     // AIクレジットの月間枠も更新（アップグレード・ダウングレード対応）

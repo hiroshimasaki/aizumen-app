@@ -14,17 +14,24 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
         throw new AppError('Password must be at least 8 characters', 400, 'VALIDATION_ERROR');
     }
 
-    const planConfig = PLAN_CONFIG[plan];
-    if (!planConfig) {
-        throw new AppError('Invalid plan', 400, 'INVALID_PLAN');
+    // 初期は常にfreeプランとして登録し、その設定を利用する
+    const initialPlanConfig = PLAN_CONFIG['free'];
+    if (!initialPlanConfig) {
+        throw new AppError('Default free plan is not configured', 500, 'PLAN_CONFIG_ERROR');
+    }
+
+    // パラメータで送られてきたplanが正当なものかチェック（Checkoutのため）
+    const selectedPlanConfig = PLAN_CONFIG[plan];
+    if (!selectedPlanConfig) {
+        throw new AppError('Invalid plan selected', 400, 'INVALID_PLAN');
     }
 
     // テナント作成
     const slug = companyCode.toLowerCase().replace(/[^a-z0-9\-]/g, '');
 
-    // トライアル期限の計算（freeプランの場合）
-    const trialEndsAt = planConfig.trialDays
-        ? new Date(Date.now() + planConfig.trialDays * 24 * 60 * 60 * 1000).toISOString()
+    // トライアル期限の計算（初期はfreeプランとして扱うためfreeの設定を使用）
+    const trialEndsAt = initialPlanConfig.trialDays
+        ? new Date(Date.now() + initialPlanConfig.trialDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
     const { data: tenant, error: tenantError } = await supabaseAdmin
@@ -90,14 +97,14 @@ async function signUp({ email, password, userName, companyName, companyCode, pla
         tenant_id: tenant.id,
     });
 
-    // AIクレジットを初期化（サインアップボーナス込み）
+    // AIクレジットを初期化（サインアップボーナス込み。初期プランの月間枠を使用）
     const SIGNUP_BONUS = 10;
-    const initialBalance = planConfig.monthlyCredits + SIGNUP_BONUS;
+    const initialBalance = initialPlanConfig.monthlyCredits + SIGNUP_BONUS;
 
     const { error: aiCreditsError } = await supabaseAdmin.from('ai_credits').upsert({
         tenant_id: tenant.id,
         balance: initialBalance,
-        monthly_quota: planConfig.monthlyCredits,
+        monthly_quota: initialPlanConfig.monthlyCredits,
         purchased_balance: SIGNUP_BONUS,
         last_reset_at: new Date().toISOString(),
     }, { onConflict: 'tenant_id' });
