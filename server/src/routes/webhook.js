@@ -17,7 +17,10 @@ router.get('/', (req, res) => {
  * Stripe Webhook 受信
  * ※ express.raw() を使用するため、index.jsでjsonパース前に登録
  */
-router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/', (req, res, next) => {
+    console.log(`[Webhook] Raw request hit: ${req.method} ${req.url}`);
+    next();
+}, express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
 
