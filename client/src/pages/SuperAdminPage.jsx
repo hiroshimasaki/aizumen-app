@@ -14,7 +14,9 @@ import {
     Zap,
     TrendingUp,
     Terminal,
-    LayoutDashboard
+    LayoutDashboard,
+    Power,
+    MessageSquareMore
 } from 'lucide-react';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
@@ -35,9 +37,14 @@ export default function SuperAdminPage() {
     const [pendingReportsCount, setPendingReportsCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
     const [filterPlan, setFilterPlan] = useState('all');
     const [lastUpdated, setLastUpdated] = useState(new Date());
+
+    // Maintenance Mode States
+    const [maintenanceSettings, setMaintenanceSettings] = useState({ enabled: false, message: '' });
+    const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
+    const [maintenanceForm, setMaintenanceForm] = useState({ enabled: false, message: '' });
+    const [isSavingMaintenance, setIsSavingMaintenance] = useState(false);
 
     // 単位変換ヘルパー (Byte -> MB/GB)
     const formatBytes = (bytes) => {
@@ -76,7 +83,8 @@ export default function SuperAdminPage() {
                 api.get('/api/super-admin/activities').catch(() => ({ data: [] })),
                 api.get('/api/super-admin/usage').catch(() => ({ data: { storage: [], ai: [], totals: { storage: 0, ai: 0, db: 0 }, storageLimit: 1 * 1024 * 1024 * 1024, dbLimit: 500 * 1024 * 1024 } })),
                 api.get('/api/super-admin/billing').catch(() => ({ data: { mrr: 0, activeCount: 0, alerts: [] } })),
-                api.get('/api/super-admin/forum/reports/pending-count').catch(() => ({ data: { count: 0 } }))
+                api.get('/api/super-admin/forum/reports/pending-count').catch(() => ({ data: { count: 0 } })),
+                api.get('/api/super-admin/maintenance').catch(() => ({ data: { enabled: false, message: '' } }))
             ]);
 
             setStats(statsRes.data);
@@ -86,12 +94,36 @@ export default function SuperAdminPage() {
             setUsage(usageRes.data);
             setBilling(billingRes.data);
             setPendingReportsCount(pendingRes.data?.count || 0);
+            setMaintenanceSettings(maintenanceRes.data);
             setLastUpdated(new Date());
         } catch (err) {
             console.error('[SuperAdminPage] Fetch Error:', err);
             if (!silent) setError(err.response?.data?.error || err.message);
         } finally {
             if (!silent) setLoading(false);
+        }
+    };
+
+    const handleMaintenanceToggle = () => {
+        setMaintenanceForm({
+            enabled: !maintenanceSettings.enabled,
+            message: maintenanceSettings.message || ( !maintenanceSettings.enabled ? '現在システムメンテナンス中です。終了までしばらくお待ちください。' : '' )
+        });
+        setIsMaintenanceModalOpen(true);
+    };
+
+    const saveMaintenanceSettings = async () => {
+        setIsSavingMaintenance(true);
+        try {
+            const res = await api.post('/api/super-admin/maintenance', maintenanceForm);
+            setMaintenanceSettings(res.data);
+            setIsMaintenanceModalOpen(false);
+            fetchData(true);
+        } catch (err) {
+            console.error('[MaintenanceUpdate] Error:', err);
+            alert('設定の更新に失敗しました: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setIsSavingMaintenance(false);
         }
     };
 
@@ -371,6 +403,39 @@ export default function SuperAdminPage() {
                                     </div>
                                 </div>
 
+                                <div className="p-5 bg-[#141414] border border-white/5 rounded-lg shadow-lg shrink-0">
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Maintenace Mode</h3>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "w-10 h-6 p-1 rounded-full transition-colors cursor-pointer",
+                                                maintenanceSettings.enabled ? "bg-red-500" : "bg-slate-700"
+                                            )} onClick={handleMaintenanceToggle}>
+                                                <div className={cn(
+                                                    "w-4 h-4 bg-white rounded-full transition-transform shadow-sm",
+                                                    maintenanceSettings.enabled ? "translate-x-4" : "translate-x-0"
+                                                )} />
+                                            </div>
+                                            <span className={cn("text-xs font-bold", maintenanceSettings.enabled ? "text-red-400" : "text-slate-500")}>
+                                                {maintenanceSettings.enabled ? "MAINTENANCE ON" : "NORMAL MODE"}
+                                            </span>
+                                        </div>
+                                        <button 
+                                            onClick={handleMaintenanceToggle}
+                                            className="text-[10px] text-slate-500 hover:text-white uppercase font-bold tracking-tighter transition-colors"
+                                        >
+                                            Configure
+                                        </button>
+                                    </div>
+                                    {maintenanceSettings.enabled && (
+                                        <div className="mt-3 p-3 bg-red-500/5 border border-red-500/10 rounded-md">
+                                            <p className="text-[10px] text-red-400 font-medium line-clamp-2 italic">
+                                                "{maintenanceSettings.message}"
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <section className="flex-1 min-h-0 bg-[#141414] border border-white/5 rounded-lg overflow-hidden flex flex-col shadow-lg">
                                     <div className="px-5 py-3 border-b border-white/5 bg-white/[0.02] shrink-0 font-bold text-xs uppercase text-slate-500 tracking-widest flex items-center gap-2">
                                         <Clock size={14} /> Timeline
@@ -418,6 +483,84 @@ export default function SuperAdminPage() {
                     </div>
                 )}
             </div>
+
+            {/* Maintenance Configuration Modal */}
+            {isMaintenanceModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="max-w-md w-full bg-[#1c1c1c] border border-white/10 rounded-[1.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className={cn(
+                                "p-3 rounded-2xl",
+                                maintenanceForm.enabled ? "bg-red-500/10 text-red-500" : "bg-blue-500/10 text-blue-500"
+                            )}>
+                                <Power size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white">Maintenance Control</h3>
+                                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">System Overide</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-white">メンテナンスモード</span>
+                                    <span className="text-[10px] text-slate-500 uppercase font-black">Force Service Shutdown</span>
+                                </div>
+                                <button 
+                                    onClick={() => setMaintenanceForm(prev => ({ ...prev, enabled: !prev.enabled }))}
+                                    className={cn(
+                                        "w-12 h-6 p-1 rounded-full transition-colors",
+                                        maintenanceForm.enabled ? "bg-red-500" : "bg-slate-700"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "w-4 h-4 bg-white rounded-full transition-transform",
+                                        maintenanceForm.enabled ? "translate-x-6" : "translate-x-0"
+                                    )} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                    <MessageSquareMore size={12} /> Display Message
+                                </label>
+                                <textarea 
+                                    value={maintenanceForm.message}
+                                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, message: e.target.value }))}
+                                    placeholder="メンテナンスの理由や終了予定時刻を入力してください..."
+                                    className="w-full h-32 bg-[#141414] border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none custom-scrollbar"
+                                />
+                                <p className="text-[10px] text-slate-500 italic px-1">
+                                    ※このメッセージはログイン中の全ユーザー、および未ログインの訪問者に表示されます。
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex gap-3">
+                            <button 
+                                onClick={() => setIsMaintenanceModalOpen(false)}
+                                className="flex-1 py-3 bg-white/5 text-slate-300 font-bold rounded-xl hover:bg-white/10 transition-all text-sm uppercase tracking-widest"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={saveMaintenanceSettings}
+                                disabled={isSavingMaintenance}
+                                className={cn(
+                                    "flex-[2] py-3 text-white font-bold rounded-xl transition-all text-sm uppercase tracking-widest flex items-center justify-center gap-2",
+                                    maintenanceForm.enabled 
+                                        ? "bg-red-600 hover:bg-red-500 shadow-lg shadow-red-900/20" 
+                                        : "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/20",
+                                    isSavingMaintenance && "opacity-50 cursor-not-allowed"
+                                )}
+                            >
+                                {isSavingMaintenance ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : "Apply Settings"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

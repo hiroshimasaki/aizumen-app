@@ -21,6 +21,7 @@ import SuperAdminPage from './pages/SuperAdminPage';
 import PlatformLoginPage from './pages/PlatformLoginPage';
 import MFASetupPage from './pages/MFASetupPage';
 import ForumPage from './pages/ForumPage';
+import MaintenancePage from './pages/MaintenancePage';
 
 // Legal pages
 import TermsOfService from './pages/site/Tos';
@@ -398,10 +399,21 @@ function ScrollToTop() {
     return null;
 }
 
+/**
+ * メンテナンスページ用ルート
+ * URLクエリからメッセージを取得して表示する
+ */
+function MaintenanceRoute() {
+    const [searchParams] = useSearchParams();
+    const message = searchParams.get('m');
+    return <MaintenancePage message={message} />;
+}
+
+import { useSearchParams } from 'react-router-dom';
+
 export default function App() {
     useEffect(() => {
         const handleError = async (eventOrError) => {
-            // eventOrError can be a PromiseRejectionEvent or an ErrorEvent
             let error = null;
             if (eventOrError instanceof PromiseRejectionEvent) {
                 error = eventOrError.reason;
@@ -413,10 +425,20 @@ export default function App() {
 
             if (!error) return;
 
-            // Avoid reporting the same error multiple times in a short interval if possible
-            // but for now, simple report is okay.
+            // メンテナンスモードのハンドリング (503 Service Unavailable)
+            if (error.response?.status === 503 && error.response?.data?.maintenance) {
+                // すでにメンテナンス画面にいる場合はスキップ
+                if (window.location.pathname !== '/maintenance') {
+                    const params = new URLSearchParams();
+                    if (error.response.data.message) {
+                        params.set('m', error.response.data.message);
+                    }
+                    window.location.href = `/maintenance?${params.toString()}`;
+                }
+                return;
+            }
+
             try {
-                // Background report, don't wait/block
                 api.post('/api/auth/report-error', {
                     message: error.message || 'Unknown error',
                     stack: error.stack,
@@ -425,7 +447,6 @@ export default function App() {
                     source: 'client_global'
                 }).catch(e => console.warn('Failed silence report:', e));
             } catch (e) {
-                // Secondary fail-safe
             }
         };
 
@@ -453,6 +474,7 @@ export default function App() {
                         <Route path="/site-policy" element={<PrivacyPolicy />} />
                         <Route path="/commerce" element={<CommercialTransaction />} />
                         <Route path="/protection" element={<DataProtectionPolicy />} />
+                        <Route path="/maintenance" element={<MaintenanceRoute />} />
 
                         {/* Super Admin (SU) 専用認証ルート */}
                         <Route path="/platform-login" element={<PlatformLoginPage />} />
