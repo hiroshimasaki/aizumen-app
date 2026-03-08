@@ -12,11 +12,17 @@ const logService = require('../services/logService');
  */
 router.get('/', authMiddleware, async (req, res, next) => {
     try {
-        let { data: sub } = await supabaseAdmin
+        console.log(`[Subscription GET] tenantId: ${req.tenantId}`);
+        let { data: sub, error: subError } = await supabaseAdmin
             .from('subscriptions')
             .select('*')
             .eq('tenant_id', req.tenantId)
-            .single();
+            .maybeSingle();
+
+        if (subError) {
+            console.error(`[Subscription GET] Error:`, subError);
+            throw subError;
+        }
 
         const { data: tenant } = await supabaseAdmin
             .from('tenants')

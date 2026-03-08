@@ -53,11 +53,14 @@ export default function UserManagement() {
     const fetchLicenseInfo = async () => {
         try {
             const { data } = await api.get('/api/subscription');
+            console.log('[UserManagement DEBUG] subscription data:', data);
             if (data?.subscription?.max_users) {
+                console.log('[UserManagement DEBUG] using max_users from sub:', data.subscription.max_users);
                 setMaxUsers(data.subscription.max_users);
             } else {
                 // Determine max users from tenant plan if subscription data is missing
                 const { data: tenant } = await api.get('/api/settings/company');
+                console.log('[UserManagement DEBUG] using fallback from tenant plan:', tenant?.plan);
                 if (tenant?.plan === 'plus') setMaxUsers(10);
                 else if (tenant?.plan === 'pro') setMaxUsers(20);
                 else if (tenant?.plan === 'lite') setMaxUsers(2);

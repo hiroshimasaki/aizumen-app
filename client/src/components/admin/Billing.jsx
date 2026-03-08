@@ -57,6 +57,7 @@ export default function Billing() {
     const fetchSubscription = async () => {
         try {
             const { data } = await api.get('/api/subscription');
+            console.log('[Billing DEBUG] subscription data:', data);
             setSubscription(data);
         } catch (err) {
             console.error('Failed to fetch subscription:', err);
@@ -240,7 +241,8 @@ export default function Billing() {
                                 ) : null}
                             </div>
                             <p className="text-xs text-slate-400 whitespace-nowrap mt-1">
-                                {subscription?.subscription?.status === 'active' ? 'サブスクリプション有効' : '無料トライアル / 制限中'}
+                                 {subscription?.subscription?.status === 'active' || subscription?.subscription?.status === 'trialing' ? 'サブスクリプション有効' : 
+                                  (tenant?.plan && tenant.plan !== 'free') ? 'サブスクリプション確認中 / 有効' : '無料トライアル / 制限中'}
                             </p>
                         </div>
                     </div>
