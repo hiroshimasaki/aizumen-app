@@ -14,8 +14,8 @@ const PLANS = [
 
 const CREDIT_PACKS = [
     { amount: '200', name: '200クレジット', price: '2,000' },
-    { amount: '1000', name: '1200クレジット (+200ボーナス)', price: '10,000' },
-    { amount: '2000', name: '2500クレジット (+500ボーナス)', price: '20,000' },
+    { amount: '1200', name: '1200クレジット (+200ボーナス)', price: '10,000' },
+    { amount: '2500', name: '2500クレジット (+500ボーナス)', price: '20,000' },
 ];
 
 export default function Billing() {
