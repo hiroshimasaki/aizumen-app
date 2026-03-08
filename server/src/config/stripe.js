@@ -53,12 +53,12 @@ const CREDIT_CONFIG = {
     },
     '1000': {
         credits: 1200,
-        priceId: process.env.STRIPE_PRICE_CREDIT_1000,
+        priceId: process.env.STRIPE_PRICE_CREDIT_1200,
         amount: 10000,
     },
     '2000': {
         credits: 2500,
-        priceId: process.env.STRIPE_PRICE_CREDIT_2000,
+        priceId: process.env.STRIPE_PRICE_CREDIT_2500,
         amount: 20000,
     },
 };

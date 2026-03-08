@@ -5,7 +5,15 @@ const { supabaseAdmin } = require('../config/supabase');
 const logService = require('../services/logService');
 
 /**
- * POST /api/webhooks/stripe
+ * GET /api/webhook
+ * 疎通確認用
+ */
+router.get('/', (req, res) => {
+    res.json({ status: 'active', message: 'AiZumen Stripe Webhook Endpoint' });
+});
+
+/**
+ * POST /api/webhook
  * Stripe Webhook 受信
  * ※ express.raw() を使用するため、index.jsでjsonパース前に登録
  */
@@ -280,7 +288,14 @@ async function handleSubscriptionDeleted(subscription) {
  */
 async function handlePaymentFailed(invoice) {
     console.warn(`[Webhook] Payment failed for customer: ${invoice.customer}`);
-    // TODO: 管理者への通知メール送信
+    
+    // 監査ログに記録（将来的なメール通知の実装まで、管理画面で確認可能にする）
+    await logService.audit({
+        action: 'payment_failed',
+        entityType: 'subscription',
+        entityId: invoice.id,
+        description: `決済失敗: カスタマーID ${invoice.customer} (請求金額: ${invoice.amount_due} ${invoice.currency})`,
+    });
 }
 
 module.exports = router;
