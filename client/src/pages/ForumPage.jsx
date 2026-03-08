@@ -24,9 +24,7 @@ const maskText = (text) => {
 const getDisplayName = (name, tenantName, isAnnouncement = false) => {
     const isSU = isAnnouncement || tenantName === 'AiZumen Platform';
     if (isSU) {
-        const defaults = ['super_admin', 'Admin', 'admin', 'User', ''];
-        if (defaults.includes(name) || !name) return 'AiZumen 運営事務局';
-        return name;
+        return 'AiZumen 運営事務局';
     }
     return maskText(name);
 };

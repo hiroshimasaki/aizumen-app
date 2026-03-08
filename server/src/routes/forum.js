@@ -601,9 +601,7 @@ async function getUserDisplayInfo(userId) {
         .maybeSingle();
 
     if (pa) {
-        const defaultName = 'AiZumen 運営事務局';
-        const name = (pa.name && pa.name !== 'super_admin' && pa.name !== 'Admin' && pa.name !== 'admin') ? pa.name : defaultName;
-        return { userName: name, tenantName: 'AiZumen Platform' };
+        return { userName: 'AiZumen 運営事務局', tenantName: 'AiZumen Platform' };
     }
 
     // 次に users テーブルから取得
