@@ -58,7 +58,8 @@ router.get('/', authMiddleware, async (req, res, next) => {
         }
 
         const plan = tenant?.plan || 'lite';
-        const planConfig = PLAN_CONFIG[plan];
+        const { getPlanConfig } = require('../config/stripe');
+        const planConfig = getPlanConfig(plan);
 
         // 1. ユーザー数カウント
         const { count: userCount } = await supabaseAdmin
@@ -151,6 +152,12 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
                                     .eq('stripe_subscription_id', stripeSub.id);
                             }
                         }
+                        console.log(`[StripeDetails] stripeSub:`, {
+                            id: stripeSub.id,
+                            status: stripeSub.status,
+                            cancel_at_period_end: stripeSub.cancel_at_period_end,
+                            current_period_end: stripeSub.current_period_end
+                        });
 
                         if (stripeSub.schedule) {
                             const schedule = await stripe.subscriptionSchedules.retrieve(stripeSub.schedule);
@@ -187,12 +194,14 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
                                 last4: pm.card.last4,
                             };
                         }
+                        console.log(`[StripeDetails] paymentMethod:`, results.paymentMethod);
                     })
                     .catch(err => console.error('[StripeDetails] Customer retrieve error:', err.message))
             );
         }
 
         await Promise.all(stripePromises);
+        console.log(`[StripeDetails] final results:`, results);
 
         res.json(results);
     } catch (err) {
@@ -244,7 +253,8 @@ router.post('/checkout', authMiddleware, requireRole('system_admin'), async (req
     try {
         const { plan } = req.body;
 
-        const planConfig = PLAN_CONFIG[plan];
+        const { getPlanConfig } = require('../config/stripe');
+        const planConfig = getPlanConfig(plan);
         if (!planConfig) throw new AppError('Invalid plan', 400, 'INVALID_PLAN');
 
         const priceId = planConfig.priceId;
@@ -491,7 +501,8 @@ router.post('/checkout/verify', authMiddleware, requireRole('system_admin'), asy
             throw new AppError('Invalid session type', 400, 'INVALID_SESSION_TYPE');
         }
 
-        const planConfig = PLAN_CONFIG[plan];
+        const { getPlanConfig } = require('../config/stripe');
+        const planConfig = getPlanConfig(plan);
         if (!planConfig) throw new AppError('Invalid plan in session', 400, 'INVALID_PLAN');
 
         // サブスクリプション情報を取得

@@ -99,7 +99,8 @@ router.get('/tenants', async (req, res) => {
         const formattedTenants = tenants.map(t => {
             const sub = t.subscriptions && t.subscriptions.length > 0 ? t.subscriptions[0] : null;
             const planKey = t.plan || 'free';
-            const config = PLAN_CONFIG[planKey];
+            const { getPlanConfig } = require('../config/stripe');
+            const config = getPlanConfig(planKey);
 
             return {
                 id: t.id,
@@ -117,6 +118,11 @@ router.get('/tenants', async (req, res) => {
                 maxStorageGB: config?.maxStorageGB || 1
             };
         });
+
+        console.log(`[SuperAdmin/Tenants] Count: ${formattedTenants.length}`);
+        if (tenants.length > 0) {
+            console.log(`[SuperAdmin/Tenants] First tenant sub array:`, JSON.stringify(tenants[0].subscriptions));
+        }
 
         res.json(formattedTenants);
     } catch (err) {
@@ -424,7 +430,8 @@ router.get('/billing', async (req, res) => {
         const alerts = [];
 
         subs?.forEach(s => {
-            const config = PLAN_CONFIG[s.plan];
+            const { getPlanConfig } = require('../config/stripe');
+            const config = getPlanConfig(s.plan);
             if (config && (s.status === 'active' || s.status === 'trialing')) {
                 mrr += (config.amount || 0);
             }
@@ -459,6 +466,7 @@ router.get('/billing', async (req, res) => {
             activeCount: subs?.filter(s => s.status === 'active' || s.status === 'trialing').length || 0,
             alerts
         });
+        console.log(`[SuperAdmin/Billing] MRR: ${mrr}, Credit: ${creditRevenue}, Total: ${mrr + creditRevenue}`);
     } catch (err) {
         console.error('[SuperAdmin API] Billing Stats Error:', err.message);
         res.status(500).json({ error: 'Failed to fetch billing statistics' });

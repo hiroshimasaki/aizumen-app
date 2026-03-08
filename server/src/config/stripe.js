@@ -37,12 +37,20 @@ const PLAN_CONFIG = {
     },
     pro: {
         name: 'Pro',
-        maxUsers: 20,
+        maxUsers: 50, // 20 -> 50 に引き上げ
         monthlyCredits: 1000,
-        maxStorageGB: 100,    // 追加
+        maxStorageGB: 100,
         priceId: process.env.STRIPE_PRICE_PRO,
         amount: 50000,
     },
+};
+
+/**
+ * プラン設定を大文字小文字を区別せずに取得するヘルパー
+ */
+const getPlanConfig = (planKey) => {
+    if (!planKey) return null;
+    return PLAN_CONFIG[planKey.toLowerCase()] || null;
 };
 
 const CREDIT_CONFIG = {
@@ -63,4 +71,4 @@ const CREDIT_CONFIG = {
     },
 };
 
-module.exports = { stripe, PLAN_CONFIG, CREDIT_CONFIG };
+module.exports = { stripe, PLAN_CONFIG, CREDIT_CONFIG, getPlanConfig };

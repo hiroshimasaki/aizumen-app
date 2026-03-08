@@ -76,8 +76,13 @@ async function handleCheckoutCompleted(session) {
     if (!tenant_id) return;
 
     if (type === 'subscription') {
-        const planConfig = PLAN_CONFIG[plan];
-        if (!planConfig) return;
+        const { getPlanConfig } = require('../config/stripe');
+        const planConfig = getPlanConfig(plan);
+
+        if (!planConfig) {
+            console.error(`[Webhook/Checkout] Unknown plan configuration for metadata.plan: "${plan}"`);
+            return;
+        }
 
         // サブスクリプション情報を取得
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
@@ -89,7 +94,7 @@ async function handleCheckoutCompleted(session) {
                 tenant_id,
                 stripe_customer_id: session.customer,
                 stripe_subscription_id: session.subscription,
-                plan,
+                plan: plan.toLowerCase(), // 正規化して保存
                 max_users: planConfig.maxUsers,
                 status: 'active',
                 cancel_at_period_end: subscription.cancel_at_period_end || false,
@@ -100,7 +105,7 @@ async function handleCheckoutCompleted(session) {
         // テナントのプランを更新し、無料トライアルを終了(null)にする
         await supabaseAdmin
             .from('tenants')
-            .update({ plan, trial_ends_at: null, updated_at: new Date().toISOString() })
+            .update({ plan: plan.toLowerCase(), trial_ends_at: null, updated_at: new Date().toISOString() })
             .eq('id', tenant_id);
 
         // AIクレジットの月間枠を更新し、付与
@@ -183,7 +188,8 @@ async function handleSubscriptionUpdated(subscription) {
     };
 
     // プラン名から制限値を再取得
-    const planConfig = PLAN_CONFIG[newPlan];
+    const { getPlanConfig } = require('../config/stripe');
+    const planConfig = getPlanConfig(newPlan);
     if (planConfig) {
         updates.max_users = planConfig.maxUsers;
     }

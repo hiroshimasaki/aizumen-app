@@ -342,7 +342,10 @@ export default function SuperAdminPage() {
                                                                 "text-xs capitalize",
                                                                 isAlert ? "text-red-400 font-bold" : "text-slate-400"
                                                             )}>
-                                                                {tenant.status === 'no_subscription' ? 'Trial' : tenant.status.replace('_', ' ')}
+                                                                {tenant.status === 'no_subscription' ? 'Trial' : 
+                                                                 tenant.status === 'active' ? 'Active' : 
+                                                                 tenant.status === 'trialing' ? 'Confirming' : 
+                                                                 tenant.status.replace('_', ' ')}
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3 text-center">

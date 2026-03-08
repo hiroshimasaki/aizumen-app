@@ -70,6 +70,7 @@ export default function Billing() {
         setLoadingStripe(true);
         try {
             const { data } = await api.get('/api/subscription/stripe-details');
+            console.log('[Billing DEBUG] stripe details:', data);
             setStripeDetails(data);
         } catch (err) {
             console.error('Failed to fetch stripe details:', err);
@@ -248,8 +249,8 @@ export default function Billing() {
                                 ) : null}
                             </div>
                             <p className="text-xs text-slate-400 mt-1">
-                                 {subscription?.subscription?.status === 'active' || subscription?.subscription?.status === 'trialing' ? 'サブスクリプション有効' : 
-                                  (tenant?.plan && tenant.plan !== 'free') ? '有効 (決済確認中)' : '無料トライアル / 制限中'}
+                                 {subscription?.subscription?.status === 'active' || subscription?.subscription?.status === 'trialing' ? 'サブスク有効' : 
+                                  (tenant?.plan && tenant.plan !== 'free') ? '有効 (確認中)' : 'トライアル/制限中'}
                             </p>
                         </div>
                     </div>
