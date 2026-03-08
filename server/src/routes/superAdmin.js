@@ -716,10 +716,10 @@ router.get('/maintenance', async (req, res) => {
             .from('system_settings')
             .select('value')
             .eq('key', 'maintenance_mode')
-            .single();
+            .maybeSingle();
 
         if (error) throw error;
-        res.json(data.value);
+        res.json(data?.value || { enabled: false, message: '' });
     } catch (err) {
         console.error('[SuperAdmin API] Maintenance Get Error:', err.message);
         res.status(500).json({ error: 'Failed to fetch maintenance settings' });
