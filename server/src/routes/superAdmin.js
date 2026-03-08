@@ -97,7 +97,7 @@ router.get('/tenants', async (req, res) => {
 
         // 扱いやすいようにフラットに整形
         const formattedTenants = tenants.map(t => {
-            const sub = t.subscriptions && t.subscriptions.length > 0 ? t.subscriptions[0] : null;
+            const sub = Array.isArray(t.subscriptions) ? (t.subscriptions.length > 0 ? t.subscriptions[0] : null) : (t.subscriptions || null);
             const planKey = t.plan || 'free';
             const { getPlanConfig } = require('../config/stripe');
             const config = getPlanConfig(planKey);
