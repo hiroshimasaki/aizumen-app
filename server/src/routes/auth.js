@@ -42,26 +42,47 @@ router.post('/signup', async (req, res, next) => {
             const planConfig = PLAN_CONFIG[plan];
             
             if (planConfig && planConfig.priceId) {
-                const session = await stripe.checkout.sessions.create({
-                    mode: 'subscription',
-                    payment_method_types: ['card'],
-                    line_items: [{ price: planConfig.priceId, quantity: 1 }],
-                    success_url: `${process.env.APP_URL}/admin?tab=billing&success=true`,
-                    cancel_url: `${process.env.APP_URL}/admin?tab=billing&canceled=true`,
-                    metadata: {
-                        type: 'subscription',
-                        tenant_id: result.tenant.id,
-                        plan: plan,
-                    },
-                    subscription_data: {
+                console.log(`[Stripe] Creating checkout session for tenant: ${result.tenant.id}, plan: ${plan}, priceId: ${planConfig.priceId}`);
+                
+                // APP_URLが未設定の場合はリクエストから推測（本番環境でのURL不正防止）
+                const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+                
+                try {
+                    const session = await stripe.checkout.sessions.create({
+                        mode: 'subscription',
+                        payment_method_types: ['card'],
+                        line_items: [{ price: planConfig.priceId, quantity: 1 }],
+                        success_url: `${baseUrl}/admin?tab=billing&success=true`,
+                        cancel_url: `${baseUrl}/admin?tab=billing&canceled=true`,
                         metadata: {
+                            type: 'subscription',
                             tenant_id: result.tenant.id,
                             plan: plan,
-                        }
-                    },
-                    customer_email: email,
-                });
-                checkoutUrl = session.url;
+                        },
+                        subscription_data: {
+                            metadata: {
+                                tenant_id: result.tenant.id,
+                                plan: plan,
+                            }
+                        },
+                        customer_email: email,
+                    });
+                    checkoutUrl = session.url;
+                    console.log(`[Stripe] Session created successfully: ${session.id}`);
+                } catch (stripeErr) {
+                    console.error('[Stripe] Session creation failed:', stripeErr);
+                    // 詳細はDBにも残す
+                    await logService.error({
+                        message: `Stripe Session Creation Failed: ${stripeErr.message}`,
+                        stack: stripeErr.stack,
+                        source: 'server',
+                        path: req.path,
+                        tenantId: result.tenant.id
+                    });
+                    // セッション作成に失敗してもサインアップ自体は完了しているので続行（ユーザーには無料プランとして見せるか、後で決済を促す）
+                }
+            } else {
+                console.warn(`[Stripe] No priceId found for plan: ${plan}. Skipping checkout.`);
             }
         }
 
