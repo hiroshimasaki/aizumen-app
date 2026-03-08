@@ -1,11 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Check, AlertCircle, Building2, User, Mail, Lock, Zap, CheckCircle2, Sparkles } from 'lucide-react';
+import api from '../../lib/api';
 
 export default function SignUpPage() {
     const { signUp } = useAuth();
     const navigate = useNavigate();
+
+    // メンテナンスチェック
+    useEffect(() => {
+        api.get('/api/sys/status').then(res => {
+            if (res.data?.maintenance?.enabled) {
+                const params = new URLSearchParams();
+                if (res.data.maintenance.message) {
+                    params.set('m', res.data.maintenance.message);
+                }
+                window.location.href = `/maintenance?${params.toString()}`;
+            }
+        }).catch(err => console.error('Failed to check sys status', err));
+    }, []);
+
     const [form, setForm] = useState({
         companyName: '',
         companyCode: '',

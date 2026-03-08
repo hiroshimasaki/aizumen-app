@@ -72,6 +72,22 @@ app.use(accessLogMiddleware); // ここに追加
 
 app.use('/api/', apiLimiter);
 app.use('/api/ocr/', ocrLimiter);
+
+// --- Public System Status ---
+app.get('/api/sys/status', async (req, res) => {
+  try {
+    const { supabaseAdmin } = require('./config/supabase');
+    const { data } = await supabaseAdmin
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .maybeSingle();
+    res.json({ maintenance: data?.value || { enabled: false, message: '' } });
+  } catch (err) {
+    res.json({ maintenance: { enabled: false, message: '' } });
+  }
+});
+
 app.use(maintenanceMiddleware); // 全APIに適用（authMiddlewareの前でも内部でパス除外される）
 
 // --- Health Check ---

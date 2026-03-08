@@ -1,13 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Building2, User, Lock, Mail } from 'lucide-react';
+import api from '../../lib/api';
 
 export default function LoginPage() {
     const { signIn, signInWithCode } = useAuth();
     const { showAlert } = useNotification();
     const navigate = useNavigate();
+
+    // メンテナンスチェック
+    useEffect(() => {
+        api.get('/api/sys/status').then(res => {
+            if (res.data?.maintenance?.enabled) {
+                const params = new URLSearchParams();
+                if (res.data.maintenance.message) {
+                    params.set('m', res.data.maintenance.message);
+                }
+                window.location.href = `/maintenance?${params.toString()}`;
+            }
+        }).catch(err => console.error('Failed to check sys status', err));
+    }, []);
 
     // Tab state: 'employee' or 'admin'
     const [loginMode, setLoginMode] = useState('employee');
