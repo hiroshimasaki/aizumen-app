@@ -1,5 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
@@ -29,15 +30,32 @@ async function resetMFA(email) {
     console.log(`Found ${factors.length} factors in user profile.`);
 
     for (const factor of factors) {
-        console.log(`Deleting factor: ${factor.friendly_name || factor.factor_type} (${factor.id})`);
-        const { error: deleteError } = await supabase.auth.admin.mfa.deleteFactor({
-            userId: targetUser.id,
-            factorId: factor.id
-        });
-        if (deleteError) {
-            console.error(`Delete failed for factor ${factor.id}:`, deleteError);
-        } else {
-            console.log(`Successfully deleted factor ${factor.id}`);
+        console.log(`\n--- Processing factor: ${factor.friendly_name} (${factor.id}) ---`);
+        
+        const userId = targetUser.id;
+        const factorId = factor.id;
+
+        console.log(`Attempting delete via direct REST API (fetch)...`);
+        
+        try {
+            // SDK の UUID バリデーションバグをバイパスするため、直接 GoTrue API を叩く
+            const res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/admin/users/${userId}/factors/${factorId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error(`Delete failed: Status=${res.status}, Message=${errorText}`);
+            } else {
+                console.log(`Successfully deleted factors for user ${userId} via REST API.`);
+            }
+        } catch (e) {
+            console.error(`Threw error:`, e.message);
         }
     }
 
