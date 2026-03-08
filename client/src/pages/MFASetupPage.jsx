@@ -33,28 +33,19 @@ export default function MFASetupPage() {
 
     const setupMFA = async () => {
         try {
-            // 既に未検証の TOTP 要素があれば再利用する
+            // 既存の要素を全て解除する（クリーンな状態から開始）
             const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
             if (listError) throw listError;
 
-            // 既存の同一名称の要素があれば削除する（再設定を可能にするため）
-            const existingFactor = factors.all.find(f => f.friendly_name === 'Platform SU');
-
-            if (existingFactor) {
-                try {
-                    console.log('[MFA Setup] Attempting to remove existing factor:', existingFactor.id);
-                    await supabase.auth.mfa.unenroll({ factorId: existingFactor.id });
-                } catch (unenrollErr) {
-                    // セッションの状態（aal1）によっては削除に失敗する場合があるが、
-                    // その場合は名称をユニークにして新しい要素を作成する方向に進む
-                    console.warn('[MFA Setup] Could not unenroll existing factor:', unenrollErr);
+            for (const factor of factors.all) {
+                if (factor.status === 'unverified') {
+                    console.log('[MFA Setup] Cleaning up unverified factor:', factor.id);
+                    await supabase.auth.mfa.unenroll({ factorId: factor.id });
                 }
             }
 
-            // 名称をユニークにして重複エラーを確実に回避する（タイムスタンプを付加）
-            const uniqueName = `Platform SU (${new Date().toLocaleTimeString('ja-JP')})`;
-
             // 新しく要素を作成
+            const uniqueName = `Platform SU (Set at ${new Date().toLocaleTimeString('ja-JP')})`;
             const { data, error } = await supabase.auth.mfa.enroll({
                 factorType: 'totp',
                 issuer: 'AiZumen Platform',
