@@ -7,7 +7,7 @@ export default function HotFolderDownload() {
             {/* Hero Section */}
             <section className="bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-500/20 rounded-[2rem] p-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] -mr-16 -mt-16 rounded-full" />
-                
+
                 <div className="flex flex-col lg:flex-row gap-8 items-center relative z-10">
                     <div className="flex-1 space-y-4 text-center lg:text-left">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-wider">
@@ -23,17 +23,24 @@ export default function HotFolderDownload() {
                             ブラウザを開く手間なく、現場のワークフローにシームレスに統合できます。
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2">
-                            <a 
-                                href="#" 
-                                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-black rounded-2xl hover:from-blue-500 hover:to-cyan-500 transition-all shadow-xl shadow-blue-500/20 flex items-center gap-3 active:scale-95 group"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    alert('現在、本番用パッケージを準備中です。完了次第ダウンロード可能になります。');
-                                }}
-                            >
-                                <Download className="group-hover:bounce" size={20} />
-                                アプリをダウンロード
-                            </a>
+                            <div className="relative group/btn">
+                                <a
+                                    href="#"
+                                    className="px-8 py-4 bg-gradient-to-r from-blue-600/50 to-cyan-600/50 text-white/50 font-black rounded-2xl transition-all flex items-center gap-3 cursor-not-allowed pointer-events-none"
+                                    onClick={(e) => e.preventDefault()}
+                                >
+                                    <Download size={20} />
+                                    アプリをダウンロード
+                                </a>
+                                {/* Coming Soon Overlay */}
+                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] rounded-2xl flex items-center justify-center border border-white/10 shadow-2xl overflow-hidden group-hover/btn:backdrop-blur-none transition-all">
+                                    <div className="bg-blue-500/20 px-3 py-1 rounded-full border border-blue-500/30">
+                                        <span className="text-[10px] font-black text-blue-300 uppercase tracking-[0.2em]">Coming Soon</span>
+                                    </div>
+                                    {/* Animated Shine Effect */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite]" />
+                                </div>
+                            </div>
                         </div>
                         <p className="text-[10px] text-slate-500">
                             Version 1.0.2 (Windows 10/11対応) | 最新更新: 2026-03-07
@@ -68,7 +75,7 @@ export default function HotFolderDownload() {
             {/* Workflow Guide */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
                 <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-slate-800 to-transparent -translate-y-1/2 hidden md:block" />
-                
+
                 {/* Step 1 */}
                 <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6 relative z-10 transition-all hover:border-blue-500/30 group">
                     <div className="w-12 h-12 bg-slate-900 border border-slate-700 rounded-2xl flex items-center justify-center mb-4 font-black text-blue-400 group-hover:scale-110 transition-transform">1</div>
@@ -103,7 +110,7 @@ export default function HotFolderDownload() {
                     <Info className="text-blue-400" size={20} />
                     <h3 className="text-lg font-bold text-white">利用マニュアル (複合機連携)</h3>
                 </div>
-                
+
                 <div className="p-8 space-y-10">
                     {/* Part 1: MFP Setup */}
                     <div className="space-y-4">
