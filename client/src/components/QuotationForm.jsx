@@ -29,6 +29,14 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
             await showAlert('ファイルのダウンロードに失敗しました。', 'error');
         }
     };
+
+    const handleLocalFilePreview = (e, file) => {
+        e.preventDefault();
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        window.open(url, '_blank');
+        // Note: In long-lived apps you'd revoke this, but for a simple preview it's acceptable.
+    };
     const [headerData, setHeaderData] = useState({
         companyName: '',
         contactPerson: '',
@@ -56,6 +64,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
     const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, fileIndex: null, file: null });
     const [searchModalState, setSearchModalState] = useState({ isOpen: false, fileIndex: null, file: null, isExisting: false });
     const [searchCache, setSearchCache] = useState({}); // { [fileId/name]: results }
+    const [queryCache, setQueryCache] = useState({});   // { [fileId/name]: queryPreview (blob url) }
     const [showHistory, setShowHistory] = useState(false);
     const [history, setHistory] = useState([]);
 
@@ -364,6 +373,13 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
         }));
     };
 
+    const handleCacheQueryPreview = (fileIdOrName, blobUrl) => {
+        setQueryCache(prev => ({
+            ...prev,
+            [fileIdOrName]: blobUrl
+        }));
+    };
+
     const handleApplySearchResult = async (result) => {
         try {
             // 先に検索モーダルを閉じる（ダイアログが裏に隠れるのを防ぐ）
@@ -609,17 +625,17 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                 </p>
                                 {pendingCopyFiles.map((sf, idx) => (
                                     <div key={idx} className="flex items-center justify-between bg-amber-900/10 p-2.5 rounded-lg border border-amber-800/30 text-sm">
-                                        <div className="flex items-center gap-2 truncate">
+                                        <div className="flex items-center gap-2 truncate pr-2">
                                             <FileText size={16} className="text-amber-500 shrink-0" />
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleFileDownload(e, sf.sourceFileId, sf.originalName)}
                                                 className="text-amber-300 hover:text-amber-200 hover:underline truncate transition-colors text-left font-medium"
-                                                title="ダウンロード"
+                                                title="転用元のファイルを別タブで開く/ダウンロード"
                                             >
                                                 {sf.originalName}
                                             </button>
-                                            <span className="text-xs bg-amber-900/50 text-amber-400 px-1.5 rounded border border-amber-800/50 shrink-0 font-bold">コピー予定</span>
+                                            <span className="text-[10px] bg-amber-900/50 text-amber-400 px-1.5 py-0.5 rounded border border-amber-800/50 shrink-0 font-bold uppercase tracking-tighter">コピー予定</span>
                                         </div>
                                         <button
                                             type="button"
@@ -636,17 +652,17 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
 
                         {existingFiles.map((f) => (
                             <div key={f.id} className="flex items-start justify-between bg-slate-900/80 p-3 rounded-lg border border-slate-700 text-sm">
-                                <div className="flex items-center gap-2 truncate pt-0.5">
+                                <div className="flex items-center gap-2 truncate pt-0.5 pr-2">
                                     <FileText size={16} className="text-slate-500 shrink-0" />
                                     <button
                                         type="button"
                                         onClick={(e) => handleFileDownload(e, f.id, f.originalName)}
-                                        className="text-blue-400 hover:text-blue-300 hover:underline truncate transition-colors text-left"
-                                        title="ダウンロード"
+                                        className="text-blue-400 hover:text-blue-300 hover:underline truncate transition-colors text-left font-medium"
+                                        title="この図面を別タブで開く/ダウンロード"
                                     >
                                         {f.originalName}
                                     </button>
-                                    <span className="text-xs bg-slate-700 text-slate-300 px-1.5 rounded shrink-0">登録済</span>
+                                    <span className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded shrink-0 font-bold uppercase tracking-tighter">登録済</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {isAdmin && f.original_name.toLowerCase().endsWith('.pdf') && (
@@ -677,10 +693,17 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                         ))}
                         {files.map((f, i) => (
                             <div key={i} className="flex items-start justify-between bg-cyan-900/20 p-3 rounded-lg border border-cyan-800/50 text-sm">
-                                <div className="flex items-center gap-2 truncate pt-0.5">
-                                    <UploadCloud size={16} className="text-cyan-500" />
-                                    <span className="text-cyan-100 truncate">{f.name}</span>
-                                    <span className="text-xs bg-cyan-600 text-white px-1.5 rounded">新規</span>
+                                <div className="flex items-center gap-2 truncate pt-0.5 pr-2">
+                                    <UploadCloud size={16} className="text-cyan-500 shrink-0" />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => handleLocalFilePreview(e, f)}
+                                        className="text-cyan-400 hover:text-cyan-300 hover:underline truncate transition-colors text-left font-medium"
+                                        title="追加したファイルをプレビュー"
+                                    >
+                                        {f.name}
+                                    </button>
+                                    <span className="text-[10px] bg-cyan-600 text-white px-1.5 py-0.5 rounded shrink-0 font-bold uppercase tracking-tighter">新規</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {isAdmin && (
@@ -1016,10 +1039,11 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                                                     e.stopPropagation();
                                                                     handleFileDownload(e, f.id, f.original_name);
                                                                 }}
-                                                                className="flex items-center gap-1 text-xs bg-slate-800 text-blue-300 px-2 py-1 rounded border border-slate-700 hover:bg-slate-700 hover:border-blue-500/50 transition-colors"
+                                                                className="flex items-center gap-1.5 text-[11px] bg-slate-800/80 text-blue-400 px-2 py-1 rounded border border-slate-700 hover:bg-slate-700 hover:border-blue-500/50 hover:text-blue-300 transition-colors font-medium"
+                                                                title="この図面を別タブで開く/ダウンロード"
                                                             >
-                                                                <FileText size={10} />
-                                                                <span className="truncate max-w-[120px]" title={f.original_name}>{f.original_name}</span>
+                                                                <FileText size={12} className="shrink-0" />
+                                                                <span className="truncate max-w-[120px]">{f.original_name}</span>
                                                             </button>
                                                         ))}
                                                     </div>
@@ -1090,8 +1114,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                                     <button
                                                         type="button"
                                                         onClick={(e) => handleFileDownload(e, f.id, f.original_name)}
-                                                        className="text-blue-400 hover:text-blue-300 hover:underline truncate transition-colors text-left"
-                                                        title="ダウンロード"
+                                                        className="text-blue-400 hover:text-blue-300 hover:underline truncate transition-colors text-left font-medium"
+                                                        title="この図面を別タブで開く/ダウンロード"
                                                     >
                                                         {f.original_name}
                                                     </button>
@@ -1122,6 +1146,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                     onApplyResult={handleApplySearchResult}
                     initialResults={searchCache[searchModalState.file?.id || searchModalState.file?.name]}
                     onSaveResults={(results) => handleCacheSearchResults(searchModalState.file?.id || searchModalState.file?.name, results)}
+                    initialQueryPreview={queryCache[searchModalState.file?.id || searchModalState.file?.name]}
+                    onSaveQueryPreview={(blobUrl) => handleCacheQueryPreview(searchModalState.file?.id || searchModalState.file?.name, blobUrl)}
                 />
             )}
         </form >

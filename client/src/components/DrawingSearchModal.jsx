@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Sparkles, RefreshCcw, AlertCircle, Check, DollarSign, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { X, Search, Sparkles, RefreshCcw, AlertCircle, Check, DollarSign, ZoomIn, ZoomOut, Maximize, FileText } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,7 +14,7 @@ const PDF_OPTIONS = {
     enableXfa: false,
 };
 
-export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResult, initialResults, onSaveResults }) {
+export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResult, initialResults, onSaveResults, initialQueryPreview, onSaveQueryPreview }) {
     const { setCredits } = useAuth();
     const { showAlert } = useNotification();
     const [numPages, setNumPages] = useState(null);
@@ -24,7 +24,7 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
     const [selection, setSelection] = useState(null); // { x, y, width, height }
     const [isDrawing, setIsDrawing] = useState(false);
     const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-    const [queryPreview, setQueryPreview] = useState(null); // クエリ画像のプレビュー
+    const [queryPreview, setQueryPreview] = useState(initialQueryPreview || null); // クエリ画像のプレビュー
     const [scale, setScale] = useState(1.0); // ズーム倍率
 
     const containerRef = useRef(null);
@@ -41,7 +41,7 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
         }
 
         setSelection(null);
-        setQueryPreview(null);
+        setQueryPreview(initialQueryPreview || null); // キャッシュがあれば復元
         setScale(1.0); // ズームリセット
 
         if (file instanceof File || file instanceof Blob) {
@@ -114,7 +114,9 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
             );
 
             const blob = await new Promise(resolve => cropCanvas.toBlob(resolve, 'image/png'));
-            setQueryPreview(URL.createObjectURL(blob)); // クエリプレビューを保持
+            const blobUrl = URL.createObjectURL(blob);
+            setQueryPreview(blobUrl); // クエリプレビューを保持
+            if (onSaveQueryPreview) onSaveQueryPreview(blobUrl); // 親に保存を通知
 
             const formData = new FormData();
             formData.append('queryImage', blob, 'query.png');
@@ -257,35 +259,7 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
                             )}
 
                             {results.map((res, i) => (
-                                <div key={i} className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-colors group">
-                                    {/* Thumbnail comparison */}
-                                    {res.thumbnailUrl && (
-                                        <div className="bg-white flex items-center justify-center h-48 border-b border-slate-700">
-                                            <img src={res.thumbnailUrl} alt={`Candidate ${i}`} className="max-w-full max-h-full object-contain" />
-                                        </div>
-                                    )}
-                                    <div className="p-4 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${res.ai_score >= 80 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                    {res.ai_score ?? 0}%
-                                                </div>
-                                                <span className="text-xs font-bold text-slate-300">一致率</span>
-                                            </div>
-                                            <span className="text-[10px] text-slate-500">ID: {res.quotation_id}</span>
-                                        </div>
-                                        <div className="bg-slate-900/50 p-2.5 rounded-lg">
-                                            <p className="text-[11px] text-slate-300 leading-relaxed font-medium">「{res.ai_reason || '一致箇所が見つかりました'}」</p>
-                                        </div>
-                                        <button
-                                            className="w-full py-2.5 bg-cyan-600/10 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/20 hover:border-cyan-500 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                                            onClick={() => onApplyResult(res)}
-                                        >
-                                            <Check className="w-3 h-3" />
-                                            この情報を流用
-                                        </button>
-                                    </div>
-                                </div>
+                                <SearchResultItem key={i} res={res} index={i} onApplyResult={onApplyResult} />
                             ))}
                         </div>
                     </div>
@@ -293,5 +267,101 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
             </div>
         </div>,
         document.body
+    );
+}
+
+// 検索結果の各項目を表示するサブコンポーネント（フックの規則を守るため分離）
+function SearchResultItem({ res, index, onApplyResult }) {
+    const [thumbBlobUrl, setThumbBlobUrl] = useState(null);
+
+    useEffect(() => {
+        if (!res.thumbnailUrl) return;
+        let active = true;
+
+        const fetchThumb = async () => {
+            try {
+                const { data } = await api.get(res.thumbnailUrl, { responseType: 'blob' });
+                if (active) {
+                    const url = URL.createObjectURL(data);
+                    setThumbBlobUrl(url);
+                }
+            } catch (err) {
+                console.error('Thumbnail fetch error:', err);
+            }
+        };
+
+        fetchThumb();
+        return () => {
+            active = false;
+            // Note: In a real app, you might want a more sophisticated way to manage these URLs
+            // but for a modal it's generally fine to revoke on unmount.
+            if (thumbBlobUrl) URL.revokeObjectURL(thumbBlobUrl);
+        };
+    }, [res.thumbnailUrl]);
+
+    const handleDownload = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const fileId = res.file_id || res.id;
+        if (!fileId) return;
+
+        try {
+            const { data } = await api.get(`/api/files/download/${fileId}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', res.original_name || 'drawing.pdf');
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch (err) {
+            console.error('Download failed:', err);
+        }
+    };
+
+    return (
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-colors group">
+            {/* Thumbnail comparison (Simplified: Highlight removed as requested) */}
+            {thumbBlobUrl && (
+                <div className="bg-white flex items-center justify-center h-48 border-b border-slate-700">
+                    <img src={thumbBlobUrl} alt={`Candidate ${index}`} className="max-w-full max-h-full object-contain" />
+                </div>
+            )}
+            <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${res.ai_score >= 80 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                            {res.ai_score ?? 0}%
+                        </div>
+                        <span className="text-xs font-bold text-slate-300">一致率</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500">ID: {res.quotation_id}</span>
+                </div>
+                
+                {res.original_name && (
+                    <div className="px-1">
+                        <button 
+                            onClick={handleDownload}
+                            className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors font-medium truncate w-full"
+                            title="この図面を開く（ダウンロード）"
+                        >
+                            <FileText size={12} className="shrink-0" />
+                            <span className="truncate">{res.original_name}</span>
+                        </button>
+                    </div>
+                )}
+
+                <div className="bg-slate-900/50 p-2.5 rounded-lg">
+                    <p className="text-[11px] text-slate-300 leading-relaxed font-medium">「{res.ai_reason || '一致箇所が見つかりました'}」</p>
+                </div>
+                <button
+                    className="w-full py-2.5 bg-cyan-600/10 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/20 hover:border-cyan-500 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    onClick={() => onApplyResult(res)}
+                >
+                    <Check className="w-3 h-3" />
+                    この情報を流用
+                </button>
+            </div>
+        </div>
     );
 }

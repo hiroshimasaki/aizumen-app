@@ -62,6 +62,8 @@ router.get('/thumbnail/:fileId', authMiddleware, async (req, res) => {
         const { fileId } = req.params;
         const { x, y, w, h } = req.query;
 
+        console.log(`[SearchAPI] Received thumbnail request for fileId: ${fileId}, query:`, req.query);
+
         if (!x || !y || !w || !h) {
             return res.status(400).json({ error: 'Coordinates (x, y, w, h) are required' });
         }
@@ -91,6 +93,7 @@ router.get('/thumbnail/:fileId', authMiddleware, async (req, res) => {
         const buffer = Buffer.from(await fileData.arrayBuffer());
 
         // 3. 画像切り出し実行
+        // 座標を数値に変換して渡す
         const croppedBuffer = await imageService.getTileImage(buffer, fileMeta.mime_type, {
             x: parseFloat(x),
             y: parseFloat(y),
