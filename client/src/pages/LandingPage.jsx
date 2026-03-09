@@ -202,7 +202,7 @@ export default function LandingPage() {
                 {/* Features Section */}
                 <section className="max-w-7xl mx-auto px-4 md:px-8 py-24">
                     <div className="text-center mb-20">
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6">AiZumenの3つの強み</h2>
+                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6">AiZumenの4つの強み</h2>
                         <p className="text-lg text-slate-400 max-w-2xl mx-auto">紙中心の受発注業務をクラウド化し、圧倒的な精度とスピード、そして現場の情報共有を実現します。</p>
                     </div>
 
@@ -233,6 +233,35 @@ export default function LandingPage() {
                                     alt="AI解析機能"
                                 />
                                 <p className="mt-2 text-right text-xs text-slate-400/80 italic">※画面はテストデータを用いた開発中のものです。</p>
+                            </div>
+                        </div>
+
+                        {/* Feature 2: Similar Search */}
+                        <div className="grid md:grid-cols-2 gap-12 items-center">
+                            <div className="relative group">
+                                <div className="absolute -inset-4 bg-indigo-500/10 rounded-[2.5rem] blur-2xl group-hover:bg-indigo-500/20 transition-colors"></div>
+                                <img
+                                    src="/assets/lp/feature-search.png"
+                                    className="relative rounded-2xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]"
+                                    alt="類似図面検索機能"
+                                />
+                                <p className="mt-2 text-left text-xs text-slate-400/80 italic">※画面はテストデータを用いた開発中のものです。</p>
+                            </div>
+                            <div>
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6">
+                                    <Search className="w-6 h-6 text-indigo-400" />
+                                </div>
+                                <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">過去の図面から類似箇所を瞬時に発見</h3>
+                                <p className="text-slate-400 leading-relaxed mb-8">
+                                    膨大な過去の図面データから、検討中の形状と一致する箇所をAIが高速検索。熟練者の知識に頼ることなく、過去の工数実績や見積根拠を素早く参照でき、精度の高い工数予測と説得力のある価格交渉をサポートします。
+                                </p>
+                                <ul className="space-y-3">
+                                    {['ドラッグ操作で検索範囲を直感的に指定', '一致率のスコアリングと類似箇所の強調表示', '過去の見積や実績データへ即座にアクセス'].map((item, i) => (
+                                        <li key={i} className="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                                            <Check className="w-5 h-5 text-indigo-500" /> {item}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         </div>
 
