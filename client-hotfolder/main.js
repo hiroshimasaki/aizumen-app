@@ -1,5 +1,4 @@
-const electron = require('electron');
-const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, Tray, nativeImage } = electron.app ? electron : (typeof electron === 'object' && electron.default ? electron.default : electron);
+const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 const chokidar = require('chokidar');
 const fs = require('fs');
@@ -15,7 +14,10 @@ const apiBaseUrl = 'http://localhost:3001';
 let watchFolder = null;
 let tray = null; // トレイアイコン用
 let minimizeOnClose = true; // 閉じるボタンで最小化するかどうか
-app.isQuiting = false; // 終了フラグの初期化
+
+if (app) {
+    app.isQuiting = false; // 終了フラグの初期化
+}
 
 const getConfigPath = () => path.join(app.getPath('userData'), 'hotfolder-config.json');
 
@@ -44,7 +46,6 @@ function saveConfig(config) {
 
 function createWindow() {
     loadConfig(); // 起動時に設定を読み込む
-    const { Menu, Tray, nativeImage } = electron;
     const iconImage = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
 
     mainWindow = new BrowserWindow({
@@ -59,20 +60,22 @@ function createWindow() {
     });
 
     mainWindow.loadFile('index.html');
-    
+
     // システムトレイの設定
     const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
     tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
-    
+
     const contextMenu = Menu.buildFromTemplate([
         { label: 'アプリを開く', click: () => mainWindow.show() },
         { type: 'separator' },
-        { label: '終了', click: () => {
-            app.isQuiting = true;
-            app.quit();
-        }}
+        {
+            label: '終了', click: () => {
+                app.isQuiting = true;
+                app.quit();
+            }
+        }
     ]);
-    
+
     tray.setToolTip('AiZumen HotFolder');
     tray.setContextMenu(contextMenu);
 
@@ -180,7 +183,7 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
     }
 
     watchFolder = folderPath;
-    
+
     // 設定を保存
     const config = loadConfig();
     config.watchFolder = watchFolder;
@@ -232,7 +235,7 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
         if (path.extname(filePath).toLowerCase() === '.pdf') {
             const initialLength = pendingFiles.length;
             pendingFiles = pendingFiles.filter(f => f.path !== filePath);
-            
+
             if (pendingFiles.length !== initialLength) {
                 mainWindow.webContents.send('update-file-list', pendingFiles);
             }

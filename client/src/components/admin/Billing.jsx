@@ -204,7 +204,7 @@ export default function Billing() {
                             <h3 className="text-xl font-bold text-white mb-2">{isFreePlan ? '無料トライアル期間が終了しました' : 'サブスクリプション有効期限が終了しました'}</h3>
                             <p className="text-red-200 text-sm leading-relaxed mb-4">
                                 {isFreePlan
-                                    ? 'アカウントの全機能（案件の閲覧・作成を含む）が一時的に制限されています。引き続き AiZumen をご利用いただくには、以下のいずれかの有料プランを選択してサブスクリプションを開始してください。'
+                                    ? 'アカウントの一部機能（案件の閲覧・作成を含む）が一時的に制限されています。引き続き AiZumen をご利用いただくには、以下のいずれかの有料プランを選択してサブスクリプションを開始してください。'
                                     : 'サブスクリプションの有効期限が切れたため、機能が制限されています。引き続きご利用いただくには、お支払い情報の更新または再契約を行ってください。'
                                 }
                             </p>
@@ -249,8 +249,8 @@ export default function Billing() {
                                 ) : null}
                             </div>
                             <p className="text-xs text-slate-400 mt-1">
-                                 {subscription?.subscription?.status === 'active' || subscription?.subscription?.status === 'trialing' ? 'サブスク有効' : 
-                                  (tenant?.plan && tenant.plan !== 'free') ? '有効 (確認中)' : 'トライアル/制限中'}
+                                {subscription?.subscription?.status === 'active' || subscription?.subscription?.status === 'trialing' ? 'サブスク有効' :
+                                    (tenant?.plan && tenant.plan !== 'free') ? '有効 (確認中)' : 'トライアル/制限中'}
                             </p>
                         </div>
                     </div>

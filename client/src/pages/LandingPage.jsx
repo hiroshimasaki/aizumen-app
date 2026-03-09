@@ -399,7 +399,7 @@ export default function LandingPage() {
                                 <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> バックアップ 7日間保持</li>
                             </ul>
                             <Link to="/signup" className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-center transition-all shadow-xl shadow-blue-500/30 text-lg">
-                                7日間の無料体験を始める
+                                30日間の無料体験を始める
                             </Link>
                         </div>
 
@@ -593,7 +593,7 @@ export default function LandingPage() {
                     <div className="p-12 rounded-[2.5rem] bg-gradient-to-br from-blue-900/40 via-indigo-900/40 to-cyan-900/40 border border-white/10 text-center relative overflow-hidden">
                         {/* Noise overlay could be added here if desired */}
                         <h2 className="text-3xl md:text-5xl font-black text-white mb-6 relative z-10">今すぐ業務を効率化しよう</h2>
-                        <p className="text-lg text-slate-300 mb-10 relative z-10">7日間の無料トライアルで、AiZumenのすべての機能をお試しいただけます。</p>
+                        <p className="text-lg text-slate-300 mb-10 relative z-10">30日間の無料トライアルで、AiZumenの一部機能をお試しいただけます。</p>
                         <Link
                             to="/signup"
                             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-slate-900 font-bold text-lg hover:bg-slate-100 transition-all shadow-xl relative z-10"
