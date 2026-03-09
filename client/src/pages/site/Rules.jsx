@@ -110,7 +110,7 @@ export default function PrivacyPolicy() {
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5">
                             <h3 className="text-xl font-bold text-white mb-2">AiZumen</h3>
                             <p>代表：正木 裕士</p>
-                            <p>Email: <span className="text-white">fj081399@gmail.com</span></p>
+                            <p>Email: <span className="text-white">info@aizumen.com</span></p>
                         </div>
                     </section>
 

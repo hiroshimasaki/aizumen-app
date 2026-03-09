@@ -37,7 +37,7 @@ export default function CommercialTransaction() {
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">メールアドレス</td>
-                                    <td className="p-5">fj081399@gmail.com</td>
+                                    <td className="p-5">info@aizumen.com</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">サービス名</td>
@@ -45,7 +45,7 @@ export default function CommercialTransaction() {
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">サービスURL</td>
-                                    <td className="p-5">https://aizumen.vercel.app/</td>
+                                    <td className="p-5">https://aizumen.com/</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">販売価格</td>
