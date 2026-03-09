@@ -39,6 +39,13 @@ export default function QuotationsPage() {
     const [isBulkAnalyzing, setIsBulkAnalyzing] = useState(false);
     const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
 
+    const handleLocalFilePreview = (e, file) => {
+        e.preventDefault();
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        window.open(url, '_blank');
+    };
+
     const fetchQuotations = async (showLoading = true, overrides = {}) => {
         if (showLoading) setLoading(true);
         try {
@@ -449,10 +456,10 @@ export default function QuotationsPage() {
                     <div className="flex gap-3">
                         <button
                             onClick={() => setIsBulkOpen(true)}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all hover:scale-105 active:scale-95 border border-amber-400/30"
                             title="複数の図面を一括で解析して自動登録します"
                         >
-                            <Sparkles size={20} className="text-amber-500" />
+                            <Sparkles size={20} className="text-white" />
                             一括解析
                         </button>
                         <button
@@ -668,7 +675,14 @@ export default function QuotationsPage() {
                                         <div key={idx} className="flex items-center justify-between px-4 py-3 bg-slate-800 rounded-xl border border-slate-700">
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <FileText size={18} className="text-slate-500 shrink-0" />
-                                                <span className="text-sm text-slate-300 truncate">{file.name}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleLocalFilePreview(e, file)}
+                                                    className="text-sm text-amber-400 hover:text-amber-300 hover:underline truncate transition-colors text-left font-medium"
+                                                    title="追加したファイルをプレビュー"
+                                                >
+                                                    {file.name}
+                                                </button>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {bulkStatuses[file.name] === 'analyzing' && (

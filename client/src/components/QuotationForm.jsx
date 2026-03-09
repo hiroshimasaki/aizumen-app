@@ -666,24 +666,23 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {isAdmin && f.original_name.toLowerCase().endsWith('.pdf') && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleOpenSearchModal(existingFiles.indexOf(f), true)}
-                                            className={cn(
-                                                "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md",
-                                                (!credits || credits.balance <= 0)
-                                                    ? "bg-slate-800 text-slate-500 border border-slate-700"
-                                                    : "bg-gradient-to-r from-cyan-600 to-blue-700 text-white hover:from-cyan-500 hover:to-blue-600 border border-cyan-400/30 shadow-cyan-900/20"
-                                            )}
-                                            title="この図面から類似箇所を検索"
-                                        >
-                                            <Search size={14} />
-                                            類似図面検索
-                                            {/* AI Credit Badge */}
-                                            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-cyan-600 text-[9px] text-white rounded-full shadow-lg shadow-cyan-900/50 flex items-center gap-0.5 border border-cyan-400/50 font-bold tracking-tight z-10">
-                                                <Sparkles size={8} /> 1pt
-                                            </span>
-                                        </button>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenSearchModal(existingFiles.indexOf(f), true)}
+                                                className={cn(
+                                                    "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md",
+                                                    (!credits || credits.balance <= 0)
+                                                        ? "bg-slate-800 text-slate-500 border border-slate-700"
+                                                        : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400 border border-amber-400/30 shadow-orange-900/20"
+                                                )}
+                                                title="この図面から類似箇所を検索"
+                                            >
+                                                <Search size={14} />
+                                                類似図面検索
+                                            </button>
+                                            <span className="text-[9px] text-orange-400/80 font-medium whitespace-nowrap">※1AIクレジット消費 (結果不問)</span>
+                                        </div>
                                     )}
                                     {isAdmin && (
                                         <button type="button" onClick={() => removeExistingFile(f.id)} className="text-slate-500 hover:text-red-400 shrink-0"><X size={16} /></button>
@@ -707,71 +706,50 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {isAdmin && (
-                                        <div className="flex items-center gap-2">
-                                            {fileStatuses[f.name] === 'analyzing' && (
-                                                <div className="flex items-center gap-1.5 text-amber-500 text-xs font-bold whitespace-nowrap">
-                                                    <RefreshCw size={12} className="animate-spin" />
-                                                    解析中...
-                                                </div>
-                                            )}
-                                            {fileStatuses[f.name] === 'completed' && (
-                                                <div className="flex items-center gap-1.5 text-emerald-500 text-xs font-bold whitespace-nowrap">
-                                                    <FileText size={12} />
-                                                    解析完了 (明細に追加済)
-                                                </div>
-                                            )}
-                                            {fileStatuses[f.name] === 'error' && (
-                                                <div className="flex items-center gap-1.5 text-red-500 text-xs font-bold whitespace-nowrap">
-                                                    <AlertCircle size={12} />
-                                                    解析エラー
-                                                </div>
-                                            )}
-                                            {(!fileStatuses[f.name] || fileStatuses[f.name] === 'pending' || fileStatuses[f.name] === 'error') && f.name.toLowerCase().endsWith('.pdf') && (
-                                                <div className="flex flex-col items-center pt-0.5">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleAIAnalyze(f)}
-                                                        disabled={isAnalyzing || !credits || credits.balance <= 0}
-                                                        className={cn(
-                                                            "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg",
-                                                            (!credits || credits.balance <= 0)
-                                                                ? "bg-slate-800 text-slate-500 border border-slate-700"
-                                                                : "bg-gradient-to-r from-cyan-600 to-blue-700 text-white hover:from-cyan-500 hover:to-blue-600 border border-cyan-400/30 shadow-cyan-900/20 animate-pulse-subtle"
-                                                        )}
-                                                        title={(!credits || credits.balance <= 0) ? "クレジットが不足しています" : "この図面をAIで解析する"}
-                                                    >
-                                                        <Sparkles size={14} className={cn(isAnalyzing ? "animate-spin" : "")} />
-                                                        注文書解析
-                                                        {/* AI Credit Badge (Floating) - Unified to Cyan */}
-                                                        <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-cyan-600 text-[9px] text-white rounded-full shadow-lg shadow-cyan-900/50 flex items-center gap-0.5 border border-cyan-400/50 font-bold tracking-tight z-10">
-                                                            <Sparkles size={8} /> 1pt
-                                                        </span>
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    {isAdmin && (
-                                        <div className="flex items-center gap-2">
+                                        <>
                                             {f.name.toLowerCase().endsWith('.pdf') && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleOpenSearchModal(i)}
-                                                    className={cn(
-                                                        "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md",
-                                                        (!credits || credits.balance <= 0)
-                                                            ? "bg-slate-800 text-slate-500 border border-slate-700"
-                                                            : "bg-gradient-to-r from-cyan-600 to-blue-700 text-white hover:from-cyan-500 hover:to-blue-600 border border-cyan-400/30 shadow-cyan-900/20"
-                                                    )}
-                                                    title="この図面から類似箇所を検索"
-                                                >
-                                                    <Search size={14} />
-                                                    類似図面検索
-                                                    {/* AI Credit Badge */}
-                                                    <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-cyan-600 text-[9px] text-white rounded-full shadow-lg shadow-cyan-900/50 flex items-center gap-0.5 border border-cyan-400/50 font-bold tracking-tight z-10">
-                                                        <Sparkles size={8} /> 1pt
-                                                    </span>
-                                                </button>
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        {fileStatuses[f.name] === 'analyzing' && (
+                                                            <div className="flex items-center gap-1.5 text-amber-500 text-xs font-bold whitespace-nowrap">
+                                                                <RefreshCw size={12} className="animate-spin" />
+                                                                解析中...
+                                                            </div>
+                                                        )}
+                                                        {(!fileStatuses[f.name] || fileStatuses[f.name] === 'pending' || fileStatuses[f.name] === 'error') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAIAnalyze(f)}
+                                                                disabled={isAnalyzing || !credits || credits.balance <= 0}
+                                                                className={cn(
+                                                                    "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg",
+                                                                    (!credits || credits.balance <= 0)
+                                                                        ? "bg-slate-800 text-slate-500 border border-slate-700"
+                                                                        : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400 border border-amber-400/30 shadow-orange-900/20 animate-pulse-subtle"
+                                                                )}
+                                                                title={(!credits || credits.balance <= 0) ? "クレジットが不足しています" : "この図面をAIで解析する"}
+                                                            >
+                                                                <Sparkles size={14} className={cn(isAnalyzing ? "animate-spin" : "")} />
+                                                                注文書解析
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenSearchModal(i)}
+                                                            className={cn(
+                                                                "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md",
+                                                                (!credits || credits.balance <= 0)
+                                                                    ? "bg-slate-800 text-slate-500 border border-slate-700"
+                                                                    : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400 border border-amber-400/30 shadow-orange-900/20"
+                                                            )}
+                                                            title="この図面から類似箇所を検索"
+                                                        >
+                                                            <Search size={14} />
+                                                            類似図面検索
+                                                        </button>
+                                                    </div>
+                                                    <span className="text-[9px] text-orange-400/80 font-medium whitespace-nowrap">※1AIクレジット消費 (結果不問)</span>
+                                                </div>
                                             )}
                                             {f.type === 'application/pdf' && (
                                                 <button
@@ -786,7 +764,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                             <button type="button" onClick={() => removeNewFile(i)} className="text-slate-500 hover:text-red-400 p-2 hover:bg-red-500/10 rounded-xl transition-colors">
                                                 <X size={18} />
                                             </button>
-                                        </div>
+                                        </>
                                     )}
                                 </div>
                             </div>
