@@ -113,8 +113,8 @@ export default function SignUpPage() {
     const plans = [
         {
             value: 'free',
-            label: '7日間 無料体験',
-            desc: '全機能を無料でお試し',
+            label: '30日間 無料体験',
+            desc: '一部機能を無料でお試し',
             price: '¥0',
             users: '1名',
             ai: '10回',

@@ -78,7 +78,7 @@ export default function CommercialTransaction() {
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">サービス提供時期</td>
-                                    <td className="p-5">アカウント登録完了後、直ちにご利用いただけます。<br />新規登録時は7日間の無料トライアル期間が含まれます。</td>
+                                    <td className="p-5">アカウント登録完了後、直ちにご利用いただけます。<br />新規登録時は30日間の無料トライアル期間が含まれます。</td>
                                 </tr>
                                 <tr>
                                     <td className="p-5 font-bold text-white align-top">返品・キャンセル</td>

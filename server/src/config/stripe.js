@@ -17,7 +17,8 @@ const PLAN_CONFIG = {
         maxStorageGB: 1,      // 追加
         priceId: null,       // Stripeは使わない
         amount: 0,
-        trialDays: 7,        // 7日間の無料トライアル
+        trialDays: 30, // 7 -> 30
+        // 7日間の無料トライアル
     },
     lite: {
         name: 'Lite',
