@@ -116,7 +116,7 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
             // PDFファイルであり、かつ案件IDに紐付いている場合のみ実行
             if (quotationId && (contentType === 'application/pdf' || originalName.toLowerCase().endsWith('.pdf'))) {
                 // 重い処理のため、レスポンスを待たずに非同期で実行（バックグラウンド処理）
-                drawingSearchService.registerDrawing(quotationId, fileId, req.tenantId, file.buffer)
+                drawingSearchService.registerDrawing(quotationId, fileId, req.tenantId, file.buffer, contentType)
                     .then(() => console.log(`[Files] Background indexing complete for ${fileId}`))
                     .catch(err => console.error(`[Files] Background indexing failed for ${fileId}:`, err));
             }

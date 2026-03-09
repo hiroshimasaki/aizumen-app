@@ -1,5 +1,6 @@
 const { VertexAI } = require('@google-cloud/vertexai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const logService = require('./logService');
 
 /**
  * AI Document Analysis Service
@@ -30,6 +31,22 @@ class AIService {
     initVertexAI(projectId, credentialsJson) {
         try {
             const credentials = JSON.parse(credentialsJson);
+            // Stronger normalization for private_key (handles various env var escaping)
+            if (credentials.private_key) {
+                let pk = credentials.private_key;
+                // 1. If it has literal newlines, normalize them
+                pk = pk.replace(/\n/g, ' '); 
+                // 2. Convert escaped \\n to real \n
+                pk = pk.replace(/\\n/g, '\n');
+                // 3. Ensure BEGIN/END markers are on their own lines and trim
+                pk = pk.trim();
+                if (!pk.includes('\n') && pk.includes('-----BEGIN PRIVATE KEY-----')) {
+                    // Pathological case: all on one line without even \n
+                    pk = pk.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
+                           .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
+                }
+                credentials.private_key = pk;
+            }
             this.vertexAI = new VertexAI({
                 project: projectId,
                 location: 'us-central1',
@@ -63,9 +80,10 @@ class AIService {
      * @param {string} prompt 
      * @param {Buffer} fileBuffer 
      * @param {string} mimeType 
+     * @param {Array} additionalImages Array of { buffer, mimeType }
      * @returns {Promise<string>} Generated text content
      */
-    async generateText(prompt, fileBuffer, mimeType) {
+    async generateText(prompt, fileBuffer, mimeType, additionalImages = []) {
         if (!this.model) throw new Error('AI Service not initialized');
         const timestamp = new Date().toISOString();
 
@@ -76,42 +94,65 @@ class AIService {
         try {
             // SDK response extraction
             if (this.mode.includes('Vertex')) {
-                const request = {
-                    contents: [{
-                        role: 'user',
-                        parts: [
-                            { text: prompt },
-                            {
-                                inlineData: {
-                                    data: fileBuffer.toString('base64'),
-                                    mimeType: mimeType
-                                }
-                            }
-                        ]
-                    }]
-                };
-                const response = await this.model.generateContent(request);
-                const text = response.response.candidates[0].content.parts[0].text;
-                console.log(`[AIService][${timestamp}] Success (Vertex AI)`);
-                return text;
-            } else {
-                // Google AI SDK (Development) format
-                const response = await this.model.generateContent([
-                    prompt,
-                    {
+                const parts = [{ text: prompt }];
+                
+                if (fileBuffer && mimeType) {
+                    parts.push({
                         inlineData: {
                             data: fileBuffer.toString('base64'),
                             mimeType: mimeType
                         }
-                    }
-                ]);
+                    });
+                }
+
+                for (const [idx, img] of additionalImages.entries()) {
+                    logService.debug(`[AIService] (Vertex AI) Adding additional image ${idx}: ${img.buffer?.length} bytes, type ${img.mimeType}`);
+                    parts.push({
+                        inlineData: {
+                            data: img.buffer.toString('base64'),
+                            mimeType: img.mimeType
+                        }
+                    });
+                }
+
+                const request = {
+                    contents: [{ role: 'user', parts }]
+                };
+
+                logService.debug(`[AIService] Sending request to Vertex AI...`);
+                const response = await this.model.generateContent(request);
+                const text = response.response.candidates[0].content.parts[0].text;
+                return text;
+            } else {
+                // Google AI SDK (Development) format
+                const parts = [prompt];
+
+                if (fileBuffer && mimeType) {
+                    parts.push({
+                        inlineData: {
+                            data: fileBuffer.toString('base64'),
+                            mimeType: mimeType
+                        }
+                    });
+                }
+
+                for (const [idx, img] of additionalImages.entries()) {
+                    logService.debug(`[AIService] (Google AI) Adding additional image ${idx}: ${img.buffer?.length} bytes, type ${img.mimeType}`);
+                    parts.push({
+                        inlineData: {
+                            data: img.buffer.toString('base64'),
+                            mimeType: img.mimeType
+                        }
+                    });
+                }
+
+                const response = await this.model.generateContent(parts);
                 const text = response.response.text();
-                console.log(`[AIService][${timestamp}] Success (Google AI SDK)`);
                 return text;
             }
         } catch (error) {
-            console.error(`[AIService][${timestamp}] CRITICAL ERROR in generateText:`, error);
-            if (error.status) console.error(`[AIService][${timestamp}] HTTP Status: ${error.status}`);
+            logService.debug(`[AIService] CRITICAL ERROR in generateText: ${error.message}`);
+            if (error.stack) logService.debug(`[AIService] Error Stack: ${error.stack}`);
             throw error;
         }
     }

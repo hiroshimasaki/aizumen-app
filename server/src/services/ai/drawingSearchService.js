@@ -2,6 +2,7 @@ const imageService = require('./imageService');
 const vectorService = require('./vectorService');
 const { supabaseAdmin } = require('../../config/supabase');
 const aiService = require('../aiService'); // 既存のVertex AI / Gemini設定を利用
+const logService = require('../logService');
 
 class DrawingSearchService {
     /**
@@ -11,12 +12,12 @@ class DrawingSearchService {
      * @param {string} tenantId 
      * @param {Buffer} fileBuffer 
      */
-    async registerDrawing(quotationId, fileId, tenantId, fileBuffer) {
+    async registerDrawing(quotationId, fileId, tenantId, fileBuffer, mimeType = 'application/pdf') {
         try {
-            console.log(`[DrawingSearch] Indexing drawing for quotation: ${quotationId}`);
+            console.log(`[DrawingSearch] Indexing drawing for quotation: ${quotationId} (${mimeType})`);
 
-            // 1. 前処理
-            const processedBuffer = await imageService.preprocessImage(fileBuffer);
+            // 1. 前処理 (PDFなら画像変換も含む)
+            const processedBuffer = await imageService.preprocessImage(fileBuffer, mimeType);
 
             // 2. タイル分割
             const tiles = await imageService.tileImage(processedBuffer);
@@ -81,40 +82,41 @@ class DrawingSearchService {
                 return [];
             }
 
+            // 2.5 storage_path / mime_type の補填（RPCのレスポンス不整合対策）
+            const fileIds = [...new Set(candidates.map(c => c.file_id))];
+            const { data: files } = await supabaseAdmin
+                .from('quotation_files')
+                .select('id, storage_path, mime_type')
+                .in('id', fileIds);
+            
+            const enhancedCandidates = candidates.map(c => {
+                const file = files?.find(f => f.id === c.file_id);
+                return {
+                    ...c,
+                    storage_path: c.storage_path || file?.storage_path,
+                    mime_type: c.mime_type || file?.mime_type
+                };
+            });
+
             // 3. Gemini による二次精査（リランキング）
-            const rerankedResults = await this.rerankWithGemini(queryImageBuffer, candidates);
+            const rerankedResults = await this.rerankWithGemini(queryImageBuffer, enhancedCandidates);
 
-            // サムネイルURLを付与（候補箇所の切り出し画像をフロントエンドで表示するため）
-            const resultsWithThumbnails = await Promise.all(rerankedResults.map(async (res) => {
-                try {
-                    if (!res.storage_path) {
-                        return res;
-                    }
-
-                    // パス補正: storage_path が 'quotation-files/' から始まっている場合の重複を防ぐ
-                    const cleanPath = res.storage_path.startsWith('quotation-files/')
-                        ? res.storage_path.replace('quotation-files/', '')
-                        : res.storage_path;
-
-                    // Supabase Storage から署名付きURLを取得
-                    const { data: signedUrl, error: urlErr } = await supabaseAdmin.storage
-                        .from('quotation-files')
-                        .createSignedUrl(cleanPath, 3600); // 1時間有効
-
-                    if (urlErr) {
-                        console.error(`[DrawingSearch] createSignedUrl error for path [${cleanPath}]:`, urlErr);
-                        return res;
-                    }
-
-                    return {
-                        ...res,
-                        thumbnailUrl: signedUrl?.signedUrl || null
-                    };
-                } catch (err) {
-                    console.error('[DrawingSearch] Failed to generate thumbnail URL:', err);
-                    return res;
-                }
-            }));
+            // サムネイルURLを付与（新設するAPIエンドポイントに向ける）
+            const resultsWithThumbnails = rerankedResults.map((res) => {
+                if (!res.file_id) return res;
+                
+                // 座標情報を含めたサムネイルAPIのURLを生成
+                const params = new URLSearchParams({
+                    x: res.x,
+                    y: res.y,
+                    w: res.width,
+                    h: res.height
+                });
+                return {
+                    ...res,
+                    thumbnailUrl: `${process.env.API_URL || ''}/api/search/thumbnail/${res.file_id}?${params.toString()}`
+                };
+            });
 
             return resultsWithThumbnails;
         } catch (error) {
@@ -128,26 +130,82 @@ class DrawingSearchService {
      */
     async rerankWithGemini(queryBuffer, candidates) {
         try {
+            // 各候補のタイル画像をバイナリデータとして取得
+            const candidateImages = await Promise.all(candidates.slice(0, 3).map(async (c, i) => {
+                try {
+                    if (!c.storage_path) return null;
+                    const { data: fileData } = await supabaseAdmin.storage
+                        .from('quotation-files')
+                        .download(c.storage_path);
+                    if (!fileData) return null;
+
+                    const buffer = Buffer.from(await fileData.arrayBuffer());
+                    logService.debug(`[DrawingSearch] Fetched candidate ${i} from storage: ${buffer.length} bytes`);
+                    const tileBuffer = await imageService.getTileImage(buffer, c.mime_type, {
+                        x: c.x, 
+                        y: c.y, 
+                        width: c.width || 300, 
+                        height: c.height || 300
+                    });
+                    logService.debug(`[DrawingSearch] Generated tile image for candidate ${i}: ${tileBuffer.length} bytes`);
+                    
+                    return {
+                        id: c.id,
+                        index: i,
+                        buffer: tileBuffer,
+                        mimeType: 'image/png',
+                        similarity: (c.similarity && typeof c.similarity === 'number') ? c.similarity.toFixed(2) : '0.00'
+                    };
+                } catch (err) {
+                    console.error(`[DrawingSearch] Failed to fetch tile image for candidate ${i}:`, err);
+                    return null;
+                }
+            }));
+
+            const validCandidates = candidateImages.filter(img => img !== null);
+            logService.debug(`[DrawingSearch] Valid candidates for reranking: ${validCandidates.length}`);
+
             const prompt = `
 あなたは熟練の図面検図エキスパートです。
-添付された「クエリ画像（選択範囲）」と、提示された「候補情報」を幾何学的に比較してください。
+ユーザーが選択した「クエリ画像（選択範囲）」と、DBから抽出された「候補画像」を比較してください。
 
-候補リスト:
-${candidates.map((c, i) => `候補[${i}]: ID=${c.id}, 暫定類似度=${(c.similarity && typeof c.similarity === 'number') ? c.similarity.toFixed(2) : '0.00'}, 見積ID=${c.quotation_id}`).join('\n')}
+画像構成:
+- 1枚目の画像: ユーザーが検索した「クエリ画像」
+- 2枚目以降: 比較対象の「候補画像」 (下記の判定対象リストの順番に対応)
+
+判定対象リスト:
+${validCandidates.map((c, i) => `候補[${i}]: ID=${c.id}, 送付画像インデックス=${i + 1} (2枚目以降の通番), 暫定ベクトル類似度=${c.similarity}`).join('\n')}
 
 判定ルール:
-1. ノイズ（掠れ、黒点）は無視し、図形の幾何学的構造（線の接続、角度、シンボル）のみを比較してください。
-2. 90度/180度の回転があっても、構造が同じなら同一とみなしてください。
-3. 各候補に対してスコア(0-100)と、その判定理由を端的に日本語で回答してください。
+1. 視覚的な比較: 送信された画像を直接見て、クエリ画像と幾何学的構造（線の接続、シンボル、角度）が一致しているか判定してください。
+2. 回転の許容: 90度/180度の回転があっても同一構造なら一致とみなしてください。
+3. 文字情報の優先: 寸法値や注記が読み取れる場合、それらの一致を高く評価してください。
+4. 画像未送付への対応: システム上の制約により、ここにリストされていない候補は判定の対象外です。
 
-出力形式 (JSONのみ):
+出力形式 (必ず以下のJSONフォーマットのみで回答):
 [
-  { "id": "候補ID", "score": 95, "reason": "理由" }
+  { "id": "候補ID", "score": 一致率(0-100), "reason": "判定理由(日本語)" }
 ]
 `;
 
-            const responseText = await aiService.generateText(prompt, queryBuffer, 'image/png');
-            const reranked = aiService.parseJsonResponse(responseText);
+            // Gemini への入力（マルチモーダル: クエリ画像 + 候補タイル画像）
+            logService.debug(`[DrawingSearch] Sending ${validCandidates.length + 1} images to Gemini (1 query + ${validCandidates.length} candidates)`);
+            
+            const responseText = await aiService.generateText(
+                prompt, 
+                queryBuffer, 
+                'image/png', 
+                validCandidates.map(img => ({ 
+                    buffer: img.buffer, 
+                    mimeType: img.mimeType 
+                }))
+            );
+            logService.debug(`[DrawingSearch] Gemini response received. Length: ${responseText?.length}`);
+            
+            logService.debug(`[DrawingSearch] Parsed reranking results count: ${reranked?.length}`);
+            if (Array.isArray(reranked)) {
+                reranked.forEach(r => logService.debug(`[DrawingSearch] Candidate ${r.id}: score=${r.score}, reason=${r.reason}`));
+            }
 
             return candidates.map(c => {
                 // 配列でない場合の安全なハンドリング

@@ -89,6 +89,27 @@ class LogService {
             console.error('[LogService] Failed to write audit log:', err.message);
         }
     }
+
+    /**
+     * デバッグログをローカルファイルに記録
+     */
+    async debug(message, metadata = null) {
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const logDir = path.join(process.cwd(), 'logs');
+            if (!fs.existsSync(logDir)) {
+                fs.mkdirSync(logDir);
+            }
+            const logFile = path.join(logDir, 'debug.log');
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message} ${metadata ? JSON.stringify(metadata) : ''}\n`;
+            fs.appendFileSync(logFile, logEntry);
+            console.log(`[Debug] ${message}`);
+        } catch (err) {
+            console.error('[LogService] Failed to write debug log to file:', err.message);
+        }
+    }
 }
 
 module.exports = new LogService();
