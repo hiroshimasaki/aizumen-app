@@ -9,6 +9,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
 const { checkStorageLimit } = require('../middleware/storageLimit');
 const logService = require('../services/logService');
+const drawingSearchService = require('../services/ai/drawingSearchService');
 
 // メモリストレージ (Supabase Storageに直接アップロードするため)
 const upload = multer({
@@ -109,6 +110,15 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
                     size: file.size,
                     mimeType: contentType,
                 });
+            }
+
+            // [新規追加] 図面検索用の自動インデックス登録
+            // PDFファイルであり、かつ案件IDに紐付いている場合のみ実行
+            if (quotationId && (contentType === 'application/pdf' || originalName.toLowerCase().endsWith('.pdf'))) {
+                // 重い処理のため、レスポンスを待たずに非同期で実行（バックグラウンド処理）
+                drawingSearchService.registerDrawing(quotationId, fileId, req.tenantId, file.buffer)
+                    .then(() => console.log(`[Files] Background indexing complete for ${fileId}`))
+                    .catch(err => console.error(`[Files] Background indexing failed for ${fileId}:`, err));
             }
         }
 

@@ -12,6 +12,9 @@
     "@google-cloud/vertexai": "^1.10.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.98.0",
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs": "^4.22.0",
+    "canvas": "^3.2.1",
     "cors": "^2.8.6",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.3.1",
@@ -20,6 +23,8 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.5.207",
+    "sharp": "^0.34.5",
     "stripe": "^18.1.0",
     "uuid": "^13.0.0"
   },

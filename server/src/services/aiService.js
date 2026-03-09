@@ -1,45 +1,126 @@
 const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 /**
  * AI Document Analysis Service
- * Uses Vertex AI (Google Cloud) to extract structured data from PDF or Images.
+ * Hybrid implementation:
+ * 1. Uses Vertex AI (Google Cloud) in Production (secure, no data training).
+ * 2. Falls back to Google AI SDK (API Key) in Development.
  */
 class AIService {
     constructor() {
         const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
         const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+        const apiKey = process.env.GEMINI_API_KEY;
 
-        if (!projectId || !credentialsJson) {
-            console.error('[AIService] Error: GOOGLE_CLOUD_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS_JSON is not set');
-            return;
+        // Mode Detection
+        if (projectId && credentialsJson) {
+            this.initVertexAI(projectId, credentialsJson);
+        } else if (apiKey) {
+            this.initGoogleAI(apiKey);
+        } else {
+            console.error('[AIService] Critical Error: No AI credentials found (Vertex AI or Gemini API Key)');
         }
+    }
 
+    /**
+     * Initialize Production Mode (Vertex AI)
+     * Data is NOT used for training.
+     */
+    initVertexAI(projectId, credentialsJson) {
         try {
             const credentials = JSON.parse(credentialsJson);
             this.vertexAI = new VertexAI({
                 project: projectId,
-                location: 'us-central1', // 日本で使用する場合も基本は us-central1 で問題ありません
+                location: 'us-central1',
                 googleAuthOptions: { credentials }
             });
-
-            // エンタープライズ向けの安定したモデルを使用
             this.model = this.vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash-002' });
+            this.mode = 'PRODUCTION (Vertex AI)';
+            console.log(`[AIService] Success: Initialized in ${this.mode} mode.`);
         } catch (error) {
-            console.error('[AIService] Initialization failed:', error);
+            console.error('[AIService] Production initialization failed:', error);
+        }
+    }
+
+    /**
+     * Initialize Development Mode (Google AI SDK)
+     */
+    initGoogleAI(apiKey) {
+        try {
+            this.genAI = new GoogleGenerativeAI(apiKey);
+            // 現在のAPIキーで利用可能な 2.5系 を使用
+            this.model = this.genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+            this.mode = 'DEVELOPMENT (Google AI SDK)';
+            console.log(`[AIService] Success: Initialized in ${this.mode} mode.`);
+        } catch (error) {
+            console.error('[AIService] Development initialization failed:', error);
+        }
+    }
+
+    /**
+     * Generate content (Unified method for both SDKs)
+     * @param {string} prompt 
+     * @param {Buffer} fileBuffer 
+     * @param {string} mimeType 
+     * @returns {Promise<string>} Generated text content
+     */
+    async generateText(prompt, fileBuffer, mimeType) {
+        if (!this.model) throw new Error('AI Service not initialized');
+        const timestamp = new Date().toISOString();
+
+        console.log(`[AIService][${timestamp}] --- NEW REQUEST ---`);
+        console.log(`[AIService][${timestamp}] Mode: ${this.mode}`);
+        console.log(`[AIService][${timestamp}] Model Name: ${this.model.model}`);
+
+        try {
+            // SDK response extraction
+            if (this.mode.includes('Vertex')) {
+                const request = {
+                    contents: [{
+                        role: 'user',
+                        parts: [
+                            { text: prompt },
+                            {
+                                inlineData: {
+                                    data: fileBuffer.toString('base64'),
+                                    mimeType: mimeType
+                                }
+                            }
+                        ]
+                    }]
+                };
+                const response = await this.model.generateContent(request);
+                const text = response.response.candidates[0].content.parts[0].text;
+                console.log(`[AIService][${timestamp}] Success (Vertex AI)`);
+                return text;
+            } else {
+                // Google AI SDK (Development) format
+                const response = await this.model.generateContent([
+                    prompt,
+                    {
+                        inlineData: {
+                            data: fileBuffer.toString('base64'),
+                            mimeType: mimeType
+                        }
+                    }
+                ]);
+                const text = response.response.text();
+                console.log(`[AIService][${timestamp}] Success (Google AI SDK)`);
+                return text;
+            }
+        } catch (error) {
+            console.error(`[AIService][${timestamp}] CRITICAL ERROR in generateText:`, error);
+            if (error.status) console.error(`[AIService][${timestamp}] HTTP Status: ${error.status}`);
+            throw error;
         }
     }
 
     /**
      * Analyze a document (PDF or Image)
-     * @param {Buffer} fileBuffer 
-     * @param {string} mimeType 
-     * @param {Object} mappingData - Tenant specific mapping settings
-     * @param {string} tenantName - The name of the current tenant to be excluded from companyName extraction
-     * @returns {Promise<Object>} Analyzed structured data
      */
     async analyzeDocument(fileBuffer, mimeType, mappingData = {}, tenantName = '') {
         try {
-            // マッピング設定の適用 (デフォルト値を設定)
             const map = {
                 processingCost: mappingData.processingCostLabel || '加工費, 工賃, 作業代',
                 materialCost: mappingData.materialCostLabel || '材料費, 部品代, 資材費',
@@ -91,22 +172,7 @@ class AIService {
 日本語で回答してください。JSON以外の説明テキストは一切含めないでください。日付は可能な限り現在の年（2026年）を補完して回答してください。
 `;
 
-            const response = await this.model.generateContent({
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        { text: prompt },
-                        {
-                            inlineData: {
-                                data: fileBuffer.toString('base64'),
-                                mimeType: mimeType
-                            }
-                        }
-                    ]
-                }]
-            });
-
-            const responseText = response.response.candidates[0].content.parts[0].text;
+            const responseText = await this.generateText(prompt, fileBuffer, mimeType);
             return this.parseJsonResponse(responseText);
         } catch (error) {
             console.error('[AIService] Analysis failed:', error);
@@ -119,14 +185,11 @@ class AIService {
      */
     parseJsonResponse(text) {
         try {
-            // Markdownの等幅ブロック（```json ... ```）を剥ぎ取る
             const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
             const jsonString = jsonMatch ? jsonMatch[1] : text;
-
             return JSON.parse(jsonString);
         } catch (error) {
             console.error('[AIService] Failed to parse JSON:', text);
-            // 構造化に失敗した場合は最小限のオブジェクトを返すか、エラーを投げる
             return {
                 companyName: "解析エラー",
                 notes: "AIの応答を解析できませんでした。",

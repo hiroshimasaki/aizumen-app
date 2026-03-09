@@ -5,6 +5,14 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { PDFDocument, degrees } from 'pdf-lib';
 import { useNotification } from '../contexts/NotificationContext';
 
+// PDF.js options to suppress XFA and optimize loading
+const PDF_OPTIONS = {
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+    cMapPacked: true,
+    disableXFA: true,
+    enableXfa: false,
+};
+
 export default function PdfEditorModal({ isOpen, onClose, file, onSave }) {
     const { showAlert, showConfirm } = useNotification();
     const [numPages, setNumPages] = useState(null);
@@ -108,7 +116,6 @@ export default function PdfEditorModal({ isOpen, onClose, file, onSave }) {
             // Load original PDF using pdf-lib
             let existingPdfBytes;
             if (file instanceof File || file instanceof Blob) {
-                // FileReader を使ってより確実に ArrayBuffer をロードするフォールバック
                 existingPdfBytes = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result);
@@ -125,34 +132,22 @@ export default function PdfEditorModal({ isOpen, onClose, file, onSave }) {
             }
 
             const originPdfDoc = await PDFDocument.load(existingPdfBytes);
-
-            // Create a new PDF
             const newPdfDoc = await PDFDocument.create();
 
-            // Copy pages in the new order
             const pageIndicesToCopy = activePages.map(p => p.index);
             const copiedPages = await newPdfDoc.copyPages(originPdfDoc, pageIndicesToCopy);
 
-            // Add and apply rotation
             copiedPages.forEach((copiedPage, idx) => {
                 const pageState = activePages[idx];
-
-                // 元の回転角度を取得
                 const currentRotationAngle = copiedPage.getRotation().angle;
-
-                // 追加する回転角度があれば合算してセット
                 if (pageState.rotation !== 0) {
                     const newAngle = (currentRotationAngle + pageState.rotation) % 360;
                     copiedPage.setRotation(degrees(newAngle));
                 }
-
                 newPdfDoc.addPage(copiedPage);
             });
 
-            // Serialize the new PDF
             const pdfBytes = await newPdfDoc.save();
-
-            // Create a new File object
             const originalName = file.name || 'edited_document.pdf';
             const newFile = new File([pdfBytes], originalName, { type: 'application/pdf' });
 
@@ -199,6 +194,7 @@ export default function PdfEditorModal({ isOpen, onClose, file, onSave }) {
                                 file={fileUrl}
                                 onLoadSuccess={onDocumentLoadSuccess}
                                 onLoadError={(e) => setPdfError(e.message)}
+                                options={PDF_OPTIONS}
                             />
                         </div>
                     )}
@@ -227,7 +223,7 @@ export default function PdfEditorModal({ isOpen, onClose, file, onSave }) {
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, index)}
                                     className={`relative group bg-slate-800 rounded-xl border-2 transition-all cursor-move
-                                        ${pageState.isDeleted ? 'border-red-500/50 opacity-40' : 'border-slate-700 hover:border-blue-500/50'}`}
+                                    ${pageState.isDeleted ? 'border-red-500/50 opacity-40' : 'border-slate-700 hover:border-blue-500/50'}`}
                                 >
                                     {/* Page Number Badge */}
                                     <div className="absolute top-2 left-2 px-2 py-1 bg-slate-900/80 text-xs font-bold text-slate-300 rounded shadow-sm z-10 backdrop-blur-sm pointer-events-none">
@@ -258,7 +254,7 @@ export default function PdfEditorModal({ isOpen, onClose, file, onSave }) {
                                     {/* Thumbnail Preview */}
                                     <div className="w-full aspect-[1/1.414] overflow-hidden rounded-lg flex items-center justify-center bg-white p-2"
                                         style={{ transform: `rotate(${pageState.rotation}deg)`, transition: 'transform 0.3s ease' }}>
-                                        <Document file={fileUrl} className="flex justify-center w-full h-full pointer-events-none">
+                                        <Document file={fileUrl} className="flex justify-center w-full h-full pointer-events-none" options={PDF_OPTIONS}>
                                             <Page
                                                 pageNumber={pageState.index + 1}
                                                 width={200}

@@ -40,13 +40,13 @@ router.post('/signup', async (req, res, next) => {
         if (plan && plan !== 'free') {
             const { stripe, PLAN_CONFIG } = require('../config/stripe');
             const planConfig = PLAN_CONFIG[plan];
-            
+
             if (planConfig && planConfig.priceId) {
                 console.log(`[Stripe] Creating checkout session for tenant: ${result.tenant.id}, plan: ${plan}, priceId: ${planConfig.priceId}`);
-                
+
                 // APP_URLが未設定の場合はリクエストから推測（本番環境でのURL不正防止）
                 const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-                
+
                 try {
                     const session = await stripe.checkout.sessions.create({
                         mode: 'subscription',
@@ -458,6 +458,9 @@ router.put('/update-password', authMiddleware, async (req, res, next) => {
  * 現在のユーザー情報取得
  */
 router.get('/me', authMiddleware, async (req, res, next) => {
+    console.log(`\n[Auth/Me] DEBUG: Request received from user: ${req.user?.email} (ID: ${req.user?.id})`);
+    console.log(`[Auth/Me] DEBUG: Origin: ${req.get('origin')}, Host: ${req.get('host')}`);
+
     try {
         // まず platform_admins (SU) をチェック（メタデータに頼らずDBを正解とする）
         const { data: platformAdmin } = await supabaseAdmin
@@ -467,6 +470,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
             .single();
 
         if (platformAdmin) {
+            console.log(`[Auth/Me] DEBUG: Super Admin detected.`);
             return res.json({
                 user: {
                     id: req.user.id,
@@ -566,6 +570,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
             }
         }
 
+        console.log(`[Auth/Me] DEBUG: Final response payload - User: ${profile?.email}, Tenant: ${tenant?.name}, Plan: ${tenant?.plan}`);
         res.json({
             user: profile,
             tenant,
@@ -576,6 +581,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
             },
         });
     } catch (err) {
+        console.error(`[Auth/Me] CRITICAL ERROR:`, err);
         next(err);
     }
 });
@@ -585,6 +591,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
  * フロントエンドからのエラー報告を受け取る
  */
 router.post('/report-error', async (req, res, next) => {
+    console.log(`\n[Client Error Report] RECV:`, JSON.stringify(req.body, null, 2));
     try {
         const { message, stack, browserInfo, path, level } = req.body;
 

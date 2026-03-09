@@ -22,6 +22,7 @@ const backupRoutes = require('./routes/backups');
 const exportRoutes = require('./routes/export');
 const superAdminRoutes = require('./routes/superAdmin');
 const forumRoutes = require('./routes/forum');
+const searchRoutes = require('./routes/search');
 
 // Middleware imports
 const { errorHandler } = require('./middleware/errorHandler');
@@ -86,9 +87,9 @@ app.get('/api/sys/status', async (req, res) => {
       .eq('key', 'maintenance_mode')
       .maybeSingle();
     const settings = data?.value || { enabled: false, message: '' };
-    res.json({ 
-      maintenance: !!settings.enabled, 
-      message: settings.message || '' 
+    res.json({
+      maintenance: !!settings.enabled,
+      message: settings.message || ''
     });
   } catch (err) {
     res.json({ maintenance: false, message: '' });
@@ -132,6 +133,7 @@ app.use('/api/export', exportRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/forum', forumRoutes);
+app.use('/api/search', searchRoutes);
 
 // --- 404 Handler ---
 app.use('/api', (req, res) => {
@@ -143,8 +145,9 @@ app.use(errorHandler);
 
 // --- Start Server ---
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[AiZumen API] Server running on port ${PORT}`);
-  console.log(`[AiZumen API] Environment: ${process.env.NODE_ENV || 'development'}`);
+  const timestamp = new Date().toISOString();
+  console.log(`[AiZumen API][${timestamp}] Server running on port ${PORT}`);
+  console.log(`[AiZumen API][${timestamp}] Environment: ${process.env.NODE_ENV || 'development'}`);
 
   const cron = require('node-cron');
   const { supabaseAdmin } = require('./config/supabase');

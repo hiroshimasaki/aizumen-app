@@ -6,6 +6,7 @@ import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import PdfEditorModal from './PdfEditorModal';
+import DrawingSearchModal from './DrawingSearchModal';
 
 export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin = true }) {
     const { credits, setCredits } = useAuth();
@@ -53,6 +54,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
     const [pendingCopyFiles, setPendingCopyFiles] = useState([]);
     const [sourceQuotationView, setSourceQuotationView] = useState(null);
     const [pdfEditorState, setPdfEditorState] = useState({ isOpen: false, fileIndex: null, file: null });
+    const [searchModalState, setSearchModalState] = useState({ isOpen: false, fileIndex: null, file: null, isExisting: false });
+    const [searchCache, setSearchCache] = useState({}); // { [fileId/name]: results }
     const [showHistory, setShowHistory] = useState(false);
     const [history, setHistory] = useState([]);
 
@@ -344,6 +347,68 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
         });
     };
 
+    const handleOpenSearchModal = (index, isExisting = false) => {
+        const file = isExisting ? existingFiles[index] : files[index];
+        setSearchModalState({
+            isOpen: true,
+            fileIndex: index,
+            file,
+            isExisting
+        });
+    };
+
+    const handleCacheSearchResults = (fileIdOrName, results) => {
+        setSearchCache(prev => ({
+            ...prev,
+            [fileIdOrName]: results
+        }));
+    };
+
+    const handleApplySearchResult = async (result) => {
+        try {
+            // 先に検索モーダルを閉じる（ダイアログが裏に隠れるのを防ぐ）
+            setSearchModalState({ isOpen: false, fileIndex: null, file: null });
+
+            const { data: quotation } = await api.get(`/api/quotations/${result.quotation_id}`);
+            if (!await showConfirm(`案件「${quotation.order_number || '番号なし'} / ${quotation.company_name}」の単価情報を流用しますか？`)) {
+                return;
+            }
+
+            setItems(prev => {
+                const newItems = [...prev];
+                // 1行目が空（品名も金額もない）なら1行目に、そうでなければ先頭に追加
+                const targetIdx = (newItems[0] && !newItems[0].name && !newItems[0].processingCost) ? 0 : -1;
+
+                const ref = quotation.quotation_items?.[0] || {};
+                const mappedItem = {
+                    id: Date.now(),
+                    name: ref.name || '',
+                    processingCost: ref.processing_cost || '',
+                    materialCost: ref.material_cost || '',
+                    otherCost: ref.other_cost || '',
+                    quantity: 1,
+                    responseDate: '',
+                    dueDate: '',
+                    deliveryDate: '',
+                    scheduledStartDate: ''
+                };
+
+                if (targetIdx !== -1) {
+                    newItems[targetIdx] = mappedItem;
+                } else {
+                    newItems.unshift(mappedItem);
+                }
+                return newItems;
+            });
+
+            setSearchModalState({ isOpen: false, fileIndex: null, file: null });
+            await showAlert('見積情報を反映しました。', 'success');
+        } catch (err) {
+            console.error('Apply error:', err);
+            await showAlert('データの取得に失敗しました。', 'error');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -583,9 +648,31 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                     </button>
                                     <span className="text-xs bg-slate-700 text-slate-300 px-1.5 rounded shrink-0">登録済</span>
                                 </div>
-                                {isAdmin && (
-                                    <button type="button" onClick={() => removeExistingFile(f.id)} className="text-slate-500 hover:text-red-400 shrink-0"><X size={16} /></button>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    {isAdmin && f.original_name.toLowerCase().endsWith('.pdf') && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleOpenSearchModal(existingFiles.indexOf(f), true)}
+                                            className={cn(
+                                                "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md",
+                                                (!credits || credits.balance <= 0)
+                                                    ? "bg-slate-800 text-slate-500 border border-slate-700"
+                                                    : "bg-gradient-to-r from-cyan-600 to-blue-700 text-white hover:from-cyan-500 hover:to-blue-600 border border-cyan-400/30 shadow-cyan-900/20"
+                                            )}
+                                            title="この図面から類似箇所を検索"
+                                        >
+                                            <Search size={14} />
+                                            類似図面検索
+                                            {/* AI Credit Badge */}
+                                            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-cyan-600 text-[9px] text-white rounded-full shadow-lg shadow-cyan-900/50 flex items-center gap-0.5 border border-cyan-400/50 font-bold tracking-tight z-10">
+                                                <Sparkles size={8} /> 1pt
+                                            </span>
+                                        </button>
+                                    )}
+                                    {isAdmin && (
+                                        <button type="button" onClick={() => removeExistingFile(f.id)} className="text-slate-500 hover:text-red-400 shrink-0"><X size={16} /></button>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         {files.map((f, i) => (
@@ -623,34 +710,59 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                                         onClick={() => handleAIAnalyze(f)}
                                                         disabled={isAnalyzing || !credits || credits.balance <= 0}
                                                         className={cn(
-                                                            "flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold transition-all",
+                                                            "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg",
                                                             (!credits || credits.balance <= 0)
-                                                                ? "bg-slate-800 text-slate-500"
-                                                                : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30"
+                                                                ? "bg-slate-800 text-slate-500 border border-slate-700"
+                                                                : "bg-gradient-to-r from-cyan-600 to-blue-700 text-white hover:from-cyan-500 hover:to-blue-600 border border-cyan-400/30 shadow-cyan-900/20 animate-pulse-subtle"
                                                         )}
                                                         title={(!credits || credits.balance <= 0) ? "クレジットが不足しています" : "この図面をAIで解析する"}
                                                     >
-                                                        <Sparkles size={12} />
-                                                        解析
+                                                        <Sparkles size={14} className={cn(isAnalyzing ? "animate-spin" : "")} />
+                                                        注文書解析
+                                                        {/* AI Credit Badge (Floating) - Unified to Cyan */}
+                                                        <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-cyan-600 text-[9px] text-white rounded-full shadow-lg shadow-cyan-900/50 flex items-center gap-0.5 border border-cyan-400/50 font-bold tracking-tight z-10">
+                                                            <Sparkles size={8} /> 1pt
+                                                        </span>
                                                     </button>
-                                                    <span className="text-xs text-slate-500 mt-1 whitespace-nowrap">※1pt消費（重複時も含む）</span>
                                                 </div>
                                             )}
                                         </div>
                                     )}
                                     {isAdmin && (
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-2">
+                                            {f.name.toLowerCase().endsWith('.pdf') && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenSearchModal(i)}
+                                                    className={cn(
+                                                        "relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md",
+                                                        (!credits || credits.balance <= 0)
+                                                            ? "bg-slate-800 text-slate-500 border border-slate-700"
+                                                            : "bg-gradient-to-r from-cyan-600 to-blue-700 text-white hover:from-cyan-500 hover:to-blue-600 border border-cyan-400/30 shadow-cyan-900/20"
+                                                    )}
+                                                    title="この図面から類似箇所を検索"
+                                                >
+                                                    <Search size={14} />
+                                                    類似図面検索
+                                                    {/* AI Credit Badge */}
+                                                    <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-cyan-600 text-[9px] text-white rounded-full shadow-lg shadow-cyan-900/50 flex items-center gap-0.5 border border-cyan-400/50 font-bold tracking-tight z-10">
+                                                        <Sparkles size={8} /> 1pt
+                                                    </span>
+                                                </button>
+                                            )}
                                             {f.type === 'application/pdf' && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleOpenPdfEditor(i)}
-                                                    className="text-slate-400 hover:text-white p-1.5 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700 hover:border-slate-500 shadow-sm"
+                                                    className="text-slate-400 hover:text-white p-2 hover:bg-slate-700 rounded-xl transition-colors border border-slate-700 hover:border-slate-500 shadow-sm"
                                                     title="PDFを編集 (回転・削除・並び替え)"
                                                 >
-                                                    <FileText size={16} />
+                                                    <FileText size={18} />
                                                 </button>
                                             )}
-                                            <button type="button" onClick={() => removeNewFile(i)} className="text-cyan-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded-lg transition-colors"><X size={16} /></button>
+                                            <button type="button" onClick={() => removeNewFile(i)} className="text-slate-500 hover:text-red-400 p-2 hover:bg-red-500/10 rounded-xl transition-colors">
+                                                <X size={18} />
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -1001,6 +1113,17 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                 onClose={() => setPdfEditorState({ isOpen: false, fileIndex: null, file: null })}
                 onSave={handleSaveEditedPdf}
             />
+
+            {searchModalState.isOpen && (
+                <DrawingSearchModal
+                    isOpen={searchModalState.isOpen}
+                    onClose={() => setSearchModalState({ isOpen: false, fileIndex: null, file: null, isExisting: false })}
+                    file={searchModalState.file}
+                    onApplyResult={handleApplySearchResult}
+                    initialResults={searchCache[searchModalState.file?.id || searchModalState.file?.name]}
+                    onSaveResults={(results) => handleCacheSearchResults(searchModalState.file?.id || searchModalState.file?.name, results)}
+                />
+            )}
         </form >
     );
 }

@@ -1,8 +1,17 @@
-import { useState, useEffect, useRef, useMemo, memo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { FileText, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
+
+// PDF.js options to suppress XFA and optimize loading
+const PDF_OPTIONS = {
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+    cMapPacked: true,
+    standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+    disableXFA: true,
+    enableXfa: false,
+};
 
 const PdfThumbnail = memo(function PdfThumbnail({ fileId }) {
     const [url, setUrl] = useState(null);
@@ -14,12 +23,6 @@ const PdfThumbnail = memo(function PdfThumbnail({ fileId }) {
     const [aspectRatio, setAspectRatio] = useState(1.414);
     const visibilityTimeoutRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(0);
-
-    const pdfOptions = useMemo(() => ({
-        cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
-        cMapPacked: true,
-        standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
-    }), []);
 
     useEffect(() => {
         isComponentMounted.current = true;
@@ -129,7 +132,7 @@ const PdfThumbnail = memo(function PdfThumbnail({ fileId }) {
                     file={url}
                     onLoadSuccess={onDocumentLoadSuccess}
                     onLoadError={onDocumentLoadError}
-                    options={pdfOptions}
+                    options={PDF_OPTIONS}
                     loading={
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800/40 z-10">
                             <div className="w-6 h-6 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
