@@ -75,7 +75,6 @@ class DrawingSearchService {
             });
 
             if (error) throw error;
-            console.log(`[DrawingSearch] Vector search returned ${candidates?.length || 0} candidates with threshold 0.3.`);
 
             if (!candidates || candidates.length === 0) {
                 console.log('[DrawingSearch] No candidates found in vector search.');
@@ -88,10 +87,24 @@ class DrawingSearchService {
             // サムネイルURLを付与（候補箇所の切り出し画像をフロントエンドで表示するため）
             const resultsWithThumbnails = await Promise.all(rerankedResults.map(async (res) => {
                 try {
+                    if (!res.storage_path) {
+                        return res;
+                    }
+
+                    // パス補正: storage_path が 'quotation-files/' から始まっている場合の重複を防ぐ
+                    const cleanPath = res.storage_path.startsWith('quotation-files/')
+                        ? res.storage_path.replace('quotation-files/', '')
+                        : res.storage_path;
+
                     // Supabase Storage から署名付きURLを取得
-                    const { data: signedUrl } = await supabaseAdmin.storage
+                    const { data: signedUrl, error: urlErr } = await supabaseAdmin.storage
                         .from('quotation-files')
-                        .createSignedUrl(res.storage_path, 3600); // 1時間有効
+                        .createSignedUrl(cleanPath, 3600); // 1時間有効
+
+                    if (urlErr) {
+                        console.error(`[DrawingSearch] createSignedUrl error for path [${cleanPath}]:`, urlErr);
+                        return res;
+                    }
 
                     return {
                         ...res,
@@ -103,7 +116,6 @@ class DrawingSearchService {
                 }
             }));
 
-            console.log(`[DrawingSearch] Reranking completed. Top score: ${resultsWithThumbnails[0]?.ai_score || 0}`);
             return resultsWithThumbnails;
         } catch (error) {
             console.error('[DrawingSearch] Search failed:', error);
@@ -135,15 +147,16 @@ ${candidates.map((c, i) => `候補[${i}]: ID=${c.id}, 暫定類似度=${(c.simil
 `;
 
             const responseText = await aiService.generateText(prompt, queryBuffer, 'image/png');
-            console.log(`[DrawingSearch] Gemini response for reranking: ${responseText}`);
             const reranked = aiService.parseJsonResponse(responseText);
 
             return candidates.map(c => {
                 // 配列でない場合の安全なハンドリング
                 const match = (Array.isArray(reranked) && c.id) ? reranked.find(r => r.id === c.id) : null;
+
+                // 元の候補情報(c)をベースに、AIの判定結果(match)をマージする
+                // 以前は ...match, ...c の順だったため、もし match に null や古い ID が入ると上書きされる懸念があった
                 return {
-                    ...match, // score, reason 等（Geminiの返却値）
-                    ...c,     // 元の候補情報（id, quotation_id, storage_path, x, y等）
+                    ...c,     // 元の候補情報（id, quotation_id, storage_path, x, y等）を優先
                     ai_score: match ? (Number(match.score) || 0) : 0,
                     ai_reason: match ? (match.reason || '解析完了') : '判定なし（AI精査エラー）'
                 };
