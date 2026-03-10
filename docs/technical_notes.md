@@ -57,11 +57,11 @@ RLSポリシーでの使用:
 
 ### Products作成（Stripeダッシュボード）
 
-| Product名 | Price ID（月額） | Price ID（年額） | 金額（月額） | 金額（年額） |
+| Product名 | Price ID（月額） | Price ID（年額） | 金額（月額） | 
 |-----------|----------------|----------------|------------|------------|
-| AiZumen Small | price_small_monthly | price_small_yearly | ¥10,000 | ¥108,000 |
-| AiZumen Medium | price_medium_monthly | price_medium_yearly | ¥30,000 | ¥324,000 |
-| AiZumen Large | price_large_monthly | price_large_yearly | ¥50,000 | ¥540,000 |
+| AiZumen Small | price_small_monthly | price_small_yearly | ¥10,000 | 
+| AiZumen Medium | price_medium_monthly | price_medium_yearly | ¥30,000 | 
+| AiZumen Large | price_large_monthly | price_large_yearly | ¥50,000 | 
 
 ### AIクレジットパック（ワンタイム）
 
@@ -110,7 +110,6 @@ RLSポリシーでの使用:
 |------|-------------|------|
 | OCR解析（1ファイル） | 1クレジット | Gemini API 1回呼び出し |
 | 一括OCR（N ファイル） | N クレジット | ファイル数分 |
-| スマート見積 | 2クレジット | より高度なAI処理 |
 
 ### プランごとの月間クレジット
 
@@ -118,7 +117,7 @@ RLSポリシーでの使用:
 |-------|-------------|------|
 | Small | 100 | 約20件/ユーザー/月 |
 | Medium | 500 | |
-| Large | 1500 | |
+| Large | 1000 | |
 
 > [!NOTE]
 > 上記は暫定値。実際のGemini API利用コストを測定して調整する必要がある。

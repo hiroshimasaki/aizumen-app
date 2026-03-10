@@ -27,6 +27,11 @@ erDiagram
     quotations ||--o{ quotation_source_files : "references"
     quotations ||--o{ quotation_history : "tracks"
     quotations ||--o| quotations : "copied from"
+    quotations ||--o{ drawing_tiles : "indexed as"
+
+    forum_posts ||--o{ forum_replies : "has"
+    forum_posts ||--o{ forum_likes : "liked by"
+    forum_replies ||--o{ forum_likes : "liked by"
 
     quotation_files ||--o{ quotation_source_files : "referenced by"
 
@@ -142,6 +147,32 @@ erDiagram
         varchar actual_mode
     }
 
+    drawing_tiles {
+        uuid id PK
+        uuid quotation_id FK
+        uuid file_id FK
+        uuid tenant_id FK
+        integer tile_index
+        integer x
+        integer y
+        vector embedding
+        timestamptz created_at
+    }
+
+    forum_posts {
+        uuid id PK
+        uuid user_id FK
+        varchar user_name
+        varchar tenant_name
+        varchar category
+        varchar title
+        text body
+        boolean is_resolved
+        integer like_count
+        integer reply_count
+        timestamptz created_at
+    }
+
     quotation_files {
         uuid id PK
         varchar quotation_id FK
@@ -200,7 +231,7 @@ Supabase Auth の `auth.users` と連携。
 | tenant_id | UUID | FK → tenants(id), NOT NULL | |
 | email | VARCHAR(255) | NOT NULL | |
 | name | VARCHAR(255) | NOT NULL | |
-| role | VARCHAR(50) | DEFAULT 'user' | admin/user/viewer |
+| role | VARCHAR(50) | DEFAULT 'user' | super_admin/system_admin/admin/user |
 | is_active | BOOLEAN | DEFAULT true | |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | |
 | updated_at | TIMESTAMPTZ | DEFAULT NOW() | |
