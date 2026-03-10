@@ -26,6 +26,10 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
     const [startPos, setStartPos] = useState({ x: 0, y: 0 });
     const [queryPreview, setQueryPreview] = useState(initialQueryPreview || null); // クエリ画像のプレビュー
     const [scale, setScale] = useState(1.0); // ズーム倍率
+    
+    // プログレスバー用のステート
+    const [searchProgress, setSearchProgress] = useState(0);
+    const [searchStatusText, setSearchStatusText] = useState('');
 
     const containerRef = useRef(null);
     const [fileUrl, setFileUrl] = useState(null);
@@ -93,6 +97,25 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
         }
 
         setIsSearching(true);
+        setSearchProgress(5);
+        setSearchStatusText('検索の準備中...');
+        
+        // 擬似的な進捗アップデートのタイマー
+        const progressPhases = [
+            { time: 1000, prog: 15, text: 'クエリ画像の特徴量ベクトルを生成中...' },
+            { time: 3000, prog: 35, text: 'データベース上で類似図面を検索中...' },
+            { time: 5000, prog: 55, text: 'AI(Gemini)用比較データの準備中...' },
+            { time: 6500, prog: 75, text: 'AI(Gemini)による図面構造の精密比較・スコアリング中...' },
+            { time: 12000, prog: 90, text: '結果の抽出とサムネイル生成中...' },
+        ];
+        
+        const timers = progressPhases.map(phase => 
+            setTimeout(() => {
+                setSearchProgress(phase.prog);
+                setSearchStatusText(phase.text);
+            }, phase.time)
+        );
+
         try {
             const cropCanvas = document.createElement('canvas');
             const pageCanvas = containerRef.current.querySelector('canvas');
@@ -100,8 +123,6 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
 
             const ctx = cropCanvas.getContext('2d');
 
-            // 重要：pageCanvas.widthは実際のピクセル数、containerRef.current.clientWidthは表示上の幅
-            // ズームしていても、表示上の座標からキャンバス座標への変換比率はこれで算出できる
             const internalScale = pageCanvas.width / containerRef.current.clientWidth;
 
             cropCanvas.width = selection.width * internalScale;
@@ -115,16 +136,21 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
 
             const blob = await new Promise(resolve => cropCanvas.toBlob(resolve, 'image/png'));
             const blobUrl = URL.createObjectURL(blob);
-            setQueryPreview(blobUrl); // クエリプレビューを保持
-            if (onSaveQueryPreview) onSaveQueryPreview(blobUrl); // 親に保存を通知
+            setQueryPreview(blobUrl); 
+            if (onSaveQueryPreview) onSaveQueryPreview(blobUrl);
 
             const formData = new FormData();
             formData.append('queryImage', blob, 'query.png');
 
             const { data } = await api.post('/api/search/similar', formData, { timeout: 120000 });
+            
+            // 検索成功時
+            timers.forEach(clearTimeout);
+            setSearchProgress(100);
+            setSearchStatusText('検索完了！');
+            
             setResults(data.results || []);
 
-            // キャッシュに保存
             if (onSaveResults) {
                 onSaveResults(data.results || []);
             }
@@ -139,9 +165,15 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
 
         } catch (err) {
             console.error('Search error:', err);
+            timers.forEach(clearTimeout);
             showAlert('検索に失敗しました。', 'error');
         } finally {
-            setIsSearching(false);
+            // 少し待ってからプログレス状態をリセット（完了アニメーションを見せるため）
+            setTimeout(() => {
+                setIsSearching(false);
+                setSearchProgress(0);
+                setSearchStatusText('');
+            }, 500);
         }
     };
 
@@ -248,6 +280,24 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
                                 {isSearching ? <RefreshCcw className="animate-spin w-4 h-4" /> : <Search className="w-4 h-4" />}
                                 {isSearching ? '検索中...' : 'この範囲で検索'}
                             </button>
+                            
+                            {/* プログレスバーの表示エリア */}
+                            {isSearching && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-xs font-medium text-cyan-400">{searchStatusText}</span>
+                                        <span className="text-xs font-bold text-slate-400">{searchProgress}%</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                                        <div 
+                                            className="h-full bg-cyan-500 transition-all duration-500 ease-out relative"
+                                            style={{ width: `${searchProgress}%` }}
+                                        >
+                                            <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">

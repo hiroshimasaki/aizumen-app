@@ -227,15 +227,22 @@ app.listen(PORT, '0.0.0.0', () => {
 // グローバルエラー捕捉
 process.on('uncaughtException', async (err) => {
   console.error('[AiZumen API] Uncaught Exception:', err);
-  await logService.error(err, { source: 'server_global_uncaught' });
-  // 本来はプロセスを再起動すべきだが、一旦記録のみ
+  try {
+    await logService.error(err, { source: 'server_global_uncaught' });
+  } catch (e) {
+    console.error('Failed to log uncaught exception:', e);
+  }
 });
 
 process.on('unhandledRejection', async (reason, promise) => {
   console.error('[AiZumen API] Unhandled Rejection at:', promise, 'reason:', reason);
-  await logService.error(reason instanceof Error ? reason : new Error(String(reason)), {
-    source: 'server_global_rejection'
-  });
+  try {
+    await logService.error(reason instanceof Error ? reason : new Error(String(reason)), {
+      source: 'server_global_rejection'
+    });
+  } catch (e) {
+    console.error('Failed to log unhandled rejection:', e);
+  }
 });
 
 module.exports = app;

@@ -137,6 +137,8 @@ export function AuthProvider({ children }) {
                 access_token: data.session.access_token,
                 refresh_token: data.session.refresh_token,
             });
+            // ページ遷移前にプロファイルを読み込むことで表示不整合を防ぐ
+            await fetchProfile();
         }
         return data;
     }
@@ -151,6 +153,8 @@ export function AuthProvider({ children }) {
                 access_token: data.session.access_token,
                 refresh_token: data.session.refresh_token,
             });
+            // ページ遷移前にプロファイルを読み込むことで表示不整合を防ぐ
+            await fetchProfile();
         }
         return data;
     }
@@ -165,6 +169,8 @@ export function AuthProvider({ children }) {
                 access_token: data.session.access_token,
                 refresh_token: data.session.refresh_token,
             });
+            // ページ遷移前にプロファイルを読み込むことで表示不整合を防ぐ
+            await fetchProfile();
         }
         return data;
     }

@@ -150,9 +150,26 @@ async function tileImage(imageBuffer, options = { tileSize: 300, stride: 150 }) 
 
     for (let y = 0; y <= height - tileSize; y += stride) {
         for (let x = 0; x <= width - tileSize; x += stride) {
+            const extractArea = { left: x, top: y, width: tileSize, height: tileSize };
+            
+            // タイルのバッファを取得
             const tileBuffer = await sharp(imageBuffer)
-                .extract({ left: x, top: y, width: tileSize, height: tileSize })
-                .resize(224, 224) // MobileNetV3の入力サイズに合わせる
+                .extract(extractArea)
+                .toBuffer();
+
+            // [Smart Filtering] 白紙チェック: 
+            // 閾値以上の明るさ（ほぼ白）しかない場合はスキップ
+            const stats = await sharp(tileBuffer).stats();
+            const mean = stats.channels[0].mean;
+            
+            if (mean > 254) {
+                // 白紙に近いタイルはインデックス対象から外す
+                continue;
+            }
+
+            // AIモデルの入力サイズにリサイズ
+            const resizedBuffer = await sharp(tileBuffer)
+                .resize(224, 224) 
                 .toBuffer();
 
             tiles.push({
@@ -161,7 +178,7 @@ async function tileImage(imageBuffer, options = { tileSize: 300, stride: 150 }) 
                 y,
                 width: tileSize,
                 height: tileSize,
-                buffer: tileBuffer
+                buffer: resizedBuffer
             });
         }
     }
@@ -206,16 +223,21 @@ async function getTileImage(buffer, mimeType, coords) {
             logService.debug(`[ImageService] PDF rendered to buffer: ${imageBuffer.length} bytes`);
         }
 
-        logService.debug(`[ImageService] Extracting tile:`, coords);
+        const metadata = await sharp(imageBuffer).metadata();
+        logService.debug(`[ImageService] Extracting tile from image of size ${metadata.width}x${metadata.height}:`, coords);
         
-        // sharp で指定範囲を切り出し
+        // 切り出し範囲の計算と境界チェック
+        const left = Math.max(0, Math.round(coords.x));
+        const top = Math.max(0, Math.round(coords.y));
+        const width = Math.min(Math.round(coords.width), metadata.width - left);
+        const height = Math.min(Math.round(coords.height), metadata.height - top);
+
+        if (width <= 0 || height <= 0) {
+            throw new Error(`Invalid extract dimensions: width=${width}, height=${height} at left=${left}, top=${top} for image ${metadata.width}x${metadata.height}`);
+        }
+
         const result = await sharp(imageBuffer)
-            .extract({
-                left: Math.max(0, Math.round(coords.x)),
-                top: Math.max(0, Math.round(coords.y)),
-                width: Math.min(Math.round(coords.width), 5000), 
-                height: Math.min(Math.round(coords.height), 5000)
-            })
+            .extract({ left, top, width, height })
             .png()
             .toBuffer();
         

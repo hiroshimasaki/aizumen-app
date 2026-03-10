@@ -1,26 +1,30 @@
 const imageService = require('./imageService');
 const vectorService = require('./vectorService');
 const { supabaseAdmin } = require('../../config/supabase');
-const aiService = require('../aiService'); // 既存のVertex AI / Gemini設定を利用
+const aiService = require('../aiService');
 const logService = require('../logService');
+const systemLimits = require('../../config/systemLimits');
 
 class DrawingSearchService {
     /**
      * 図面の登録（インデックス作成）
-     * @param {string} quotationId 
-     * @param {string} fileId 
-     * @param {string} tenantId 
-     * @param {Buffer} fileBuffer 
      */
     async registerDrawing(quotationId, fileId, tenantId, fileBuffer, mimeType = 'application/pdf') {
         try {
             console.log(`[DrawingSearch] Indexing drawing for quotation: ${quotationId} (${mimeType})`);
 
-            // 1. 前処理 (PDFなら画像変換も含む)
+            // 1. 前処理
             const processedBuffer = await imageService.preprocessImage(fileBuffer, mimeType);
 
             // 2. タイル分割
-            const tiles = await imageService.tileImage(processedBuffer);
+            let tiles = await imageService.tileImage(processedBuffer);
+            
+            // [Optimization] タイル数上限チェック
+            if (tiles.length > systemLimits.MAX_TILES_PER_DRAWING) {
+                console.log(`[DrawingSearch] Clipping tiles from ${tiles.length} to ${systemLimits.MAX_TILES_PER_DRAWING}`);
+                tiles = tiles.slice(0, systemLimits.MAX_TILES_PER_DRAWING);
+            }
+            
             console.log(`[DrawingSearch] Generated ${tiles.length} tiles.`);
 
             // 3. 各タイルの埋め込み生成と保存
@@ -41,13 +45,17 @@ class DrawingSearchService {
                 });
             }
 
-            // Supabaseへ一括保存
-            const { error } = await supabaseAdmin
-                .from('drawing_tiles')
-                .insert(insertData);
+            // Supabaseへ小分けに保存（大量データによるタイムアウト防止）
+            const chunkSize = 50;
+            for (let i = 0; i < insertData.length; i += chunkSize) {
+                const chunk = insertData.slice(i, i + chunkSize);
+                const { error } = await supabaseAdmin
+                    .from('drawing_tiles')
+                    .insert(chunk);
+                if (error) throw error;
+            }
 
-            if (error) throw error;
-            console.log(`[DrawingSearch] Successfully indexed ${tiles.length} tiles for ${quotationId}`);
+            console.log(`[DrawingSearch] Successfully indexed ${tiles.length} tiles for ${fileId}`);
         } catch (error) {
             console.error('[DrawingSearch] Registration failed:', error);
             throw error;
@@ -56,50 +64,45 @@ class DrawingSearchService {
 
     /**
      * 類似図面の検索
-     * @param {string} tenantId 
-     * @param {Buffer} queryImageBuffer ユーザーが切り抜いた画像
-     * @returns {Promise<Array>} 類似箇所のリスト
      */
     async searchSimilarDrawing(tenantId, queryImageBuffer) {
         try {
             // 1. クエリ画像の特徴量生成
+            console.time('[SearchPerformance] Preprocess & Embedding');
             const processedQuery = await imageService.preprocessImage(queryImageBuffer);
             const queryEmbedding = await vectorService.getEmbedding(processedQuery);
+            console.timeEnd('[SearchPerformance] Preprocess & Embedding');
 
-            // 2. pgvector を使用した一次検索（コサイン類似度）
-            // 注: supabase-js 経由でベクトル検索を行うには rpc を使用するのが一般的です
+            // 2. pgvector を使用した一次検索
+            console.time('[SearchPerformance] Vector Search (RPC)');
             const { data: candidates, error } = await supabaseAdmin.rpc('match_drawing_tiles', {
                 query_embedding: queryEmbedding,
-                match_threshold: 0.4,
-                match_count: 40, // 20から40に拡大。名寄せ後に上位を残すため。
+                match_threshold: 0.3,
+                match_count: 80,
                 p_tenant_id: tenantId
             });
+            console.timeEnd('[SearchPerformance] Vector Search (RPC)');
 
             if (error) throw error;
 
             if (!candidates || candidates.length === 0) {
-                console.log('[DrawingSearch] No candidates found in vector search.');
+                console.log(`[DrawingSearch] No candidates found in vector search for tenant: ${tenantId}`);
                 return [];
             }
+            console.log(`[DrawingSearch] Found ${candidates.length} candidates in vector search.`);
 
-            // 2.5 同一ファイル内での名寄せ（デデュプリケーション）
-            // 同じ図面から複数のタイルがヒットした場合、最もスコアが高いものだけを残す
+            // 2.5 名寄せ（デデュプリケーション）
             const uniqueFileCandidates = [];
             const seenFileIds = new Set();
-            
-            // スコア（similarity）順に並んでいる前提
             for (const c of candidates) {
                 if (!seenFileIds.has(c.file_id)) {
                     uniqueFileCandidates.push(c);
                     seenFileIds.add(c.file_id);
-                    // Geminiに送る最大数に達したら終了（多様性を確保しつつ件数を絞る）
-                    if (uniqueFileCandidates.length >= 10) break;
+                    if (uniqueFileCandidates.length >= 20) break;
                 }
             }
-            
-            logService.debug(`[DrawingSearch] Deduplicated candidates: ${candidates.length} -> ${uniqueFileCandidates.length}`);
 
-            // 2.6 storage_path / mime_type / original_name の補填
+            // 2.6 ファイル情報の補填
             const fileIds = [...new Set(uniqueFileCandidates.map(c => c.file_id))];
             const { data: files } = await supabaseAdmin
                 .from('quotation_files')
@@ -110,14 +113,16 @@ class DrawingSearchService {
                 const file = files?.find(f => f.id === c.file_id);
                 return {
                     ...c,
-                    storage_path: c.storage_path || file?.storage_path,
-                    mime_type: c.mime_type || file?.mime_type,
-                    original_name: c.original_name || file?.original_name
+                    storage_path: file?.storage_path,
+                    mime_type: file?.mime_type,
+                    original_name: file?.original_name
                 };
             });
 
             // 3. Gemini による二次精査（リランキング）
+            console.time('[SearchPerformance] Gemini Reranking');
             const rerankedResults = await this.rerankWithGemini(queryImageBuffer, enhancedCandidates);
+            console.timeEnd('[SearchPerformance] Gemini Reranking');
 
             return rerankedResults;
         } catch (error) {
@@ -131,8 +136,8 @@ class DrawingSearchService {
      */
     async rerankWithGemini(queryBuffer, candidates) {
         try {
-            // 各候補のタイル画像をバイナリデータとして取得（上位10件に拡大）
-            const candidateImages = await Promise.all(candidates.slice(0, 10).map(async (c, i) => {
+            console.time('[SearchPerformance]   Download & Crop Candidates');
+            const candidateImages = await Promise.all(candidates.slice(0, 20).map(async (c, i) => {
                 try {
                     if (!c.storage_path) return null;
                     const { data: fileData } = await supabaseAdmin.storage
@@ -141,10 +146,8 @@ class DrawingSearchService {
                     if (!fileData) return null;
 
                     const buffer = Buffer.from(await fileData.arrayBuffer());
-                    logService.debug(`[DrawingSearch] Fetched candidate ${i} from storage: ${buffer.length} bytes`);
                     
-                    // Gemini 判定用に、広い範囲（コンテキスト）を切り出す
-                    // 元のタイルサイズ(300x300相当)の 3倍 程度にする
+                    // Gemini 処理用に、より広い範囲（元のタイルサイズの 3倍）を切り出す
                     const paddingFactor = 3.0;
                     const baseW = c.width || 300;
                     const baseH = c.height || 300;
@@ -159,10 +162,9 @@ class DrawingSearchService {
                         width: expandedW, 
                         height: expandedH
                     });
-                    logService.debug(`[DrawingSearch] Generated tile image for candidate ${i}: ${tileBuffer.length} bytes`);
                     
                     return {
-                        id: c.id,
+                        id: c.file_id || c.id,
                         index: i,
                         buffer: tileBuffer,
                         mimeType: 'image/png',
@@ -175,27 +177,29 @@ class DrawingSearchService {
             }));
 
             const validCandidates = candidateImages.filter(img => img !== null);
-            logService.debug(`[DrawingSearch] Valid candidates for reranking: ${validCandidates.length}`);
+            console.timeEnd('[SearchPerformance]   Download & Crop Candidates');
+            
+            if (validCandidates.length === 0) return candidates; // 画像取得不可なら一次検索結果を返す
 
+            console.time('[SearchPerformance]   Gemini API Request');
             const prompt = `
 あなたは熟練の図面検図エキスパートです。
 ユーザーが選択した「クエリ画像（選択範囲）」と、DBから抽出された「候補画像」を比較してください。
 
-画像構成:
-- 1枚目の画像: ユーザーが検索した「クエリ画像」
-- 2枚目以降: 比較対象の「候補画像」 (下記の判定対象リストの順番に対応)
-
 判定対象リスト:
 ${validCandidates.map((c, i) => `候補[${i}]: ID=${c.id}, 送付画像インデックス=${i + 1} (2枚目以降の通番), 暫定ベクトル類似度=${c.similarity}`).join('\n')}
 
-判定ルール:
-1. スケール不問の全体比較: クエリ画像と候補画像で拡大・縮小（スケール）の差があっても、拡大縮小して重ね合わせた時に全体の構造や文字が完全に一致する場合は、90%〜100%のスコアを付与してください。
-2. 完全一致の最優先: 細部、線、文字が「全く同じ図面データ」の一部であると視覚的に判断できる場合（細部まで完全に重なる場合）は、非常に高く評価してください。
-3. 視覚的な比較: 幾何学的構造（線の接続、シンボル、角度）が非常に似ている場合は、その類似度に応じてスコアを付けてください。
-4. 回転の許容: 90度/180度/270度の回転があっても同一構造なら一致とみなしてください。
-5. 文字情報の重視: 寸法値や注記の内容が一致している場合、非常に高い一致率（85%以上）を付与してください。
-6. ノイズの許容: タイルの切り出し位置のわずかなズレや、スケール感の微差、解像度の違いによる細部のボケは、構造が同じであれば不一致の理由としないでください。
-6. 画像未送付への対応: システム上の制約により、ここにリストされていない候補は判定の対象外です。
+判定基準 (厳格に適用してください):
+1. 幾何学的構造の完全一致 (最優先): 線の接続、部品のシルエット、孔の数や配置、角度が実質的に同一である場合のみ、高い一致率（80%以上）を検討してください。構造が異なる場合は、文字が似ていても40%以下に抑えてください。
+2. スケール不問の全体比較: 図面内の相対的な位置関係や構造が一致していれば、画像上の大きさの違いは無視してください。
+3. 文字情報の一致: 寸法値（例: φ50, 30°, M8等）や公差、加工指示文字が一致している場合、さらに加点してください。
+4. 回転・反転の許容: 90度/180度/270度の回転や、ミラー反転による見た目の違いは、論理的に同一構造であれば一致と見なしてください。
+5. スコアの定義:
+   - 90-100%: ほぼ同一または完全に同等な設計。
+   - 70-89%: 形状や寸法が非常に似ているが、細部に僅かな差がある。
+   - 40-69%: 部分的に類似した構造を持つが、全体としては別の図面。
+   - 0-39%: 明らかに異なる構造。
+6. 厳格な評価: ユーザーは正確な結果を求めています。「なんとなく似ている」程度で90%以上の高得点を付けないでください。
 
 出力形式 (必ず以下のJSONフォーマットのみで回答):
 [
@@ -203,77 +207,49 @@ ${validCandidates.map((c, i) => `候補[${i}]: ID=${c.id}, 送付画像インデ
 ]
 `;
 
-            // Gemini への入力（マルチモーダル: クエリ画像 + 候補タイル画像）
-            logService.debug(`[DrawingSearch] Sending ${validCandidates.length + 1} images to Gemini (1 query + ${validCandidates.length} candidates)`);
-            
-            const responseText = await aiService.generateText(
+            let responseText = await aiService.generateText(
                 prompt, 
                 queryBuffer, 
                 'image/png', 
-                validCandidates.map(img => ({ 
-                    buffer: img.buffer, 
-                    mimeType: img.mimeType 
-                }))
+                validCandidates.map(img => ({ buffer: img.buffer, mimeType: img.mimeType }))
             );
-            logService.debug(`[DrawingSearch] Gemini response received. Length: ${responseText?.length}`);
+            console.timeEnd('[SearchPerformance]   Gemini API Request');
             
             let reranked = [];
             try {
                 reranked = aiService.parseJsonResponse(responseText);
-                logService.debug(`[DrawingSearch] Parsed reranking results count: ${reranked?.length}`);
-                if (Array.isArray(reranked)) {
-                    reranked.forEach(r => logService.debug(`[DrawingSearch] Candidate ${r.id}: score=${r.score}, reason=${r.reason}`));
-                }
             } catch (err) {
-                logService.debug(`[DrawingSearch] Parse Error: ${err.message}`);
-                logService.debug(`[DrawingSearch] Raw Response: ${responseText}`);
+                console.error(`[DrawingSearch] Parse Error: ${err.message}`, responseText);
             }
 
             return candidates.map(c => {
-                // 配列でない場合の安全なハンドリング
-                const match = (Array.isArray(reranked) && c.id) ? reranked.find(r => r.id === c.id) : null;
-
-                // サムネイルURLを相対パスで生成 (ポート不一致回避のため)
-                // Gemini 精査用と同じく、3倍の広さで表示する
-                const paddingFactor = 3.0;
-                const baseW = c.width || c.w || 300;
-                const baseH = c.height || c.h || 300;
-                const expandedW = baseW * paddingFactor;
-                const expandedH = baseH * paddingFactor;
-                const offsetX = (expandedW - baseW) / 2;
-                const offsetY = (expandedH - baseH) / 2;
+                const fid = c.file_id || c.id;
+                const match = (Array.isArray(reranked)) ? reranked.find(r => r.id === fid) : null;
                 
-                const thumbX = Math.max(0, (c.x || 0) - offsetX);
-                const thumbY = Math.max(0, (c.y || 0) - offsetY);
-                const fileId = c.file_id || c.id; // file_id を優先、なければ id
-                const thumbUrl = `/api/search/thumbnail/${fileId}?x=${thumbX}&y=${thumbY}&w=${expandedW}&h=${expandedH}`;
-                logService.debug(`[DrawingSearch] Candidate ${fileId} thumbnailUrl (relative): ${thumbUrl}`);
+                const paddingFactor = 3.0;
+                const baseW = c.width || 300;
+                const baseH = c.height || 300;
+                const thumbX = Math.max(0, (c.x || 0) - (baseW * (paddingFactor - 1) / 2));
+                const thumbY = Math.max(0, (c.y || 0) - (baseH * (paddingFactor - 1) / 2));
+                const thumbUrl = `/api/search/thumbnail/${fid}?x=${thumbX}&y=${thumbY}&w=${baseW * paddingFactor}&h=${baseH * paddingFactor}`;
 
-                // 元の候補情報(c)をベースに、AIの判定結果(match)をマージする
                 return {
-                    ...c,     // 元の候補情報（id, quotation_id, storage_path, x, y等）を優先
+                    ...c,
                     thumbnailUrl: thumbUrl,
                     ai_score: match ? (Number(match.score) || 0) : 0,
-                    ai_reason: match ? (match.reason || '解析完了') : '判定なし（AI精査エラー）'
+                    ai_reason: match ? (match.reason || '解析完了') : '判定なし'
                 };
-            }).filter(res => res.ai_score > 50) // 50%以下は除外
+            }).filter(res => res.ai_score >= 25)
               .sort((a, b) => b.ai_score - a.ai_score);
 
         } catch (e) {
             console.error('[DrawingSearch] Reranking failed:', e);
-            // 失敗時もフロントエンドでundefinedにならないよう、デフォルト値を付与して返す
-            return candidates.map(c => ({
-                ...c,
-                ai_score: 0,
-                ai_reason: '解析エラー（システム一時不具合）'
-            }));
+            return candidates;
         }
     }
 
     /**
-     * 過去の類似案件に基づくAI自動見積もり
-     * @param {Buffer} queryBuffer 
-     * @param {Array} similarResults リランキング済みの検索結果
+     * 見積もりAI
      */
     async estimateAI(queryBuffer, similarResults) {
         try {
@@ -290,25 +266,10 @@ ${validCandidates.map((c, i) => `候補[${i}]: ID=${c.id}, 送付画像インデ
             }
 
             const prompt = `
-あなたは製造業の見積算出のエキスパートです。
-添付された図面（またはその一部）に対し、過去の類似案件のデータを参考にして、今回の推奨見積額を算出してください。
-
-過去の参考データ:
-${referenceData}
-
-算出ルール:
-1. 構造の複雑さ、加工工程の類似性を考慮してください。
-2. 「加工費」「材料費」「その他」の内訳を提示してください。
-3. なぜその金額になったのか、根拠を論理的に日本語で説明してください。
-
-回答形式 (JSONのみ):
-{
-  "recommendedPrice": { "processing": 5000, "material": 2000, "other": 500 },
-  "confidence": 85,
-  "basis": "理由のテキスト"
-}
+あなたは見積算出のエキスパートです。過去の類似案件を参考に推奨見積額を算出してください。
+参考データ: ${referenceData}
+回答形式 (JSONのみ): { "recommendedPrice": { "processing": 0, "material": 0, "other": 0 }, "basis": "理由" }
 `;
-
             const responseText = await aiService.generateText(prompt, queryBuffer, 'image/png');
             return aiService.parseJsonResponse(responseText);
         } catch (e) {
