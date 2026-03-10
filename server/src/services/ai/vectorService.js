@@ -26,10 +26,6 @@ async function loadModel() {
 async function getEmbedding(imageBuffer) {
     const loadedModel = await loadModel();
 
-    // sharpなどのバッファをtf.Tensorに変換する必要がある
-    // node-canvasがない場合は、tf.node.decodeImage を使用可能（tfjs-nodeが必要）
-    // 今回は tfjs (pure JS) のため、必要に応じて処理を調整
-
     let tensor;
     try {
         const sharp = require('sharp');
@@ -45,15 +41,20 @@ async function getEmbedding(imageBuffer) {
         throw e;
     }
 
-    // 推論（中間層の出力を取得してベクトル化）
-    const embeddingTensor = loadedModel.infer(tensor, true); // true = 最後のSoftmaxを飛ばして埋め込みを取得
-    const embedding = await embeddingTensor.array();
+    // 推論
+    try {
+        const embeddingTensor = loadedModel.infer(tensor, true);
+        const embedding = await embeddingTensor.array();
 
-    // メモリ管理
-    tensor.dispose();
-    embeddingTensor.dispose();
+        // メモリ管理
+        tensor.dispose();
+        embeddingTensor.dispose();
 
-    return embedding[0]; // [1, 1024] -> [1024]
+        return embedding[0];
+    } catch (e) {
+        console.error('Inference failed:', e);
+        throw e;
+    }
 }
 
 module.exports = {

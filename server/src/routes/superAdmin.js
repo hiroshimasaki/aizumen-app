@@ -380,13 +380,21 @@ router.get('/usage', async (req, res) => {
         const totalStorage = storageUsage?.reduce((sum, curr) => sum + (curr.file_size || 0), 0) || 0;
         const totalAi = aiUsage?.reduce((sum, curr) => sum + Math.abs(curr.amount || 0), 0) || 0;
 
+        // DB使用量の取得 (正式には pg_database_size 等が必要だが、ここでは主要テーブルから推定)
+        // drawing_tiles が最も重いため、その件数から概算 (1タイル 15KB想定)
+        const { count: tileCount } = await supabaseAdmin
+            .from('drawing_tiles')
+            .select('id', { count: 'exact', head: true });
+        
+        const estimatedDbBytes = (tileCount || 0) * 15 * 1024; // 15KB per tile
+
         res.json({
             storage: sortedStorage,
             ai: sortedAi,
             totals: {
                 storage: totalStorage,
                 ai: totalAi,
-                db: 0,
+                db: estimatedDbBytes,
                 monthUsage: monthUsage,
                 estimatedCost: estimatedCost
             },

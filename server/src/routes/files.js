@@ -113,8 +113,11 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
             }
 
             // [新規追加] 図面検索用の自動インデックス登録
-            // PDFファイルであり、かつ案件IDに紐付いている場合のみ実行
-            if (quotationId && (contentType === 'application/pdf' || originalName.toLowerCase().endsWith('.pdf'))) {
+            // PDF または 画像ファイルであり、かつ案件IDに紐付いている場合のみ実行
+            const isImage = contentType?.startsWith('image/') || /\.(jpg|jpeg|png|webp|heic)$/i.test(originalName);
+            const isPdf = contentType === 'application/pdf' || originalName.toLowerCase().endsWith('.pdf');
+
+            if (quotationId && (isPdf || isImage)) {
                 // 重い処理のため、レスポンスを待たずに非同期で実行（バックグラウンド処理）
                 drawingSearchService.registerDrawing(quotationId, fileId, req.tenantId, file.buffer, contentType)
                     .then(() => console.log(`[Files] Background indexing complete for ${fileId}`))
@@ -168,6 +171,47 @@ router.get('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             mimeType: fileMeta.mime_type,
         });
     } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * GET /api/files/download/:id
+ * ファイルを直接ダウンロード（バイナリとして返す）
+ */
+router.get('/download/:id', authMiddleware, async (req, res, next) => {
+    try {
+        console.log(`[Files/Download] Request for ID: ${req.params.id}, Tenant: ${req.tenantId}`);
+        const { data: fileMeta, error } = await supabaseAdmin
+            .from('quotation_files')
+            .select('storage_path, original_name, mime_type')
+            .eq('id', req.params.id)
+            .eq('tenant_id', req.tenantId)
+            .single();
+
+        if (error || !fileMeta) {
+            console.error(`[Files/Download] File meta not found or error. ID: ${req.params.id}`, error);
+            throw new AppError('File not found', 404, 'NOT_FOUND');
+        }
+        console.log(`[Files/Download] Found meta: ${fileMeta.storage_path}, name: ${fileMeta.original_name}`);
+
+        const { data: fileData, error: dlErr } = await supabaseAdmin.storage
+            .from('quotation-files')
+            .download(fileMeta.storage_path);
+
+        if (dlErr || !fileData) {
+            console.error(`[Files/Download] Storage download failed for: ${fileMeta.storage_path}`, dlErr);
+            throw new AppError('Failed to download from storage', 500, 'DOWNLOAD_FAILED');
+        }
+
+        console.log(`[Files/Download] Successfully downloaded from storage: ${fileData.size} bytes`);
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        
+        res.set('Content-Type', fileMeta.mime_type || 'application/octet-stream');
+        res.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileMeta.original_name)}`);
+        res.send(buffer);
+    } catch (err) {
+        console.error(`[Files/Download] Uncaught error:`, err);
         next(err);
     }
 });
