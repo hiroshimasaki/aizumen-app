@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, Sparkles, RefreshCcw, AlertCircle, Check, DollarSign, ZoomIn, ZoomOut, Maximize, FileText } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -7,16 +7,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 
 // PDF.js options to suppress XFA and optimize loading
-const PDF_OPTIONS = {
-    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
-    cMapPacked: true,
-    disableXFA: true,
-    enableXfa: false,
-};
-
 export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResult, initialResults, onSaveResults, initialQueryPreview, onSaveQueryPreview }) {
     const { setCredits } = useAuth();
     const { showAlert } = useNotification();
+    
+    // PDF.js options memoized to prevent warnings and unnecessary reloads
+    const pdfOptions = useMemo(() => ({
+        cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+        cMapPacked: true,
+        disableXFA: true,
+        enableXfa: false,
+    }), []);
+
     const [numPages, setNumPages] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [isSearching, setIsSearching] = useState(false);
@@ -128,13 +130,22 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
             cropCanvas.width = selection.width * internalScale;
             cropCanvas.height = selection.height * internalScale;
 
+            console.log('[DrawingSearch] Cropping image...', selection);
             ctx.drawImage(
                 pageCanvas,
                 selection.x * internalScale, selection.y * internalScale, selection.width * internalScale, selection.height * internalScale,
                 0, 0, selection.width * internalScale, selection.height * internalScale
             );
 
-            const blob = await new Promise(resolve => cropCanvas.toBlob(resolve, 'image/png'));
+            console.log('[DrawingSearch] Converting to blob...');
+            const blob = await new Promise((resolve, reject) => {
+                cropCanvas.toBlob(b => {
+                    if (b) resolve(b);
+                    else reject(new Error('Canvas toBlob failed'));
+                }, 'image/png');
+            });
+            console.log('[DrawingSearch] Blob created:', blob.size, 'bytes');
+
             const blobUrl = URL.createObjectURL(blob);
             setQueryPreview(blobUrl); 
             if (onSaveQueryPreview) onSaveQueryPreview(blobUrl);
@@ -142,7 +153,31 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
             const formData = new FormData();
             formData.append('queryImage', blob, 'query.png');
 
-            const { data } = await api.post('/api/search/similar', formData, { timeout: 120000 });
+            // [Optimization] ページ全体の画像をサーバー側で同一図面判定に使用する
+            // 接続リセット(ERR_CONNECTION_RESET)を防ぐため、1024px以下にリサイズして軽量化
+            const fullPageBlob = await new Promise(resolve => {
+                const maxDim = 1024;
+                let w = pageCanvas.width;
+                let h = pageCanvas.height;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) { h = (h / w) * maxDim; w = maxDim; }
+                    else { w = (w / h) * maxDim; h = maxDim; }
+                }
+                const resizeCanvas = document.createElement('canvas');
+                resizeCanvas.width = w;
+                resizeCanvas.height = h;
+                const rCtx = resizeCanvas.getContext('2d');
+                rCtx.drawImage(pageCanvas, 0, 0, w, h);
+                resizeCanvas.toBlob(resolve, 'image/jpeg', 0.8);
+            });
+            formData.append('fullPageImage', fullPageBlob, 'fullpage.jpg');
+
+            console.log(`[DrawingSearch] Sending search request (Query: ${Math.round(blob.size/1024)}KB, Full: ${Math.round(fullPageBlob.size/1024)}KB)...`);
+            
+            const { data } = await api.post('/api/search/similar', formData, { 
+                timeout: 90000
+            });
+            console.log('[DrawingSearch] Search result received successfully:', data.results?.length, 'items');
             
             // 検索成功時
             timers.forEach(clearTimeout);
@@ -232,7 +267,7 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
                                 file={fileUrl}
                                 onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                                 loading={<div className="p-20 text-slate-500 flex flex-col items-center gap-4"><RefreshCcw className="animate-spin" />読み込み中...</div>}
-                                options={PDF_OPTIONS}
+                                options={pdfOptions}
                             >
                                 <Page
                                     pageNumber={currentPage}

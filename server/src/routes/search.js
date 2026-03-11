@@ -16,9 +16,12 @@ const upload = multer({ storage: multer.memoryStorage() });
  * POST /api/search/similar
  * 矩形選択範囲の画像を用いた類似図面検索
  */
-router.post('/similar', authMiddleware, checkCredits(1), upload.single('queryImage'), async (req, res, next) => {
+router.post('/similar', authMiddleware, checkCredits(1), upload.fields([{ name: 'queryImage' }, { name: 'fullPageImage' }]), async (req, res, next) => {
     try {
-        if (!req.file) {
+        const queryFile = req.files['queryImage']?.[0];
+        const fullPageFile = req.files['fullPageImage']?.[0];
+
+        if (!queryFile) {
             throw new AppError('検索クエリ画像が必要です', 400, 'NO_QUERY_IMAGE');
         }
 
@@ -27,7 +30,8 @@ router.post('/similar', authMiddleware, checkCredits(1), upload.single('queryIma
 
         const results = await drawingSearchService.searchSimilarDrawing(
             req.tenantId,
-            req.file.buffer
+            queryFile.buffer,
+            fullPageFile ? fullPageFile.buffer : null
         );
 
         // クレジット消費処理

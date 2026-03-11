@@ -1,8 +1,11 @@
 const imageService = require('./imageService');
 const vectorService = require('./vectorService');
+const hashService = require('./hashService');
 const { supabaseAdmin } = require('../../config/supabase');
 const aiService = require('../aiService');
 const logService = require('../logService');
+const fs = require('fs');
+const path = require('path');
 const systemLimits = require('../../config/systemLimits');
 
 class DrawingSearchService {
@@ -15,6 +18,13 @@ class DrawingSearchService {
 
             // 1. 前処理
             const processedBuffer = await imageService.preprocessImage(fileBuffer, mimeType);
+
+            // 1.5 ページ全体のハッシュ(pHash)を生成・保存
+            const pageHash = await hashService.generateDHash(processedBuffer);
+            await supabaseAdmin
+                .from('quotation_files')
+                .update({ page_hash: pageHash })
+                .eq('id', fileId);
 
             // 2. タイル分割
             let tiles = await imageService.tileImage(processedBuffer);
@@ -65,44 +75,104 @@ class DrawingSearchService {
     /**
      * 類似図面の検索
      */
-    async searchSimilarDrawing(tenantId, queryImageBuffer) {
+    async searchSimilarDrawing(tenantId, queryImageBuffer, fullPageImageBuffer = null) {
         try {
-            // 1. クエリ画像の特徴量生成
-            console.time('[SearchPerformance] Preprocess & Embedding');
-            const processedQuery = await imageService.preprocessImage(queryImageBuffer);
-            const queryEmbedding = await vectorService.getEmbedding(processedQuery);
-            console.timeEnd('[SearchPerformance] Preprocess & Embedding');
+            console.log(`[DrawingSearch] Starting hybrid search for tenant: ${tenantId}`);
+            const searchStart = Date.now();
 
-            // 2. pgvector を使用した一次検索
-            console.time('[SearchPerformance] Vector Search (RPC)');
-            const { data: candidates, error } = await supabaseAdmin.rpc('match_drawing_tiles', {
-                query_embedding: queryEmbedding,
-                match_threshold: 0.3,
-                match_count: 80,
-                p_tenant_id: tenantId
-            });
-            console.timeEnd('[SearchPerformance] Vector Search (RPC)');
+            // ============================================================
+            // 0. pHash による同一図面の超高速特定 (第一層)
+            // ============================================================
+            if (fullPageImageBuffer) {
+                const hashStart = Date.now();
+                const queryPageHash = await hashService.generateDHash(fullPageImageBuffer);
+                const { data: matches } = await supabaseAdmin.rpc('match_drawing_by_hash', {
+                    p_query_hash: queryPageHash,
+                    p_tenant_id: tenantId,
+                    p_threshold: 20 // ハミング距離20以内（Canvas描画/JPEG圧縮/リサイズによるハッシュ差異を許容）
+                });
+                const hashMs = Date.now() - hashStart;
+                console.log(`[SearchPerformance] pHash Match: ${hashMs}ms, queryHash: ${queryPageHash}, hits: ${matches?.length || 0}`);
+                if (matches && matches.length > 0) {
+                    matches.forEach(m => console.log(`  [pHash] file: ${m.file_id.substring(0,8)}... hamming: ${m.hamming_distance}`));
+                }
 
-            if (error) throw error;
+                // [戦略1] pHash で一致があれば、Gemini を一切通さず即座に結果を返す
+                if (matches && matches.length > 0) {
+                    console.log(`[DrawingSearch] ★ pHash FAST PATH: ${matches.length} identical file(s) found! Skipping Gemini.`);
+                    const matchFileIds = matches.map(m => m.file_id);
+                    const { data: matchFiles } = await supabaseAdmin
+                        .from('quotation_files')
+                        .select('id, storage_path, mime_type, original_name, quotation_id')
+                        .in('id', matchFileIds);
 
-            if (!candidates || candidates.length === 0) {
-                console.log(`[DrawingSearch] No candidates found in vector search for tenant: ${tenantId}`);
-                return [];
-            }
-            console.log(`[DrawingSearch] Found ${candidates.length} candidates in vector search.`);
-
-            // 2.5 名寄せ（デデュプリケーション）
-            const uniqueFileCandidates = [];
-            const seenFileIds = new Set();
-            for (const c of candidates) {
-                if (!seenFileIds.has(c.file_id)) {
-                    uniqueFileCandidates.push(c);
-                    seenFileIds.add(c.file_id);
-                    if (uniqueFileCandidates.length >= 20) break;
+                    const fastResults = matches.map(m => {
+                        const file = matchFiles?.find(f => f.id === m.file_id);
+                        const fid = m.file_id;
+                        return {
+                            file_id: fid,
+                            quotation_id: file?.quotation_id,
+                            similarity: 1.0,
+                            is_hash_match: true,
+                            storage_path: file?.storage_path,
+                            mime_type: file?.mime_type,
+                            original_name: file?.original_name,
+                            thumbnailUrl: `/api/search/thumbnail/${fid}?x=0&y=0&w=800&h=800`,
+                            ai_score: 100,
+                            ai_reason: `完全一致 (pHash検出, ハミング距離: ${m.hamming_distance})`
+                        };
+                    });
+                    console.log(`[SearchPerformance] Total (FAST PATH): ${Date.now() - searchStart}ms`);
+                    return fastResults;
                 }
             }
 
-            // 2.6 ファイル情報の補填
+            // ============================================================
+            // 1. ベクトル検索 (第二層) — pHash で見つからなかった場合のみ実行
+            // ============================================================
+            const vecStart = Date.now();
+            const processedQuery = await imageService.preprocessImage(queryImageBuffer);
+            const queryEmbedding = await vectorService.getEmbedding(processedQuery);
+
+            const { data: rawCandidates, error: matchError } = await supabaseAdmin.rpc('match_drawing_tiles', {
+                query_embedding: queryEmbedding,
+                match_threshold: 0.05,
+                match_count: 50, // 100→50に削減（名寄せ後5件しか使わないため十分）
+                p_tenant_id: tenantId
+            });
+            console.log(`[SearchPerformance] Vector Search: ${Date.now() - vecStart}ms, hits: ${rawCandidates?.length || 0}`);
+
+            if (matchError) throw matchError;
+
+            if (!rawCandidates || rawCandidates.length === 0) {
+                console.log(`[DrawingSearch] No candidates found for tenant: ${tenantId}`);
+                return [];
+            }
+
+            // ============================================================
+            // 2. 名寄せ（デデュプリケーション）
+            // ============================================================
+            const fileMap = new Map();
+            for (const c of rawCandidates) {
+                if (!fileMap.has(c.file_id) || c.similarity > fileMap.get(c.file_id).similarity) {
+                    fileMap.set(c.file_id, { ...c, is_hash_match: false });
+                }
+            }
+
+            const sortedUniqueCandidates = Array.from(fileMap.values())
+                .sort((a, b) => b.similarity - a.similarity);
+
+            console.log(`[DrawingSearch] Unique files: ${sortedUniqueCandidates.length}`);
+            sortedUniqueCandidates.slice(0, 10).forEach((c, i) => {
+                console.log(`  [Rank ${i}] ${c.file_id.substring(0,8)}... sim: ${c.similarity.toFixed(4)}`);
+            });
+
+            // Gemini 候補を 10件 に選定（5件だと同一図面がベクトル上位に入らないケースがある）
+            const uniqueFileCandidates = sortedUniqueCandidates.slice(0, 10);
+
+            // ============================================================
+            // 3. ファイル情報の補填
+            // ============================================================
             const fileIds = [...new Set(uniqueFileCandidates.map(c => c.file_id))];
             const { data: files } = await supabaseAdmin
                 .from('quotation_files')
@@ -119,10 +189,13 @@ class DrawingSearchService {
                 };
             });
 
-            // 3. Gemini による二次精査（リランキング）
-            console.time('[SearchPerformance] Gemini Reranking');
+            // ============================================================
+            // 4. Gemini による二次精査（リランキング）
+            // ============================================================
+            const geminiStart = Date.now();
             const rerankedResults = await this.rerankWithGemini(queryImageBuffer, enhancedCandidates);
-            console.timeEnd('[SearchPerformance] Gemini Reranking');
+            console.log(`[SearchPerformance] Gemini Reranking: ${Date.now() - geminiStart}ms`);
+            console.log(`[SearchPerformance] Total Search: ${Date.now() - searchStart}ms`);
 
             return rerankedResults;
         } catch (error) {
@@ -136,19 +209,28 @@ class DrawingSearchService {
      */
     async rerankWithGemini(queryBuffer, candidates) {
         try {
-            console.time('[SearchPerformance]   Download & Crop Candidates');
-            const candidateImages = await Promise.all(candidates.slice(0, 20).map(async (c, i) => {
+            const dlStart = Date.now();
+            // [戦略3] 同一ファイルのダウンロードをキャッシュで重複排除
+            const fileDownloadCache = new Map();
+            const candidateImages = await Promise.all(candidates.slice(0, 10).map(async (c, i) => {
                 try {
                     if (!c.storage_path) return null;
-                    const { data: fileData } = await supabaseAdmin.storage
-                        .from('quotation-files')
-                        .download(c.storage_path);
-                    if (!fileData) return null;
-
-                    const buffer = Buffer.from(await fileData.arrayBuffer());
                     
-                    // Gemini 処理用に、より広い範囲（元のタイルサイズの 3倍）を切り出す
-                    const paddingFactor = 3.0;
+                    // キャッシュにあればそちらを使う
+                    let buffer;
+                    if (fileDownloadCache.has(c.storage_path)) {
+                        buffer = fileDownloadCache.get(c.storage_path);
+                    } else {
+                        const { data: fileData } = await supabaseAdmin.storage
+                            .from('quotation-files')
+                            .download(c.storage_path);
+                        if (!fileData) return null;
+                        buffer = Buffer.from(await fileData.arrayBuffer());
+                        fileDownloadCache.set(c.storage_path, buffer);
+                    }
+                    
+                    // [戦略4] paddingFactor を 3.0→2.0 に縮小（画像サイズ削減→Gemini高速化）
+                    const paddingFactor = 2.0;
                     const baseW = c.width || 300;
                     const baseH = c.height || 300;
                     const expandedW = baseW * paddingFactor;
@@ -171,17 +253,20 @@ class DrawingSearchService {
                         similarity: (c.similarity && typeof c.similarity === 'number') ? c.similarity.toFixed(2) : '0.00'
                     };
                 } catch (err) {
-                    console.error(`[DrawingSearch] Failed to fetch tile image for candidate ${i}:`, err);
+                    console.error(`[DrawingSearch] Failed to fetch tile image for candidate ${i}:`, err.message);
                     return null;
                 }
             }));
 
             const validCandidates = candidateImages.filter(img => img !== null);
-            console.timeEnd('[SearchPerformance]   Download & Crop Candidates');
+            console.log(`[SearchPerformance] Download & Crop: ${Date.now() - dlStart}ms (${validCandidates.length} images)`);
             
-            if (validCandidates.length === 0) return candidates; // 画像取得不可なら一次検索結果を返す
+            if (validCandidates.length === 0) {
+                console.log('[DrawingSearch] No valid candidate images. Returning vector-based fallback.');
+                return this._buildFallbackResults(candidates);
+            }
 
-            console.time('[SearchPerformance]   Gemini API Request');
+            const apiStart = Date.now();
             const prompt = `
 あなたは熟練の図面検図エキスパートです。
 ユーザーが選択した「クエリ画像（選択範囲）」と、DBから抽出された「候補画像」を比較してください。
@@ -213,39 +298,125 @@ ${validCandidates.map((c, i) => `候補[${i}]: ID=${c.id}, 送付画像インデ
                 'image/png', 
                 validCandidates.map(img => ({ buffer: img.buffer, mimeType: img.mimeType }))
             );
-            console.timeEnd('[SearchPerformance]   Gemini API Request');
+            console.log(`[SearchPerformance] Gemini API: ${Date.now() - apiStart}ms`);
+            
+            // [DEBUG] Gemini応答内容をログ出力
+            console.log(`[DrawingSearch] Gemini raw response (first 500 chars):`, responseText?.substring(0, 500));
             
             let reranked = [];
+            const logsDir = path.join(process.cwd(), 'logs');
+            const debugFilePath = path.join(logsDir, 'search_debug.txt');
+            
             try {
+                // ディレクトリ存在チェック
+                if (!fs.existsSync(logsDir)) {
+                    fs.mkdirSync(logsDir, { recursive: true });
+                }
+
                 reranked = aiService.parseJsonResponse(responseText);
+                console.log(`[DrawingSearch] Gemini reranked ${reranked?.length || 0} candidates.`);
+                
+                // [Optimization] pHash一致のものをGemini結果がない場合に補遺、またはスコアを最高値に固定
+                candidates.forEach(c => {
+                    if (c.is_hash_match) {
+                        const existing = reranked.find(r => r.id === c.file_id);
+                        if (existing) {
+                            existing.score = 100; // pHash一致は無条件で 100点
+                            existing.reason = `[pHash Match] ${existing.reason}`;
+                        } else {
+                            reranked.push({ id: c.file_id, score: 100, reason: "完全一致 (pHash検出)" });
+                        }
+                    }
+                });
+                
+                // 強制的にファイルへ書き出し
+                const debugLog = `[${new Date().toISOString()}] Gemini Response:\n${responseText}\nParsed: ${JSON.stringify(reranked)}\n---\n`;
+                fs.appendFileSync(debugFilePath, debugLog);
+                
             } catch (err) {
-                console.error(`[DrawingSearch] Parse Error: ${err.message}`, responseText);
+                console.error(`[DrawingSearch] Gemini Parse Error: ${err.message}`);
+                try {
+                    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+                    fs.appendFileSync(debugFilePath, `[${new Date().toISOString()}] Parse Error: ${err.message}\nRaw: ${responseText}\n`);
+                } catch (e) { /* ignore log error */ }
             }
 
-            return candidates.map(c => {
+            // [FIX] Gemini結果が空の場合、ベクトル類似度ベースのフォールバックを使用
+            if (!Array.isArray(reranked) || reranked.length === 0) {
+                console.warn('[DrawingSearch] Gemini returned no results. Using vector similarity fallback.');
+                return this._buildFallbackResults(candidates);
+            }
+
+            const finalResults = candidates.map(c => {
                 const fid = c.file_id || c.id;
-                const match = (Array.isArray(reranked)) ? reranked.find(r => r.id === fid) : null;
+                const match = reranked.find(r => r.id === fid);
                 
-                const paddingFactor = 3.0;
+                const paddingFactor = 2.0;
                 const baseW = c.width || 300;
                 const baseH = c.height || 300;
                 const thumbX = Math.max(0, (c.x || 0) - (baseW * (paddingFactor - 1) / 2));
                 const thumbY = Math.max(0, (c.y || 0) - (baseH * (paddingFactor - 1) / 2));
                 const thumbUrl = `/api/search/thumbnail/${fid}?x=${thumbX}&y=${thumbY}&w=${baseW * paddingFactor}&h=${baseH * paddingFactor}`;
 
+                // Gemini結果が存在する場合：マッチしないものはスコア0（Geminiによる拒否）
+                // Gemini結果が空（エラー/フォールバック）の場合：ベクトル類似度を使用
+                const vectorScore = Math.round((c.similarity || 0) * 100);
+                let aiScore = 0;
+                let aiReason = `ベクトル類似度: ${(c.similarity || 0).toFixed(2)}`;
+
+                if (Array.isArray(reranked) && reranked.length > 0) {
+                    if (match) {
+                        aiScore = Number(match.score) || 0;
+                        aiReason = match.reason || '解析完了';
+                    } else {
+                        // Geminiが他を選んだ（この候補は拒絶された）場合
+                        aiScore = 0;
+                        aiReason = 'Geminiによる形状不一致判定';
+                    }
+                } else {
+                    // Geminiが動作しなかった場合のフォールバック
+                    aiScore = vectorScore;
+                }
+
                 return {
                     ...c,
                     thumbnailUrl: thumbUrl,
-                    ai_score: match ? (Number(match.score) || 0) : 0,
-                    ai_reason: match ? (match.reason || '解析完了') : '判定なし'
+                    ai_score: aiScore,
+                    ai_reason: aiReason
                 };
-            }).filter(res => res.ai_score >= 25)
+            }).filter(res => res.ai_score >= 15)
               .sort((a, b) => b.ai_score - a.ai_score);
+
+            console.log(`[DrawingSearch] Final results after filtering: ${finalResults.length}`);
+            return finalResults;
 
         } catch (e) {
             console.error('[DrawingSearch] Reranking failed:', e);
-            return candidates;
+            // エラー時も結果を返す
+            return this._buildFallbackResults(candidates);
         }
+    }
+
+    /**
+     * ベクトル類似度ベースのフォールバック結果を生成
+     */
+    _buildFallbackResults(candidates) {
+        return candidates.map(c => {
+            const fid = c.file_id || c.id;
+            const paddingFactor = 2.0;
+            const baseW = c.width || 300;
+            const baseH = c.height || 300;
+            const thumbX = Math.max(0, (c.x || 0) - (baseW * (paddingFactor - 1) / 2));
+            const thumbY = Math.max(0, (c.y || 0) - (baseH * (paddingFactor - 1) / 2));
+            const thumbUrl = `/api/search/thumbnail/${fid}?x=${thumbX}&y=${thumbY}&w=${baseW * paddingFactor}&h=${baseH * paddingFactor}`;
+            return {
+                ...c,
+                thumbnailUrl: thumbUrl,
+                ai_score: Math.round((c.similarity || 0) * 100),
+                ai_reason: `ベクトル類似度: ${(c.similarity || 0).toFixed(2)} (AI判定スキップ)`
+            };
+        }).filter(res => res.ai_score >= 15)
+          .sort((a, b) => b.ai_score - a.ai_score);
     }
 
     /**
