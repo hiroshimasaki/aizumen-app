@@ -1121,6 +1121,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                     isOpen={searchModalState.isOpen}
                     onClose={() => setSearchModalState({ isOpen: false, fileIndex: null, file: null, isExisting: false })}
                     file={searchModalState.file}
+                    pdfFile={!searchModalState.isExisting && searchModalState.file instanceof File ? searchModalState.file : null}
+                    fileId={searchModalState.isExisting ? searchModalState.file?.id : null}
                     onApplyResult={handleApplySearchResult}
                     initialResults={searchCache[searchModalState.file?.id || searchModalState.file?.name]}
                     onSaveResults={(results) => handleCacheSearchResults(searchModalState.file?.id || searchModalState.file?.name, results)}

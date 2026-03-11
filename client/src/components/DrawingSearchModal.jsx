@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 
 // PDF.js options to suppress XFA and optimize loading
-export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResult, initialResults, onSaveResults, initialQueryPreview, onSaveQueryPreview }) {
+export default function DrawingSearchModal({ isOpen, onClose, file, pdfFile, fileId, onApplyResult, initialResults, onSaveResults, initialQueryPreview, onSaveQueryPreview }) {
     const { setCredits } = useAuth();
     const { showAlert } = useNotification();
     
@@ -153,8 +153,17 @@ export default function DrawingSearchModal({ isOpen, onClose, file, onApplyResul
             const formData = new FormData();
             formData.append('queryImage', blob, 'query.png');
 
-            // [Optimization] ページ全体の画像をサーバー側で同一図面判定に使用する
-            // 接続リセット(ERR_CONNECTION_RESET)を防ぐため、1024px以下にリサイズして軽量化
+            // pHash高速パス用: 元PDFファイルを送信（サーバーで登録時と同一パイプラインでdHash生成）
+            if (pdfFile && (pdfFile instanceof File || pdfFile instanceof Blob)) {
+                formData.append('pdfFile', pdfFile, pdfFile.name || 'source.pdf');
+                console.log(`[DrawingSearch] Attaching original PDF for pHash (${Math.round(pdfFile.size/1024)}KB)`);
+            } else if (fileId) {
+                // 既存ファイル: fileIdを送信してDB上のハッシュを参照
+                formData.append('fileId', fileId);
+                console.log(`[DrawingSearch] Attaching fileId for pHash: ${fileId}`);
+            }
+
+            // fullPageImageはフォールバックとして常に送信（pdfFile/fileIdがない場合の保険）
             const fullPageBlob = await new Promise(resolve => {
                 const maxDim = 1024;
                 let w = pageCanvas.width;

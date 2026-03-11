@@ -75,38 +75,76 @@ class DrawingSearchService {
     /**
      * 類似図面の検索
      */
-    async searchSimilarDrawing(tenantId, queryImageBuffer, fullPageImageBuffer = null) {
+    async searchSimilarDrawing(tenantId, queryImageBuffer, fullPageImageBuffer = null, pdfFileBuffer = null, fileId = null) {
         try {
             console.log(`[DrawingSearch] Starting hybrid search for tenant: ${tenantId}`);
             const searchStart = Date.now();
 
             // ============================================================
             // 0. pHash による同一図面の超高速特定 (第一層)
+            //    優先度: pdfFile(元PDF) > fileId(DB参照) > fullPageImage(フォールバック)
             // ============================================================
-            if (fullPageImageBuffer) {
+            let queryPageHash = null;
+            let pHashThreshold = 20; // デフォルト閾値
+
+            if (pdfFileBuffer) {
+                // 案C: 元PDFをサーバーで登録時と同一パイプラインで処理してdHash生成
                 const hashStart = Date.now();
-                const queryPageHash = await hashService.generateDHash(fullPageImageBuffer);
+                const processedForHash = await imageService.preprocessImage(pdfFileBuffer, 'application/pdf');
+                queryPageHash = await hashService.generateDHash(processedForHash);
+                pHashThreshold = 5; // 同一パイプラインなので厳密な閾値
+                console.log(`[SearchPerformance] pHash from PDF pipeline: ${Date.now() - hashStart}ms, hash: ${queryPageHash}`);
+            } else if (fileId) {
+                // 案A: 既存ファイルのDB上のハッシュを直接参照
+                const hashStart = Date.now();
+                const { data: fileRecord } = await supabaseAdmin
+                    .from('quotation_files')
+                    .select('page_hash')
+                    .eq('id', fileId)
+                    .single();
+                if (fileRecord?.page_hash) {
+                    queryPageHash = fileRecord.page_hash;
+                    pHashThreshold = 5; // DB上の同一パイプラインハッシュ
+                    console.log(`[SearchPerformance] pHash from DB (fileId): ${Date.now() - hashStart}ms, hash: ${queryPageHash}`);
+                } else {
+                    console.log(`[DrawingSearch] fileId ${fileId} has no page_hash in DB, skipping DB lookup`);
+                }
+            } else if (fullPageImageBuffer) {
+                // フォールバック: クライアントからのフルページ画像でdHash生成（精度は低い）
+                const hashStart = Date.now();
+                queryPageHash = await hashService.generateDHash(fullPageImageBuffer);
+                pHashThreshold = 20; // パイプライン差異を許容する緩い閾値
+                console.log(`[SearchPerformance] pHash from fullPageImage (fallback): ${Date.now() - hashStart}ms, hash: ${queryPageHash}`);
+            }
+
+            if (queryPageHash) {
+                const matchStart = Date.now();
                 const { data: matches } = await supabaseAdmin.rpc('match_drawing_by_hash', {
                     p_query_hash: queryPageHash,
                     p_tenant_id: tenantId,
-                    p_threshold: 20 // ハミング距離20以内（Canvas描画/JPEG圧縮/リサイズによるハッシュ差異を許容）
+                    p_threshold: pHashThreshold
                 });
-                const hashMs = Date.now() - hashStart;
-                console.log(`[SearchPerformance] pHash Match: ${hashMs}ms, queryHash: ${queryPageHash}, hits: ${matches?.length || 0}`);
+                const hashMs = Date.now() - matchStart;
+                console.log(`[SearchPerformance] pHash DB Match: ${hashMs}ms, hits: ${matches?.length || 0}`);
                 if (matches && matches.length > 0) {
                     matches.forEach(m => console.log(`  [pHash] file: ${m.file_id.substring(0,8)}... hamming: ${m.hamming_distance}`));
                 }
 
-                // [戦略1] pHash で一致があれば、Gemini を一切通さず即座に結果を返す
-                if (matches && matches.length > 0) {
-                    console.log(`[DrawingSearch] ★ pHash FAST PATH: ${matches.length} identical file(s) found! Skipping Gemini.`);
-                    const matchFileIds = matches.map(m => m.file_id);
+                // 自分自身を除外（fileIdがある場合）
+                const filteredMatches = fileId
+                    ? matches?.filter(m => m.file_id !== fileId)
+                    : matches;
+
+                // pHash で一致があれば、Gemini を一切通さず即座に結果を返す
+                if (filteredMatches && filteredMatches.length > 0) {
+                    console.log(`[DrawingSearch] ★ pHash FAST PATH: ${filteredMatches.length} identical file(s) found! Skipping Gemini.`);
+                    const matchFileIds = filteredMatches.map(m => m.file_id);
                     const { data: matchFiles } = await supabaseAdmin
                         .from('quotation_files')
                         .select('id, storage_path, mime_type, original_name, quotation_id')
                         .in('id', matchFileIds);
 
-                    const fastResults = matches.map(m => {
+                    const fastResults = filteredMatches.map(m => {
                         const file = matchFiles?.find(f => f.id === m.file_id);
                         const fid = m.file_id;
                         return {
