@@ -12,6 +12,13 @@ api.interceptors.request.use(async (config) => {
     if (session?.access_token) {
         config.headers.Authorization = `Bearer ${session.access_token}`;
     }
+    
+    // メンテナンスバイパストークンの付与
+    const bypassToken = localStorage.getItem('maintenance_bypass_token');
+    if (bypassToken) {
+        config.headers['X-Maintenance-Bypass'] = bypassToken;
+    }
+    
     return config;
 });
 
@@ -21,7 +28,7 @@ api.interceptors.response.use(
     async (error) => {
         // メンテナンスモード (503 Service Unavailable)
         if (error.response?.status === 503 && error.response?.data?.maintenance) {
-            const publicUIPaths = ['/', '/agreement', '/site-policy', '/commerce', '/protection'];
+            const publicUIPaths = ['/', '/login', '/signup', '/agreement', '/site-policy', '/commerce', '/protection'];
             if (window.location.pathname !== '/maintenance' && !publicUIPaths.includes(window.location.pathname)) {
                 window.location.href = '/maintenance';
             }

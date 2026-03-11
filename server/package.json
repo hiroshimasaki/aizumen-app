@@ -11,6 +11,7 @@
   "dependencies": {
     "@google-cloud/vertexai": "^1.10.0",
     "@google/generative-ai": "^0.24.1",
+    "@napi-rs/canvas": "^0.1.96",
     "@supabase/supabase-js": "^2.98.0",
     "@tensorflow-models/mobilenet": "^2.1.1",
     "@tensorflow/tfjs": "^4.22.0",

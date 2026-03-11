@@ -42,6 +42,18 @@ function AppLayout() {
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
+    // Close menu on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setMenuOpen(false);
+            }
+        };
+        if (menuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [menuOpen]);
 
     // Force redirect to billing if trial/subscription is expired
     useEffect(() => {
@@ -404,6 +416,26 @@ function LandingRoute() {
     return <LandingPage />;
 }
 
+/**
+ * メンテナンスバイパス用のURLパラメータを処理するコンポーネント
+ */
+function MaintenanceBypassHandler() {
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        const previewToken = searchParams.get('preview');
+        if (previewToken) {
+            console.log('[MaintenanceBypass] Token detected, saving to localStorage...');
+            localStorage.setItem('maintenance_bypass_token', previewToken);
+            // URLからパラメータを消してリロード（クリーンなURLにするため）
+            const newUrl = window.location.pathname;
+            window.location.href = newUrl;
+        }
+    }, [searchParams]);
+
+    return null;
+}
+
 export default function App() {
     useEffect(() => {
         const handleError = async (eventOrError) => {
@@ -421,7 +453,7 @@ export default function App() {
             // メンテナンスモードのハンドリング (503 Service Unavailable)
             if (error.response?.status === 503 && error.response?.data?.maintenance) {
                 // 公共ページ（LPや法的表記）とメンテナンス画面自身はリダイレクトを避ける
-                const publicUIPaths = ['/', '/agreement', '/site-policy', '/commerce', '/protection'];
+                const publicUIPaths = ['/', '/login', '/signup', '/agreement', '/site-policy', '/commerce', '/protection'];
                 if (window.location.pathname !== '/maintenance' && !publicUIPaths.includes(window.location.pathname)) {
                     window.location.href = '/maintenance';
                 }
@@ -451,6 +483,7 @@ export default function App() {
 
     return (
         <BrowserRouter>
+            <MaintenanceBypassHandler />
             <AuthProvider>
                 <NotificationProvider>
                     <ScrollToTop />

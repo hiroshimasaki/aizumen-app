@@ -665,7 +665,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                     <span className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded shrink-0 font-bold uppercase tracking-tighter">登録済</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {isAdmin && f.original_name.toLowerCase().endsWith('.pdf') && (
+                                    {isAdmin && (f.originalName || f.original_name)?.toLowerCase().endsWith('.pdf') && (
                                         <div className="flex flex-col items-center gap-1">
                                             <button
                                                 type="button"
@@ -1015,7 +1015,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                                                 type="button"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    handleFileDownload(e, f.id, f.original_name);
+                                                                    handleFileDownload(e, f.id, f.originalName || f.original_name);
                                                                 }}
                                                                 className="flex items-center gap-1.5 text-[11px] bg-slate-800/80 text-blue-400 px-2 py-1 rounded border border-slate-700 hover:bg-slate-700 hover:border-blue-500/50 hover:text-blue-300 transition-colors font-medium"
                                                                 title="この図面を別タブで開く/ダウンロード"

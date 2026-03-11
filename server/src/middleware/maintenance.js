@@ -30,6 +30,24 @@ const maintenanceMiddleware = async (req, res, next) => {
 
     // 注意: /api/auth はここに含まれないため、一般ユーザーの /api/auth/me などはメンテナンス時に 503 になる
 
+    // 1. 環境変数による即時遮断の確認 (マニュアル項目1-1対応)
+    const isEnvMaintenance = process.env.MAINTENANCE_MODE === 'true';
+    
+    // 2. バイパストークンの確認 (マニュアル項目1-1対応)
+    const bypassToken = process.env.MAINTENANCE_BYPASS_TOKEN;
+    const clientBypassToken = req.headers['x-maintenance-bypass'];
+    
+    const isBypassActive = bypassToken && clientBypassToken === bypassToken;
+
+    if (isBypassActive) {
+        console.log(`[Maintenance] Access granted by bypass token: ${clientBypassToken}`);
+        return next(); // トークン一致時は無条件で許可
+    }
+    
+    if (clientBypassToken) {
+        console.warn(`[Maintenance] Invalid bypass token attempt: ${clientBypassToken}`);
+    }
+
     try {
         // 設定をキャッシュせず、都度最新の状態を確認（運用上の即時性重視）
         const { data, error } = await supabaseAdmin
@@ -44,8 +62,9 @@ const maintenanceMiddleware = async (req, res, next) => {
         }
 
         const settings = data?.value || { enabled: false, message: '' };
+        const isMaintenanceEnabled = isEnvMaintenance || settings.enabled;
 
-        if (settings.enabled) {
+        if (isMaintenanceEnabled) {
             // トークンから platform_admin 権限を確認（ログイン済みの場合のみ）
             let isSuperAdmin = false;
             const authHeader = req.headers.authorization;

@@ -81,15 +81,27 @@ app.use('/api/ocr/', ocrLimiter);
 app.get('/api/sys/status', async (req, res) => {
   try {
     const { supabaseAdmin } = require('./config/supabase');
+    
+    // 1. 環境変数とバイパスチェック (メンテナンスミドルウェアと同様のロジック)
+    const isEnvMaintenance = process.env.MAINTENANCE_MODE === 'true';
+    const bypassToken = process.env.MAINTENANCE_BYPASS_TOKEN;
+    const clientBypassToken = req.headers['x-maintenance-bypass'];
+    const isBypassActive = bypassToken && clientBypassToken === bypassToken;
+
     const { data } = await supabaseAdmin
       .from('system_settings')
       .select('value')
       .eq('key', 'maintenance_mode')
       .maybeSingle();
+    
     const settings = data?.value || { enabled: false, message: '' };
+    
+    // バイパスが有効な場合は、フロントエンドに「メンテナンス中ではない」と見せかけてリダイレクトを防ぐ
+    const isMaintenance = (isEnvMaintenance || !!settings.enabled) && !isBypassActive;
+
     res.json({
-      maintenance: !!settings.enabled,
-      message: settings.message || ''
+      maintenance: isMaintenance,
+      message: settings.message || (isEnvMaintenance ? '現在システムメンテナンス中です。サービス開始のめどが立ちましたらお知らせいたします。' : '')
     });
   } catch (err) {
     res.json({ maintenance: false, message: '' });

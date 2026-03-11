@@ -12,6 +12,9 @@ export default function LoginPage() {
 
     // メンテナンスチェック
     useEffect(() => {
+        // バイパストークンがある場合はチェック自体をスキップ（または結果を無視）
+        if (localStorage.getItem('maintenance_bypass_token')) return;
+
         api.get('/api/sys/status').then(res => {
             if (res.data?.maintenance) {
                 window.location.href = '/maintenance';
