@@ -45,13 +45,17 @@ class AIService {
             }
             this.vertexAI = new VertexAI({
                 project: projectId,
-                location: 'us-central1',
+                location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
                 googleAuthOptions: { credentials }
             });
-            this.model = this.vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash-002' });
+            // モデル名は gemini-1.5-flash (stable) をデフォルトにする
+            const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+            this.model = this.vertexAI.getGenerativeModel({ model: modelName });
             this.mode = 'PRODUCTION (Vertex AI)';
             this.isInitialized = true;
-            console.log(`[AIService] Success: Initialized in ${this.mode} mode. Project: ${projectId}`);
+            
+            const maskedProject = projectId ? `${projectId.substring(0, 3)}***${projectId.substring(projectId.length - 2)}` : '???';
+            console.log(`[AIService] Success: Initialized in ${this.mode} mode. Project: ${maskedProject}, Model: ${modelName}`);
         } catch (error) {
             this.isInitialized = false;
             this.initError = error.message;
@@ -268,7 +272,9 @@ class AIService {
             config: {
                 hasProjectId: !!process.env.GOOGLE_CLOUD_PROJECT_ID,
                 hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
-                hasApiKey: !!process.env.GEMINI_API_KEY
+                hasApiKey: !!process.env.GEMINI_API_KEY,
+                projectId: process.env.GOOGLE_CLOUD_PROJECT_ID ? `${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(0, 3)}...${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(process.env.GOOGLE_CLOUD_PROJECT_ID.length - 2)}` : null,
+                location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1'
             }
         };
     }
