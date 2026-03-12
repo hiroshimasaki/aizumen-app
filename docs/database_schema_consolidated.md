@@ -88,6 +88,7 @@ CREATE TABLE quotation_files (
     original_name   VARCHAR(500) NOT NULL,
     file_type       VARCHAR(20) DEFAULT 'attachment'
                     CHECK (file_type IN ('attachment', 'po', 'drawing')),
+    page_hash       VARCHAR(64), -- pHash 用のページ全体ハッシュ
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 ```
@@ -104,6 +105,10 @@ CREATE TABLE drawing_tiles (
     file_id UUID REFERENCES quotation_files(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id),
     tile_index INTEGER,              -- タイルの連番
+    x REAL,                         -- 切り出し開始X (正規化座標 0.0-1.0)
+    y REAL,                         -- 切り出し開始Y (正規化座標 0.0-1.0)
+    width REAL,                     -- 切り出し幅 (正規化座標)
+    height REAL,                    -- 切り出し高さ (正規化座標)
     embedding vector(1280),          -- 特徴量ベクトル
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -124,4 +129,33 @@ CREATE TABLE forum_posts (
     body        TEXT NOT NULL,
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+---
+
+## 5. 決済・クレジット：Stripe・AIクレジット (00020)
+
+```sql
+-- AIクレジット残高管理
+CREATE TABLE ai_credits (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE UNIQUE,
+    balance             INTEGER DEFAULT 0,          -- 現在の合計残高
+    monthly_quota       INTEGER DEFAULT 0,          -- 月間プラン枠
+    purchased_balance   INTEGER DEFAULT 0,          -- 購入済み残高（繰り越し対象）
+    last_reset_at       TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- クレジット利用・付与履歴
+CREATE TABLE ai_credit_transactions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id         UUID REFERENCES users(id) ON DELETE SET NULL,
+    amount          INTEGER NOT NULL,           -- 増減量
+    type            VARCHAR(50) NOT NULL,       -- 'usage', 'purchase', 'monthly_grant', 'plan_change'
+    description     TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+```
 ```

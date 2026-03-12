@@ -39,7 +39,7 @@ app.set('trust proxy', 1);
 // --- Rate Limiting ---
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分
-  max: 2000, // 開発・デバッグ用に緩和 (300 -> 2000)
+  max: 300, // 本番用の制限に戻す (2000 -> 300)
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
@@ -59,10 +59,7 @@ app.use(cors({
     process.env.APP_URL || 'http://localhost:5173',
     'http://localhost:5173',
     'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
-    'null',
-    'file://'
+    'http://localhost:5175'
   ],
   credentials: true,
 }));

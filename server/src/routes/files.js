@@ -163,7 +163,13 @@ router.get('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             .from('quotation-files')
             .createSignedUrl(fileMeta.storage_path, 300); // 5分間有効
 
-        if (urlError) throw new AppError('Failed to generate file URL', 500, 'URL_GENERATION_FAILED');
+        if (urlError) {
+            console.error('[Files] Signed URL generation failed:', urlError);
+            if (urlError.status === 400 || urlError.statusCode === '404' || urlError.message?.includes('Object not found')) {
+                throw new AppError('File not found in storage', 404, 'STORAGE_NOT_FOUND');
+            }
+            throw new AppError('Failed to generate file URL', 500, 'URL_GENERATION_FAILED');
+        }
 
         res.json({
             url: signedUrl.signedUrl,
@@ -171,6 +177,79 @@ router.get('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             mimeType: fileMeta.mime_type,
         });
     } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * GET /api/files/thumbnail/:id
+ * サムネイル取得（存在しなければ生成）
+ */
+router.get('/thumbnail/:id', authMiddleware, async (req, res, next) => {
+    try {
+        const fileId = req.params.id;
+        const thumbnailPath = `thumbnails/${fileId}.png`;
+
+        // 1. サムネイルが既に存在するかチェック
+        const { data: existingThumb, error: checkError } = await supabaseAdmin.storage
+            .from('quotation-files')
+            .list('thumbnails', {
+                search: `${fileId}.png`
+            });
+
+        if (!checkError && existingThumb && existingThumb.length > 0) {
+            // 存在すれば署名付きURLを返す
+            const { data: signedUrl } = await supabaseAdmin.storage
+                .from('quotation-files')
+                .createSignedUrl(thumbnailPath, 3600);
+            
+            return res.json({ url: signedUrl.signedUrl });
+        }
+
+        // 2. 存在しない場合、元のファイル情報を取得
+        const { data: fileMeta, error: metaErr } = await supabaseAdmin
+            .from('quotation_files')
+            .select('storage_path, mime_type')
+            .eq('id', fileId)
+            .eq('tenant_id', req.tenantId)
+            .single();
+
+        if (metaErr || !fileMeta) {
+            throw new AppError('File not found', 404, 'NOT_FOUND');
+        }
+
+        // 3. 元ファイルをダウンロードして画像生成
+        const { data: fileData, error: dlErr } = await supabaseAdmin.storage
+            .from('quotation-files')
+            .download(fileMeta.storage_path);
+
+        if (dlErr || !fileData) {
+            throw new AppError('Original file not found in storage', 404, 'STORAGE_NOT_FOUND');
+        }
+
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        const { preprocessImage } = require('../services/ai/imageService');
+        
+        // 1ページ目を画像化
+        const processedBuffer = await preprocessImage(buffer, fileMeta.mime_type);
+
+        // 4. サムネイルを保存
+        await supabaseAdmin.storage
+            .from('quotation-files')
+            .upload(thumbnailPath, processedBuffer, {
+                contentType: 'image/png',
+                upsert: true
+            });
+
+        // 5. 署名付きURLを返す
+        const { data: signedUrl } = await supabaseAdmin.storage
+            .from('quotation-files')
+            .createSignedUrl(thumbnailPath, 3600);
+
+        res.json({ url: signedUrl.signedUrl });
+
+    } catch (err) {
+        console.error('[Files/Thumbnail] Failed to get/generate thumbnail:', err);
         next(err);
     }
 });

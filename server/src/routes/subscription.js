@@ -131,7 +131,20 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
                                 updated = true;
                             }
 
-                            // 2. 修復ロジック（ステータスが canceled/expired の場合にフリープランへ強制移行）
+                            // 2. 期間（次回更新日）の同期
+                            const stripeStart = new Date(stripeSub.current_period_start * 1000).toISOString();
+                            const stripeEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+                            
+                            if (sub.current_period_start !== stripeStart) {
+                                updates.current_period_start = stripeStart;
+                                updated = true;
+                            }
+                            if (sub.current_period_end !== stripeEnd) {
+                                updates.current_period_end = stripeEnd;
+                                updated = true;
+                            }
+
+                            // 3. 修復ロジック（ステータスが canceled/expired の場合にフリープランへ強制移行）
                             if ((stripeSub.status === 'canceled' || stripeSub.status === 'incomplete_expired') && sub.status === 'active') {
                                 console.log(`[StripeDetails] Self-healing: Subscription ${stripeSub.id} is ${stripeSub.status}. Reverting DB and Tenant to free.`);
                                 updates.status = 'canceled';

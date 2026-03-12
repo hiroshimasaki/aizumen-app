@@ -120,7 +120,8 @@ async function handleCheckoutCompleted(session) {
         // AIクレジットの月間枠を更新し、付与
         await updateCreditsOnPlanChange(tenant_id, planConfig.monthlyCredits);
 
-        console.log(`[Webhook] Subscription activated for tenant ${tenant_id}: ${plan}`);
+        const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+        console.log(`[Webhook] Subscription activated for tenant ${tenant_id}: ${plan}. Next renewal: ${periodEnd}`);
 
         await logService.audit({
             action: 'subscription_activated',
@@ -170,6 +171,9 @@ async function handleSubscriptionUpdated(subscription) {
 
     const tenant_id = sub.tenant_id;
     const status = subscription.status;
+
+    // 以前の期間情報を保存（ログ用）
+    const oldEnd = sub.current_period_end;
 
     // プランの変更をチェック（メタデータまたは価格IDから判定）
     let newPlan = subscription.metadata?.plan || sub.plan;
@@ -259,7 +263,7 @@ async function handleSubscriptionUpdated(subscription) {
         }
     }
 
-    console.log(`[Webhook] Successfully updated tenant ${tenant_id} to ${newPlan}`);
+    console.log(`[Webhook] Successfully updated tenant ${tenant_id} to ${newPlan}. Period: ${oldEnd} -> ${updates.current_period_end}`);
 
     await logService.audit({
         action: 'subscription_updated',

@@ -105,7 +105,7 @@ graph TB
 |---|--------|------|---------|
 | F1 | D&Dアップロード | 複数ファイルドラッグ&ドロップ | ScannerPoolModal.jsx（改修） |
 | F2 | PDFページ編集 | ページ並替・削除 | PdfPageEditor.jsx |
-| F3 | PDFプレビュー | サムネイル表示 | PdfThumbnail.jsx |
+| F3 | PDFプレビュー | サムネイル表示。検索結果では指定範囲の5倍ズームを表示しコンテキストを強調。 | PdfThumbnail.jsx |
 
 ### 管理者画面（admin権限）
 

@@ -14,158 +14,87 @@ const PDF_OPTIONS = {
 };
 
 const PdfThumbnail = memo(function PdfThumbnail({ fileId }) {
-    const [url, setUrl] = useState(null);
-    const [numPages, setNumPages] = useState(null);
+    const [thumbUrl, setThumbUrl] = useState(null);
     const [hasError, setHasError] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [isVisible, setIsVisible] = useState(false);
     const containerRef = useRef(null);
     const isComponentMounted = useRef(true);
-    const [aspectRatio, setAspectRatio] = useState(1.414);
-    const visibilityTimeoutRef = useRef(null);
-    const [containerWidth, setContainerWidth] = useState(0);
 
     useEffect(() => {
         isComponentMounted.current = true;
 
-        // コンテナのサイズ監視
-        const resizeObserver = new ResizeObserver((entries) => {
-            if (entries[0] && isComponentMounted.current) {
-                const width = entries[0].contentRect.width;
-                // 量子化: 40px単位で丸めることで、微細なサイズ変化によるPDF再レンダリングを抑制
-                setContainerWidth(Math.max(100, Math.round(width / 40) * 40));
-            }
-        });
-
         const isMobile = window.innerWidth < 768;
-        const visibilityObserver = new IntersectionObserver(
+        const observer = new IntersectionObserver(
             ([entry]) => {
-                if (!isComponentMounted.current) return;
-
-                if (entry.isIntersecting) {
-                    if (visibilityTimeoutRef.current) {
-                        clearTimeout(visibilityTimeoutRef.current);
-                        visibilityTimeoutRef.current = null;
-                    }
+                if (entry.isIntersecting && isComponentMounted.current) {
                     setIsVisible(true);
-                } else {
-                    if (visibilityTimeoutRef.current) clearTimeout(visibilityTimeoutRef.current);
-                    visibilityTimeoutRef.current = setTimeout(() => {
-                        if (isComponentMounted.current) {
-                            setIsVisible(false);
-                        }
-                    }, isMobile ? 300 : 800); // モバイルは早めにリソース解放
+                    observer.disconnect(); // 一度表示されたら監視終了
                 }
             },
-            { rootMargin: isMobile ? '200px' : '400px' } // モバイルは先行読み込みを控えめに
+            { rootMargin: isMobile ? '200px' : '400px' }
         );
 
         if (containerRef.current) {
-            resizeObserver.observe(containerRef.current);
-            visibilityObserver.observe(containerRef.current);
+            observer.observe(containerRef.current);
         }
 
         return () => {
             isComponentMounted.current = false;
-            if (visibilityTimeoutRef.current) clearTimeout(visibilityTimeoutRef.current);
-            resizeObserver.disconnect();
-            visibilityObserver.disconnect();
+            observer.disconnect();
         };
     }, []);
 
-    // 署名付きURLを取得
+    // サーバーサイド・サムネイルの取得
     useEffect(() => {
-        if (isVisible && fileId && !url && !hasError) {
-            api.get(`/api/files/${fileId}`)
+        if (isVisible && fileId && !thumbUrl && !hasError) {
+            setIsLoading(true);
+            api.get(`/api/files/thumbnail/${fileId}`)
                 .then(res => {
-                    if (isComponentMounted.current) setUrl(res.data.url);
+                    if (isComponentMounted.current) {
+                        setThumbUrl(res.data.url);
+                        setIsLoading(false);
+                    }
                 })
                 .catch(err => {
-                    console.error('Failed to get signed URL for thumbnail:', err);
-                    if (isComponentMounted.current) setHasError(true);
+                    console.error('Failed to get server thumbnail:', err);
+                    if (isComponentMounted.current) {
+                        setHasError(true);
+                        setIsLoading(false);
+                    }
                 });
         }
-    }, [isVisible, fileId, url, hasError]);
-
-    function onDocumentLoadSuccess({ numPages }) {
-        if (isComponentMounted.current) setNumPages(numPages);
-    }
-
-    function onDocumentLoadError(error) {
-        if (!isComponentMounted.current) return;
-        
-        const msg = error.message || '';
-        // 以下のクリーンアップ・キャンセル系エラーは「失敗」として扱わず、エラー画面も出さない
-        if (
-            msg.includes('terminated') || 
-            msg.includes('cancelled') || 
-            msg.includes('destroyed') ||
-            msg.includes('Loading aborted')
-        ) {
-            return;
-        }
-        setHasError(true);
-    }
-
-    function onPageLoadSuccess(page) {
-        if (page.originalWidth && page.originalHeight) {
-            setAspectRatio(page.originalHeight / page.originalWidth);
-        } else if (page.getViewport) {
-            const vp = page.getViewport({ scale: 1 });
-            if (vp.width && vp.height) setAspectRatio(vp.height / vp.width);
-        }
-    }
+    }, [isVisible, fileId, thumbUrl, hasError]);
 
     if (hasError) {
         return (
             <div className="flex flex-col items-center justify-center bg-slate-800/10 text-slate-500 w-full h-full rounded">
-                <FileText size={24} />
-                <span className="text-[10px] mt-1">PDFプレビュー不可</span>
+                <FileText size={20} className="opacity-50" />
+                <span className="text-[10px] mt-1 opacity-50">プレビュー不可</span>
             </div>
         );
     }
-
-    // レンダリングに使用する幅
-    const drawWidth = containerWidth || 300;
 
     return (
         <div
             ref={containerRef}
             className={cn(
-                "relative overflow-hidden w-full h-full flex items-center justify-center transition-opacity duration-300",
-                isVisible && !url ? "animate-pulse bg-slate-800/20" : "bg-transparent"
+                "relative overflow-hidden w-full h-full flex items-center justify-center transition-opacity duration-300 bg-slate-800/5",
+                isLoading && isVisible ? "animate-pulse" : ""
             )}
-            style={{ contain: 'strict' }}
         >
-            {isVisible && url && drawWidth > 0 ? (
-                <Document
-                    file={url}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadError={onDocumentLoadError}
-                    options={PDF_OPTIONS}
-                    loading={
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800/40 z-10">
-                            <div className="w-6 h-6 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                        </div>
-                    }
-                    error={
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-10 p-2 text-center">
-                            <AlertCircle size={20} className="text-rose-500" />
-                        </div>
-                    }
-                >
-                    <Page
-                        pageNumber={1}
-                        width={drawWidth}
-                        onLoadSuccess={onPageLoadSuccess}
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                        loading={<div className="w-full h-full" />}
-                    />
-                </Document>
+            {isVisible && thumbUrl ? (
+                <img
+                    src={thumbUrl}
+                    alt="図面プレビュー"
+                    className="w-full h-full object-contain"
+                    onLoad={() => setIsLoading(false)}
+                    onError={() => setHasError(true)}
+                />
             ) : (
-                <div className="flex flex-col items-center justify-center text-slate-300 opacity-50 w-full h-full">
-                    <FileText size={24} className="opacity-10 mb-2" />
-                    <span className="text-[10px] opacity-20">{!isVisible ? 'スクロールで読込' : '読込中'}</span>
+                <div className="flex flex-col items-center justify-center text-slate-400 opacity-40">
+                    <FileText size={20} />
+                    <span className="text-[10px] mt-1">{isLoading ? '読込中' : '待機中'}</span>
                 </div>
             )}
         </div>

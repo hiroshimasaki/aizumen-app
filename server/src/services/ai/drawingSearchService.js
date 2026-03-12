@@ -33,12 +33,27 @@ class DrawingSearchService {
             // 1. 前処理
             const processedBuffer = await imageService.preprocessImage(fileBuffer, mimeType);
 
-            // 1.5 ページ全体のハッシュ(pHash)を生成・保存
+            // 1.5 ページ全体のハッシュ(pHash)を生成・保存 & サムネイル保存
             const pageHash = await hashService.generateDHash(processedBuffer);
             await supabaseAdmin
                 .from('quotation_files')
                 .update({ page_hash: pageHash })
                 .eq('id', fileId);
+
+            // [新規追加] サムネイル画像を PNG として保存
+            const thumbnailPath = `thumbnails/${fileId}.png`;
+            const { error: thumbError } = await supabaseAdmin.storage
+                .from('quotation-files')
+                .upload(thumbnailPath, processedBuffer, {
+                    contentType: 'image/png',
+                    upsert: true
+                });
+            
+            if (thumbError) {
+                console.error(`[DrawingSearch] Failed to upload thumbnail for ${fileId}:`, thumbError);
+            } else {
+                console.log(`[DrawingSearch] Thumbnail saved for ${fileId}`);
+            }
 
             // 2. タイル分割
             let tiles = await imageService.tileImage(processedBuffer);

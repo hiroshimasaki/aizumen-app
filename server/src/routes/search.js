@@ -81,7 +81,7 @@ router.get('/thumbnail/:fileId', authMiddleware, async (req, res) => {
             .from('quotation_files')
             .select('storage_path, mime_type')
             .eq('id', fileId)
-            // .eq('tenant_id', req.tenantId) // テナントチェックを有効にする場合はここを解除
+            .eq('tenant_id', req.tenantId) // テナントチェックを有効化
             .single();
 
         if (metaErr || !fileMeta) {
@@ -95,8 +95,12 @@ router.get('/thumbnail/:fileId', authMiddleware, async (req, res) => {
 
         if (dlErr || !fileData) {
             console.error('[Search] Download error:', dlErr);
+            if (dlErr?.status === 400 || dlErr?.statusCode === '404' || dlErr?.message?.includes('Object not found')) {
+                return res.status(404).json({ error: 'File not found in storage' });
+            }
             return res.status(500).json({ error: 'Failed to download file' });
         }
+        console.log(`[SearchAPI] Successfully downloaded ${fileMeta.storage_path} (${fileData.size} bytes)`);
 
         const buffer = Buffer.from(await fileData.arrayBuffer());
 
