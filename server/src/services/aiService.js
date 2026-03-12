@@ -294,6 +294,7 @@ class AIService {
             return id ? `${id.substring(0, 3)}...${id.substring(id.length - 2)}` : 'not-found-in-json';
         } catch (e) {
             return 'invalid-json';
+        }
     }
 
     /**
