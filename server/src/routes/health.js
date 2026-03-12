@@ -11,13 +11,20 @@ router.get('/ai', async (req, res) => {
     try {
         const aiStatus = aiService.getStatus();
         
+        // 実際の疎通テストを追加
+        console.log('[Health] Running AI connectivity test...');
+        const aiTest = await aiService.testAI();
+        
         // データベース接続テスト
         const { data, error: dbError } = await supabaseAdmin.from('tenants').select('id').limit(1);
         
         res.json({
-            status: aiStatus.initialized ? 'ok' : 'error',
+            status: aiStatus.initialized && aiTest.status === 'ok' ? 'ok' : 'error',
             timestamp: new Date().toISOString(),
-            ai: aiStatus,
+            ai: {
+                ...aiStatus,
+                test: aiTest
+            },
             database: {
                 connected: !dbError,
                 error: dbError ? dbError.message : null

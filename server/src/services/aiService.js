@@ -120,8 +120,24 @@ class AIService {
 
                 logService.debug(`[AIService] Sending request to Vertex AI...`);
                 const response = await this.model.generateContent(request);
-                const text = response.response.candidates[0].content.parts[0].text;
-                return text;
+                
+                // --- Safety Guard ---
+                if (!response || !response.response) {
+                    throw new Error('AI response is empty');
+                }
+                const candidates = response.response.candidates;
+                if (!candidates || candidates.length === 0) {
+                    // Gemini might block content for safety reasons
+                    console.warn('[AIService] Vertex AI returned no candidates. This usually means the content was blocked by safety filters.');
+                    throw new Error('AI returned no response candidates (possibly blocked by safety filters)');
+                }
+                const firstPart = candidates[0].content?.parts?.[0];
+                if (!firstPart || !firstPart.text) {
+                    throw new Error('AI response candidate has no text parts');
+                }
+                // -------------------
+
+                return firstPart.text;
             } else {
                 // Google AI SDK (Development) format
                 const parts = [prompt];
@@ -255,6 +271,28 @@ class AIService {
                 hasApiKey: !!process.env.GEMINI_API_KEY
             }
         };
+    }
+
+    /**
+     * Test AI connectivity with a simple prompt
+     */
+    async testAI() {
+        if (!this.model) return { status: 'error', message: 'Model not initialized' };
+        try {
+            const start = Date.now();
+            const text = await this.generateText('Hello, respond with "OK" only.', null, null);
+            const duration = Date.now() - start;
+            return {
+                status: 'ok',
+                response: text.trim(),
+                durationMs: duration
+            };
+        } catch (error) {
+            return {
+                status: 'error',
+                message: error.message
+            };
+        }
     }
 }
 
