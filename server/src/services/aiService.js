@@ -295,6 +295,7 @@ class AIService {
         } catch (e) {
             return 'invalid-json';
         }
+    }
 
     /**
      * Test AI connectivity with a simple prompt
