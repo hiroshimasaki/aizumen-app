@@ -25,16 +25,25 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000, filter
         const totalCount = ordered + lost + pending;
         const winRate = totalCount > 0 ? Math.round((ordered / totalCount) * 100) : 0;
 
-        const calculateAmount = (quotes) => {
+        const calculateAmount = (quotes, filterType = 'delivery') => {
             return quotes.reduce((sum, q) => {
                 let qTotal = 0;
                 if (q.items && q.items.length > 0) {
                     qTotal = q.items.reduce((s, i) => {
-                        // 売上(Sales)の定義: 今月納品分、または今月納期で受注済のもの
+                        // 今月フィルタが有効な場合の判定
                         if (filterMonth === 'current') {
-                            const dDate = i.deliveryDate ? new Date(i.deliveryDate) : (i.dueDate ? new Date(i.dueDate) : null);
-                            if (!dDate || dDate.getFullYear() !== currentYear || dDate.getMonth() !== currentMonth) {
-                                return s;
+                            if (filterType === 'creation') {
+                                // 検討中などは「作成日」が今月のものを対象にする
+                                const cDate = new Date(q.createdAt);
+                                if (cDate.getFullYear() !== currentYear || cDate.getMonth() !== currentMonth) {
+                                    return s;
+                                }
+                            } else {
+                                // 売上などは「納品日/納期」が今月のものを対象にする
+                                const dDate = i.deliveryDate ? new Date(i.deliveryDate) : (i.dueDate ? new Date(i.dueDate) : null);
+                                if (!dDate || dDate.getFullYear() !== currentYear || dDate.getMonth() !== currentMonth) {
+                                    return s;
+                                }
                             }
                         }
                         const cost = (Number(i.processingCost) || 0) + (Number(i.materialCost) || 0) + (Number(i.otherCost) || 0);
@@ -46,8 +55,8 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000, filter
             }, 0);
         };
 
-        const salesAmount = calculateAmount(quotations.filter(q => q.status === 'ordered' || q.status === 'delivered'));
-        const pendingAmount = calculateAmount(quotations.filter(q => q.status !== 'ordered' && q.status !== 'lost' && q.status !== 'delivered'));
+        const salesAmount = calculateAmount(quotations.filter(q => q.status === 'ordered' || q.status === 'delivered'), 'delivery');
+        const pendingAmount = calculateAmount(quotations.filter(q => q.status !== 'ordered' && q.status !== 'lost' && q.status !== 'delivered'), 'creation');
 
         // Calculate Budget vs Actual (Processing ONLY)
         const targetQuotes = filterMonth === 'current' 
