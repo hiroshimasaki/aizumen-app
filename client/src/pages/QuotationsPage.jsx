@@ -364,8 +364,9 @@ export default function QuotationsPage() {
                     ? ocrData.items.map(aiItem => ({
                         name: aiItem.name || file.name.split('.')[0],
                         quantity: aiItem.quantity || 1,
-                        processingCost: aiItem.price || 0,
-                        materialCost: 0,
+                        processingCost: aiItem.processingCost || aiItem.price || 0,
+                        materialCost: aiItem.materialCost || 0,
+                        otherCost: aiItem.otherCost || 0,
                         dueDate: aiItem.dueDate || ''
                     }))
                     : [{
@@ -373,6 +374,7 @@ export default function QuotationsPage() {
                         quantity: 1,
                         processingCost: 0,
                         materialCost: 0,
+                        otherCost: 0,
                         dueDate: ''
                     }];
 

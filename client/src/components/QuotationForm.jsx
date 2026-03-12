@@ -302,9 +302,9 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                             id: Date.now() + idx + Math.random(),
                             name: aiItem.name || '',
                             quantity: aiItem.quantity || 1,
-                            processingCost: aiItem.price || '',
-                            materialCost: '',
-                            otherCost: '',
+                            processingCost: aiItem.processingCost || aiItem.price || '',
+                            materialCost: aiItem.materialCost || '',
+                            otherCost: aiItem.otherCost || '',
                             responseDate: '',
                             dueDate: aiItem.dueDate || '',
                             deliveryDate: '',
@@ -865,19 +865,24 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                     <input type="text" value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)}
                                         readOnly={!isAdmin} placeholder="品名..." className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none" />
                                 </div>
-                                <div className="md:col-span-2 space-y-1">
+                                <div className="md:col-span-1 space-y-1">
                                     <label className="text-xs font-bold text-slate-500 uppercase">個数</label>
                                     <input type="number" min="1" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', e.target.value)}
                                         readOnly={!isAdmin} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
-                                <div className="md:col-span-3 space-y-1">
+                                <div className="md:col-span-2 space-y-1">
                                     <label className="text-xs font-bold text-slate-500 uppercase">加工費</label>
                                     <input type="number" value={item.processingCost} onChange={e => handleItemChange(item.id, 'processingCost', e.target.value)}
                                         readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
-                                <div className="md:col-span-3 space-y-1">
+                                <div className="md:col-span-2 space-y-1">
                                     <label className="text-xs font-bold text-slate-500 uppercase">材料費</label>
                                     <input type="number" value={item.materialCost} onChange={e => handleItemChange(item.id, 'materialCost', e.target.value)}
+                                        readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
+                                </div>
+                                <div className="md:col-span-2 md:col-start-10 space-y-1">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">その他費用</label>
+                                    <input type="number" value={item.otherCost} onChange={e => handleItemChange(item.id, 'otherCost', e.target.value)}
                                         readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
 

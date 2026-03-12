@@ -212,7 +212,9 @@ class AIService {
     - **name**: 「${map.itemName}」に該当する項目（品名や品番）。
     - **quantity**: 「${map.quantity}」に該当する項目（数値のみ）。
     - **unit**: 単位（個、枚、kg等）。
-    - **price**: 「${map.processingCost}」に該当する項目（数値のみ、不明な場合は null）。
+    - **processingCost**: 「${map.processingCost}」に該当する費用（加工費・工賃など。数値のみ、不明な場合は 0）。
+    - **materialCost**: 「${map.materialCost}」に該当する費用（材料代など。数値のみ、不明な場合は 0）。
+    - **otherCost**: 「${map.otherCost}」に該当する費用（諸経費・運賃・型代など。数値のみ、不明な場合は 0）。
     - **dueDate**: 「${map.deadline}」に該当する日付。形式は必ず **YYYY-MM-DD** としてください。もし特定の日付がない場合は null としてください。
 
 ### 出力フォーマット (JSONのみ):
@@ -227,7 +229,9 @@ class AIService {
       "name": "...",
       "quantity": 1,
       "unit": "...",
-      "price": 5000,
+      "processingCost": 5000,
+      "materialCost": 0,
+      "otherCost": 0,
       "dueDate": "2024-05-20"
     }
   ]
