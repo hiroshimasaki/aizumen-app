@@ -60,4 +60,24 @@ async function generateQuotationId(supabase, tenantId) {
     }
 }
 
-module.exports = { parsePrice, generateQuotationId };
+/**
+ * 検索ワードを正規化する
+ * - 全角英数字、記号を半角に変換
+ * - ハイフン、長音記号等の正規化
+ * - 小文字化
+ * - トリム、複数スペースの集約
+ */
+function normalizeSearchTerm(term) {
+    if (!term) return '';
+
+    return term
+        // 全角英数字・記号を半角に変換
+        .replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+        // 特殊なハイフンや長音を標準的なハイフンに統一
+        .replace(/[ー‐－―]/g, '-')
+        // カタカナの半角・全角等は今回触れず、英数字メイン
+        .toLowerCase()
+        .trim();
+}
+
+module.exports = { parsePrice, generateQuotationId, normalizeSearchTerm };

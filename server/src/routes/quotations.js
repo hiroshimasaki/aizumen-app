@@ -4,7 +4,7 @@ const { authMiddleware } = require('../middleware/auth');
 const { checkTrialLimit } = require('../middleware/trialMiddleware');
 const { supabaseAdmin } = require('../config/supabase');
 const { AppError } = require('../middleware/errorHandler');
-const { generateQuotationId, parsePrice } = require('../utils/helpers');
+const { generateQuotationId, parsePrice, normalizeSearchTerm } = require('../utils/helpers');
 const { v4: uuidv4 } = require('uuid');
 const logService = require('../services/logService');
 
@@ -53,14 +53,15 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
         }
 
         if (search) {
-            const terms = search.trim().split(/[\s　]+/);
+            const rawTerms = search.trim().split(/[\s　]+/);
+            const validTerms = rawTerms.filter(t => t).map(t => normalizeSearchTerm(t));
 
             // 1. 各キーワードを含む明細（品名）の親案件IDを取得
             let matchedIdsByTerm = {};
-            const validTerms = terms.filter(t => t);
 
             if (validTerms.length > 0) {
-                const itemOrs = validTerms.map(t => `name.ilike.%${t}%`).join(',');
+                // Supabase の .or() 内でカンマや括弧がある場合、二重引用符で囲む必要がある
+                const itemOrs = validTerms.map(t => `name.ilike."%${t}%"`).join(',');
                 const { data: matchedItems } = await supabaseAdmin
                     .from('quotation_items')
                     .select('quotation_id, name')
@@ -70,7 +71,7 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 if (matchedItems) {
                     matchedItems.forEach(item => {
                         validTerms.forEach(term => {
-                            if (item.name && item.name.toLowerCase().includes(term.toLowerCase())) {
+                            if (item.name && normalizeSearchTerm(item.name).includes(term)) {
                                 if (!matchedIdsByTerm[term]) matchedIdsByTerm[term] = [];
                                 matchedIdsByTerm[term].push(item.quotation_id);
                             }
@@ -81,7 +82,7 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
 
             // 2. OR条件にメインテーブルのフィールド + マッチした親案件IDを含める
             validTerms.forEach(term => {
-                let orClause = `company_name.ilike.%${term}%,order_number.ilike.%${term}%,construction_number.ilike.%${term}%,contact_person.ilike.%${term}%,notes.ilike.%${term}%,display_id.ilike.%${term}%`;
+                let orClause = `company_name.ilike."%${term}%",order_number.ilike."%${term}%",construction_number.ilike."%${term}%",contact_person.ilike."%${term}%",notes.ilike."%${term}%",display_id.ilike."%${term}%"`;
                 const ids = matchedIdsByTerm[term] || [];
                 if (ids.length > 0) {
                     const uniqueIds = [...new Set(ids)];
