@@ -315,7 +315,8 @@ class AIService {
             let message = error.message;
             // 404 (NOT_FOUND) は API が無効化されているか、プロジェクトID/リージョンが間違っている場合に発生
             if (message.includes('404') || message.includes('NOT_FOUND')) {
-                message = `[VertexAI.APIError] 404 Not Found. Google Cloud Console で 'Vertex AI API' が有効になっているか、プロジェクト ID とリージョン (${process.env.GOOGLE_CLOUD_LOCATION || 'us-central1'}) が正しいか確認してください。 (Original: ${error.message})`;
+                const configLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+                message = `[VertexAI.APIError] 404 Not Found. 設定されたリージョン '${configLocation}' にモデルが存在しないか、API がそのリージョンで有効になっていません。GCP コンソールの Vertex AI 画面等で、正しいリージョンであることを確認してください。東京リージョンの場合は 'asia-northeast1' を環境変数 GOOGLE_CLOUD_LOCATION に設定してください。(Original: ${error.message})`;
             }
             return {
                 status: 'error',
