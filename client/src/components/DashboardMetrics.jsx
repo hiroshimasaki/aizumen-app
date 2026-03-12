@@ -158,7 +158,7 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000, filter
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">収支差 (加工費)</span>
                 </div>
                 <div className={cn("text-2xl font-black", metrics.orderedVariance > 0 ? "text-red-400" : "text-emerald-400")}>
-                    {metrics.orderedVariance > 0 ? '+' : ''}{metrics.orderedVariance.toLocaleString()}
+                    ¥{Math.abs(metrics.orderedVariance).toLocaleString()}
                 </div>
                 <div className="text-[9px] text-slate-500 mt-1">目標比 {metrics.orderedVariancePct.toFixed(1)}%</div>
             </div>
