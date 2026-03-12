@@ -10,7 +10,7 @@ let mainWindow;
 let watcher;
 let pendingFiles = [];
 let authToken = null;
-const apiBaseUrl = 'http://localhost:3001';
+const apiBaseUrl = 'https://aizumen-production.up.railway.app';
 let watchFolder = null;
 let tray = null; // トレイアイコン用
 let minimizeOnClose = true; // 閉じるボタンで最小化するかどうか
@@ -60,6 +60,7 @@ function createWindow() {
     });
 
     mainWindow.loadFile('index.html');
+    mainWindow.webContents.openDevTools(); // デバッグ用に自動で開く
 
     // システムトレイの設定
     const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
@@ -108,6 +109,13 @@ function createWindow() {
     });
 }
 
+function logToRenderer(message, data = null) {
+    if (mainWindow && mainWindow.webContents) {
+        const timestamp = new Date().toLocaleTimeString();
+        mainWindow.webContents.send('main-log', { message: `[${timestamp}] ${message}`, data });
+    }
+}
+
 // IPC Handlers
 ipcMain.on('update-minimize-config', (event, value) => {
     minimizeOnClose = value;
@@ -126,6 +134,20 @@ const menuTemplate = [
                 }
             }
         ]
+    },
+    {
+        label: 'View',
+        submenu: [
+            { role: 'reload' },
+            { role: 'forceReload' },
+            { role: 'toggleDevTools' },
+            { type: 'separator' },
+            { role: 'resetZoom' },
+            { role: 'zoomIn' },
+            { role: 'zoomOut' },
+            { type: 'separator' },
+            { role: 'togglefullscreen' }
+        ]
     }
 ];
 const menu = Menu.buildFromTemplate(menuTemplate);
@@ -134,6 +156,16 @@ Menu.setApplicationMenu(menu);
 // 終了フラグの管理
 app.on('before-quit', () => {
     app.isQuiting = true;
+});
+
+app.on('will-quit', () => {
+    // 終了時のクリーンアップ
+    if (watcher) {
+        watcher.close().then(() => console.log('Watcher closed'));
+    }
+    if (tray) {
+        tray.destroy();
+    }
 });
 
 // 二重起動防止 (Single Instance Lock)
@@ -284,6 +316,7 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
             const formData = new FormData();
             formData.append('file', fs.createReadStream(file.path));
 
+            logToRenderer(`Starting analysis for ${file.name}`);
             const ocrResponse = await axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
                 headers: {
                     ...formData.getHeaders(),
@@ -297,6 +330,7 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
             }
 
             const ocrData = ocrResponse.data;
+            console.log(`[OCR] Analysis Result for ${file.name}:`, JSON.stringify(ocrData, null, 2));
 
             // 2. 案件登録
             const items = (ocrData.items && ocrData.items.length > 0)
@@ -323,6 +357,8 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
                 notes: ocrData.notes || 'ホットフォルダから自動投入',
                 items: items
             };
+            console.log(`[OCR] Sending Quotation Payload for ${file.name}:`, JSON.stringify(quotationPayload, null, 2));
+            logToRenderer(`Sending Quotation Payload for ${file.name}`, quotationPayload);
 
             const quoteResponse = await axios.post(`${apiBaseUrl}/api/quotations`, quotationPayload, {
                 headers: {
@@ -368,6 +404,13 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
             file.status = 'error';
             // サーバー側から返ってきた具体的なエラー詳細を抽出して表示
             file.errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+            logToRenderer(`Error processing ${file.name}`, { 
+                errorData: err.response?.data,
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                headers: err.response?.headers
+            });
+            console.error(`[Main Process] Detailed Error for ${file.name}:`, err.response?.data || err.message);
         }
 
         mainWindow.webContents.send('update-file-list', pendingFiles);

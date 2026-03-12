@@ -3,28 +3,32 @@ const { supabaseAdmin } = require('./src/config/supabase');
 
 
 async function checkLogs() {
-    console.log('Fetching error logs containing "Analysis failed" or "OCR"...');
+    console.log('Fetching access logs with status >= 400 from the last 30 minutes...');
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    
     const { data: logs, error } = await supabaseAdmin
-        .from('system_error_logs')
+        .from('system_access_logs')
         .select('*')
-        .or('message.ilike.%Analysis failed%,message.ilike.%OCR%,path.ilike.%/api/ocr/%')
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-
-
+        .gt('created_at', thirtyMinutesAgo)
+        .gte('status_code', 400)
+        .order('created_at', { ascending: false });
 
     if (error) {
         console.error('Error fetching logs:', error);
         return;
     }
 
+    if (logs.length === 0) {
+        console.log('No error access logs found in the last 30 minutes.');
+    }
+
     logs.forEach(log => {
         console.log('---');
         console.log(`Time: ${log.created_at}`);
+        console.log(`Method: ${log.method}`);
         console.log(`Path: ${log.path}`);
-        console.log(`Message: ${log.message}`);
-        console.log(`Stack: ${log.stack?.substring(0, 500)}...`);
+        console.log(`Status: ${log.status_code}`);
+        console.log(`Duration: ${log.duration_ms}ms`);
     });
 }
 

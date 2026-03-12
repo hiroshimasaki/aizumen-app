@@ -2,10 +2,15 @@ const { ipcRenderer } = require('electron');
 const axios = require('axios');
 
 let userToken = null;
-const apiBaseUrl = 'http://localhost:3001';
+const apiBaseUrl = 'https://aizumen-production.up.railway.app';
 
 // DOM Elements
 const loginSection = document.getElementById('login-section');
+
+// メインプロセスからのログを表示
+ipcRenderer.on('main-log', (event, { message, data }) => {
+    console.log(`[Main Process] ${message}`, data || '');
+});
 const mainContent = document.getElementById('main-content');
 const loginBtn = document.getElementById('login-btn');
 const authStatus = document.getElementById('auth-status');
@@ -98,19 +103,37 @@ function hideLoginError() {
 
 function mapErrorMessage(msg) {
     if (!msg) return 'ログインに失敗しました。';
-    if (msg.includes('Invalid') || msg.includes('credentials')) return '会社コード、従業員ID、またはパスワードが正しくありません。';
-    if (msg.includes('Email and password')) return 'メールアドレスとパスワードを入力してください。';
-    if (msg.includes('Company code')) return 'すべての項目を入力してください。';
-    if (msg.includes('deactivated')) return 'このアカウントは現在無効化されています。管理者にお問い合わせください。';
-    if (msg.includes('permissions')) return '解析を実行する権限がありません。管理者権限を持つアカウントでログインしてください。';
-    if (msg.includes('Network Error')) return 'サーバーに接続できません。インターネット環境やサーバーの状態を確認してください。';
-    if (msg.includes('401')) return '認証に失敗しました。入力内容を再度ご確認ください。';
-    if (msg.includes('403')) return 'アクセスが拒否されました。権限が不足している可能性があります。';
-    return msg;
+    
+    // msgが文字列でない場合は文字列化
+    const message = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    
+    if (message.includes('Invalid') || message.includes('credentials')) return '会社コード、従業員ID、またはパスワードが正しくありません。';
+    if (message.includes('Email and password')) return 'メールアドレスとパスワードを入力してください。';
+    if (message.includes('Company code')) return 'すべての項目を入力してください。';
+    if (message.includes('deactivated')) return 'このアカウントは現在無効化されています。管理者にお問い合わせください。';
+    if (message.includes('permissions')) return '解析を実行する権限がありません。管理者権限を持つアカウントでログインしてください。';
+    if (message.includes('Network Error')) return 'サーバーに接続できません。インターネット環境やサーバーの状態を確認してください。';
+    if (message.includes('401')) return '認証に失敗しました。入力内容を再度ご確認ください。';
+    if (message.includes('403')) return 'アクセスが拒否されました。権限が不足している可能性があります。';
+    return message;
 }
 
+// Debug log for initialization
+console.log('Renderer.js: Initializing...');
+
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('GLOBAL ERROR:', message, source, lineno, colno, error);
+    if (typeof showAlert === 'function') {
+        showAlert('アプリケーションエラーが発生しました: ' + message);
+    } else {
+        alert('アプリケーションエラー: ' + message);
+    }
+};
+
 loginBtn.addEventListener('click', async () => {
+    console.log('Login button clicked. Current tab:', activeTab);
     hideLoginError();
+    
     // ボタンのみ無効化（二重送信防止）
     loginBtn.disabled = true;
     loginBtn.innerText = 'ログイン中...';
@@ -121,11 +144,14 @@ loginBtn.addEventListener('click', async () => {
             const companyCode = companyCodeInput.value;
             const employeeId = employeeIdInput.value;
             const password = employeePasswordInput.value;
+            
+            console.log('Attempting employee login for code:', companyCode, 'ID:', employeeId);
 
             if (!companyCode || !employeeId || !password) {
                 throw new Error('すべての項目を入力してください');
             }
 
+            console.log('Sending request to:', `${apiBaseUrl}/api/auth/login-with-code`);
             response = await axios.post(`${apiBaseUrl}/api/auth/login-with-code`, {
                 companyCode,
                 employeeId,
@@ -135,11 +161,14 @@ loginBtn.addEventListener('click', async () => {
         } else {
             const email = emailInput.value;
             const password = passwordInput.value;
+            
+            console.log('Attempting admin login for email:', email);
 
             if (!email || !password) {
                 throw new Error('メールアドレスとパスワードを入力してください');
             }
 
+            console.log('Sending request to:', `${apiBaseUrl}/api/auth/login`);
             response = await axios.post(`${apiBaseUrl}/api/auth/login`, {
                 email,
                 password,
@@ -147,6 +176,13 @@ loginBtn.addEventListener('click', async () => {
             });
         }
         
+        console.log('Login response received:', response.status);
+        
+        if (!response.data || !response.data.session) {
+            console.error('Invalid response structure:', response.data);
+            throw new Error('サーバーからの応答が不正です（セッション情報が見つかりません）。');
+        }
+
         userToken = response.data.session.access_token;
 
         // ログイン情報を保存
@@ -189,8 +225,14 @@ loginBtn.addEventListener('click', async () => {
     } catch (err) {
         console.error('Login failed:', err);
         const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || 'ログインに失敗しました。';
-        showLoginError(errorMessage);
-        showAlert(mapErrorMessage(errorMessage)); // モーダルアラートも表示
+        
+        try {
+            showLoginError(errorMessage);
+            showAlert(mapErrorMessage(errorMessage)); // モーダルアラートも表示
+        } catch (uiErr) {
+            console.error('Failed to show UI error:', uiErr);
+            alert('ログインエラー: ' + mapErrorMessage(errorMessage));
+        }
     } finally {
         // ボタンの状態を復元
         loginBtn.disabled = false;

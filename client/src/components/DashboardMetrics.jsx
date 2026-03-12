@@ -1,14 +1,26 @@
 import { useMemo } from 'react';
-import { TrendingUp, FileCheck, Activity, AlertCircle } from 'lucide-react';
+import { TrendingUp, FileCheck, Activity, AlertCircle, CalendarDays } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export default function DashboardMetrics({ quotations, hourlyRate = 8000 }) {
+export default function DashboardMetrics({ quotations, hourlyRate = 8000, filterMonth = null }) {
     const metrics = useMemo(() => {
-        const total = quotations.length;
-        const ordered = quotations.filter(q => q.status === 'ordered').length;
-        const delivered = quotations.filter(q => q.status === 'delivered').length;
-        const lost = quotations.filter(q => q.status === 'lost').length;
-        const pending = quotations.filter(q => q.status === 'pending').length;
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        // フィルタリング対象の案件を抽出
+        const filteredQuotations = filterMonth === 'current' 
+            ? quotations.filter(q => {
+                const date = new Date(q.createdAt);
+                return date.getFullYear() === currentYear && date.getMonth() === currentMonth;
+            })
+            : quotations;
+
+        const total = filteredQuotations.length;
+        const ordered = filteredQuotations.filter(q => q.status === 'ordered').length;
+        const delivered = filteredQuotations.filter(q => q.status === 'delivered').length;
+        const lost = filteredQuotations.filter(q => q.status === 'lost').length;
+        const pending = filteredQuotations.filter(q => q.status === 'pending').length;
 
         const totalCount = ordered + lost + pending;
         const winRate = totalCount > 0 ? Math.round((ordered / totalCount) * 100) : 0;
@@ -18,6 +30,13 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000 }) {
                 let qTotal = 0;
                 if (q.items && q.items.length > 0) {
                     qTotal = q.items.reduce((s, i) => {
+                        // 売上(Sales)の定義: 今月納品分、または今月納期で受注済のもの
+                        if (filterMonth === 'current') {
+                            const dDate = i.deliveryDate ? new Date(i.deliveryDate) : (i.dueDate ? new Date(i.dueDate) : null);
+                            if (!dDate || dDate.getFullYear() !== currentYear || dDate.getMonth() !== currentMonth) {
+                                return s;
+                            }
+                        }
                         const cost = (Number(i.processingCost) || 0) + (Number(i.materialCost) || 0) + (Number(i.otherCost) || 0);
                         const qty = Number(i.quantity) || 1;
                         return s + (cost * qty);
@@ -27,25 +46,35 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000 }) {
             }, 0);
         };
 
-        const orderedAmount = calculateAmount(quotations.filter(q => q.status === 'ordered'));
-        const pendingAmount = calculateAmount(quotations.filter(q => q.status !== 'ordered' && q.status !== 'lost'));
+        const salesAmount = calculateAmount(quotations.filter(q => q.status === 'ordered' || q.status === 'delivered'));
+        const pendingAmount = calculateAmount(quotations.filter(q => q.status !== 'ordered' && q.status !== 'lost' && q.status !== 'delivered'));
 
         // Calculate Budget vs Actual (Processing ONLY)
-        const orderedQuotes = quotations.filter(q => q.status === 'ordered');
+        const targetQuotes = filterMonth === 'current' 
+            ? quotations.filter(q => (q.status === 'ordered' || q.status === 'delivered'))
+            : quotations.filter(q => q.status === 'ordered');
+
         let orderedProcEstTotal = 0;
         let orderedProcActTotal = 0;
         let orderedHasActuals = false;
 
-        orderedQuotes.forEach(q => {
+        targetQuotes.forEach(q => {
             if (q.items && q.items.length > 0) {
                 q.items.forEach(i => {
+                    // 収支差も「売上」の対象（今月納品/予定）に絞る
+                    if (filterMonth === 'current') {
+                        const dDate = i.deliveryDate ? new Date(i.deliveryDate) : (i.dueDate ? new Date(i.dueDate) : null);
+                        if (!dDate || dDate.getFullYear() !== currentYear || dDate.getMonth() !== currentMonth) {
+                            return;
+                        }
+                    }
+
                     const qty = Number(i.quantity) || 1;
                     orderedProcEstTotal += (Number(i.processingCost) || 0) * qty;
 
                     let act = Number(i.actualProcessingCost) || 0;
                     const actHours = Number(i.actualHours) || 0;
 
-                    // 実績加工費が未入力で時間がある場合のみ、時間から概算する（QuotationListと同期）
                     if (act <= 0 && actHours > 0) {
                         act = Math.round(actHours * hourlyRate) / qty;
                     }
@@ -63,11 +92,11 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000 }) {
 
         return {
             total, ordered, delivered, lost, pending, winRate,
-            orderedAmount, pendingAmount,
+            salesAmount, pendingAmount,
             orderedProcEstTotal, orderedProcActTotal,
             orderedHasActuals, orderedVariance, orderedVariancePct
         };
-    }, [quotations, hourlyRate]);
+    }, [quotations, hourlyRate, filterMonth]);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -99,12 +128,12 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000 }) {
             <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-2xl backdrop-blur-md">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-emerald-500/10 rounded-lg">
-                        <Activity className="text-emerald-400" size={18} />
+                        <TrendingUp className="text-emerald-400" size={18} />
                     </div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">受注総額</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">売上 {filterMonth === 'current' ? '(今月)' : ''}</span>
                 </div>
-                <div className="text-2xl font-black text-emerald-400">¥{metrics.orderedAmount.toLocaleString()}</div>
-                <div className="text-[9px] text-slate-500 mt-1">{metrics.ordered} 件の受注</div>
+                <div className="text-2xl font-black text-emerald-400">¥{metrics.salesAmount.toLocaleString()}</div>
+                <div className="text-[9px] text-slate-500 mt-1">{filterMonth === 'current' ? '今月納品/納期' : '全期間の受注'}</div>
             </div>
 
             <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-2xl backdrop-blur-md">

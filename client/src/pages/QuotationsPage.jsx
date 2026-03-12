@@ -26,6 +26,7 @@ export default function QuotationsPage() {
     // Filters
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [filterPeriod, setFilterPeriod] = useState('current'); // 'current' or 'all'
 
     // Modal state
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -441,7 +442,37 @@ export default function QuotationsPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 relative">
             {/* Dashboard Metrics (Now integrated into QuotationsPage) - Only for Admins */}
-            {isAdmin && <DashboardMetrics quotations={allQuotations} hourlyRate={tenant?.hourly_rate || 8000} />}
+            {isAdmin && (
+                <div className="relative">
+                    <div className="flex justify-end mb-2">
+                        <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-1 flex gap-1 shadow-lg">
+                            <button
+                                onClick={() => setFilterPeriod('current')}
+                                className={cn(
+                                    "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                                    filterPeriod === 'current' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                今月
+                            </button>
+                            <button
+                                onClick={() => setFilterPeriod('all')}
+                                className={cn(
+                                    "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                                    filterPeriod === 'all' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                全期間
+                            </button>
+                        </div>
+                    </div>
+                    <DashboardMetrics 
+                        quotations={allQuotations} 
+                        hourlyRate={tenant?.hourly_rate || 8000} 
+                        filterMonth={filterPeriod}
+                    />
+                </div>
+            )}
 
             {/* Header & Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/50 p-6 rounded-2xl border border-white/10 backdrop-blur-md">
