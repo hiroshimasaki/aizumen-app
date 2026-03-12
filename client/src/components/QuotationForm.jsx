@@ -89,17 +89,15 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
             try {
                 const params = new URLSearchParams();
                 if (headerData.orderNumber) params.append('orderNumber', headerData.orderNumber);
-                if (headerData.constructionNumber) params.append('constructionNumber', headerData.constructionNumber);
                 if (quotationId) params.append('excludeId', quotationId);
 
                 const { data } = await api.get(`/api/quotations/check-duplicate?${params.toString()}`);
 
                 const orderMatch = data.matches.find(m => m.orderNumber === headerData.orderNumber);
-                const constructionMatch = data.matches.find(m => m.constructionNumber === headerData.constructionNumber);
 
                 setDuplicates({
                     orderNumber: orderMatch || null,
-                    constructionNumber: constructionMatch || null
+                    constructionNumber: null
                 });
             } catch (err) {
                 console.error('Duplicate check failed:', err);

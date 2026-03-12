@@ -171,12 +171,10 @@ router.get('/check-duplicate', authMiddleware, checkTrialLimit, async (req, res,
             query = query.neq('id', excludeId);
         }
 
-        const orConditions = [];
-        if (orderNumber) orConditions.push(`order_number.eq.${orderNumber}`);
-        if (constructionNumber) orConditions.push(`construction_number.eq.${constructionNumber}`);
-
-        if (orConditions.length > 0) {
-            query = query.or(orConditions.join(','));
+        if (orderNumber) {
+            query = query.eq('order_number', orderNumber);
+        } else {
+            return res.json({ duplicate: false, matches: [] });
         }
 
         const { data, error } = await query;

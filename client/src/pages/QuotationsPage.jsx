@@ -320,14 +320,19 @@ export default function QuotationsPage() {
         setBulkFiles(prev => prev.filter((_, i) => i !== idx));
     };
 
+    const shouldStopRef = useRef(false);
+
     const handleStartBulkAnalyze = async () => {
         if (bulkFiles.length === 0) return;
 
         setIsBulkAnalyzing(true);
+        shouldStopRef.current = false;
         setBulkProgress({ current: 0, total: bulkFiles.length });
         let successCount = 0;
 
         for (let i = 0; i < bulkFiles.length; i++) {
+            if (shouldStopRef.current) break;
+
             const file = bulkFiles[i];
             if (bulkStatuses[file.name] === 'completed') {
                 setBulkProgress(p => ({ ...p, current: p.current + 1 }));
@@ -343,7 +348,6 @@ export default function QuotationsPage() {
 
             try {
                 // 1. Analyze OCR
-                // 1. Analyze OCR (Real Data)
                 const ocrFormData = new FormData();
                 ocrFormData.append('file', file);
                 const { data: ocrData } = await api.post('/api/ocr/analyze', ocrFormData, {
@@ -387,16 +391,15 @@ export default function QuotationsPage() {
                     items: items
                 };
 
-                // 重複チェック
-                if (quotationPayload.orderNumber || quotationPayload.constructionNumber) {
+                // 重複チェック (注文番号のみ)
+                if (quotationPayload.orderNumber) {
                     const { data: dups } = await api.get('/api/quotations/check-duplicate', {
                         params: {
-                            orderNumber: quotationPayload.orderNumber,
-                            constructionNumber: quotationPayload.constructionNumber
+                            orderNumber: quotationPayload.orderNumber
                         }
                     });
                     if (dups.duplicate) {
-                        const confirmMsg = `【重複の可能性】${file.name}の解析結果（注文番号: ${quotationPayload.orderNumber}）は既存の案件（${dups.matches[0].displayId}）と重複している可能性があります。登録を続けますか？`;
+                        const confirmMsg = `【重複の可能性】${file.name}の解析結果（注文番号: ${quotationPayload.orderNumber}）は既存の案件（${dups.matches[0].displayId}）と重複しています。登録を続けますか？`;
                         if (!window.confirm(confirmMsg)) {
                             setBulkStatuses(prev => ({ ...prev, [file.name]: 'error' }));
                             continue;
@@ -424,11 +427,14 @@ export default function QuotationsPage() {
                 setBulkStatuses(prev => ({ ...prev, [file.name]: 'error' }));
             }
 
+            if (shouldStopRef.current) break;
             setBulkProgress(p => ({ ...p, current: p.current + 1 }));
         }
 
         setIsBulkAnalyzing(false);
         fetchQuotations(false); // Refresh dashboard in background
+
+        if (shouldStopRef.current) return;
 
         if (successCount === bulkFiles.length) {
             setTimeout(async () => {
@@ -684,7 +690,7 @@ export default function QuotationsPage() {
                                 <Sparkles size={22} className="text-amber-500" />
                                 <h3 className="text-lg font-black text-white">一括AI解析</h3>
                             </div>
-                            <button onClick={() => { setIsBulkOpen(false); setBulkFiles([]); setBulkStatuses({}); }}
+                            <button onClick={() => { shouldStopRef.current = true; setIsBulkOpen(false); if (!isBulkAnalyzing) { setBulkFiles([]); setBulkStatuses({}); } }}
                                 className="p-2 hover:bg-slate-800 rounded-full transition-colors">
                                 <X size={20} className="text-slate-500" />
                             </button>
@@ -746,10 +752,10 @@ export default function QuotationsPage() {
                                 <span className="text-xs text-slate-500">{bulkFiles.length} ファイル選択中</span>
                                 <div className="flex gap-3">
                                     <button
-                                        onClick={() => { setIsBulkOpen(false); setBulkFiles([]); setBulkStatuses({}); }}
+                                        onClick={() => { shouldStopRef.current = true; setIsBulkOpen(false); if (!isBulkAnalyzing) { setBulkFiles([]); setBulkStatuses({}); } }}
                                         className="px-5 py-2 bg-slate-800 text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-700 transition-all"
                                     >
-                                        キャンセル
+                                        閉じる
                                     </button>
                                     <button
                                         onClick={handleStartBulkAnalyze}
