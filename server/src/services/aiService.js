@@ -44,7 +44,7 @@ class AIService {
                 credentials.private_key = pk;
             }
             this.vertexAI = new VertexAI({
-                project: projectId,
+                project: credentials.project_id || projectId,
                 location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
                 googleAuthOptions: { credentials }
             });
@@ -54,8 +54,13 @@ class AIService {
             this.mode = 'PRODUCTION (Vertex AI)';
             this.isInitialized = true;
             
-            const maskedProject = projectId ? `${projectId.substring(0, 3)}***${projectId.substring(projectId.length - 2)}` : '???';
+            const finalProjectId = credentials.project_id || projectId;
+            const maskedProject = finalProjectId ? `${finalProjectId.substring(0, 3)}***${finalProjectId.substring(finalProjectId.length - 2)}` : '???';
             console.log(`[AIService] Success: Initialized in ${this.mode} mode. Project: ${maskedProject}, Model: ${modelName}`);
+            
+            if (credentials.project_id && projectId && credentials.project_id !== projectId) {
+                console.warn(`[AIService] Warning: Project ID mismatch! Env=${projectId}, JSON=${credentials.project_id}. Using JSON ID.`);
+            }
         } catch (error) {
             this.isInitialized = false;
             this.initError = error.message;
@@ -273,10 +278,22 @@ class AIService {
                 hasProjectId: !!process.env.GOOGLE_CLOUD_PROJECT_ID,
                 hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
                 hasApiKey: !!process.env.GEMINI_API_KEY,
-                projectId: process.env.GOOGLE_CLOUD_PROJECT_ID ? `${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(0, 3)}...${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(process.env.GOOGLE_CLOUD_PROJECT_ID.length - 2)}` : null,
+                envProjectId: process.env.GOOGLE_CLOUD_PROJECT_ID ? `${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(0, 3)}...${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(process.env.GOOGLE_CLOUD_PROJECT_ID.length - 2)}` : null,
+                jsonProjectId: this._getJsonProjectId(),
                 location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1'
             }
         };
+    }
+
+    _getJsonProjectId() {
+        try {
+            const json = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+            if (!json) return null;
+            const creds = JSON.parse(json);
+            const id = creds.project_id;
+            return id ? `${id.substring(0, 3)}...${id.substring(id.length - 2)}` : 'not-found-in-json';
+        } catch (e) {
+            return 'invalid-json';
     }
 
     /**
