@@ -10,6 +10,9 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     import.meta.url,
 ).toString();
 
+// PDF.js verbosity to minimize noisy internal logs
+pdfjs.verbosity = 0; // 0 = ERRORS (ignore warnings/infos)
+
 // Suppress noisy PDF worker warnings and specific errors
 const suppressList = [
     'XFA - an error occurred during parsing',
@@ -19,40 +22,61 @@ const suppressList = [
     'cancelled',
     'destroyed',
     'Loading aborted',
-    'component is unmounted'
+    'component is unmounted',
+    'attributes\' of \'r\' as it is null',
+    'Invalid XFA rich text',
+    'Cannot destructure property'
 ];
 
-const originalWarn = console.warn;
-console.warn = (...args) => {
-    const message = args[0]?.toString() || '';
-    if (suppressList.some(s => message.includes(s))) return;
-    originalWarn.apply(console, args);
+const checkAndSuppress = (args, originalFn) => {
+    const isSuppressed = args.some(arg => {
+        if (!arg) return false;
+        // Stringify everything to be safe
+        const msg = (typeof arg === 'string' ? arg : (arg.message || JSON.stringify(arg) || '')).toLowerCase();
+        return suppressList.some(s => msg.includes(s.toLowerCase()));
+    });
+    if (!isSuppressed) {
+        originalFn.apply(console, args);
+    }
 };
+
+const originalWarn = console.warn;
+console.warn = (...args) => checkAndSuppress(args, originalWarn);
 
 const originalError = console.error;
-console.error = (...args) => {
-    const message = args[0]?.toString() || '';
-    if (suppressList.some(s => message.includes(s))) return;
-    originalError.apply(console, args);
-};
+console.error = (...args) => checkAndSuppress(args, originalError);
 
-// Suppress noisy PDF worker termination errors during unmount/scroll
+// Aggressively suppress unhandled rejections from pdf.worker
 window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
-    const message = reason?.message || (typeof reason === 'string' ? reason : '');
+    if (!reason) return;
+    
+    // エラーメッセージまたはスタックトレースから判定
+    const message = reason.message || (typeof reason === 'string' ? reason : '');
+    const stack = reason.stack || '';
+    const fullContent = (message + stack).toLowerCase();
 
-    // PDF.js related noise that can be ignored during rapid transitions
-    if (
-        message.includes('Worker was terminated') ||
-        message.includes('cancelled') ||
-        message.includes('destroyed') ||
-        message.includes('component is unmounted') ||
-        message.includes('Loading aborted')
-    ) {
+    // PDF.js 関連の「実害のない」クリーンアップエラーを特定
+    const isPdfNoise = suppressList.some(s => fullContent.includes(s.toLowerCase())) ||
+                       fullContent.includes('pdf.worker');
+
+    if (isPdfNoise) {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
     }
-});
+}, true);
+
+// Suppress synchronous errors from the same sources
+window.onerror = (message, source, lineno, colno, error) => {
+    const fullContent = `${message} ${source} ${error?.stack || ''}`.toLowerCase();
+    const isPdfNoise = suppressList.some(s => fullContent.includes(s.toLowerCase())) ||
+                       fullContent.includes('pdf.worker');
+
+    if (isPdfNoise) {
+        return true; // Stop event propagation
+    }
+    return false;
+};
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>

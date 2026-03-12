@@ -91,7 +91,16 @@ const PdfThumbnail = memo(function PdfThumbnail({ fileId }) {
     }
 
     function onDocumentLoadError(error) {
-        if (!isComponentMounted.current || error.message?.includes('terminated')) {
+        if (!isComponentMounted.current) return;
+        
+        const msg = error.message || '';
+        // 以下のクリーンアップ・キャンセル系エラーは「失敗」として扱わず、エラー画面も出さない
+        if (
+            msg.includes('terminated') || 
+            msg.includes('cancelled') || 
+            msg.includes('destroyed') ||
+            msg.includes('Loading aborted')
+        ) {
             return;
         }
         setHasError(true);

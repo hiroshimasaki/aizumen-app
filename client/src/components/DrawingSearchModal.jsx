@@ -15,6 +15,7 @@ export default function DrawingSearchModal({ isOpen, onClose, file, pdfFile, fil
     const pdfOptions = useMemo(() => ({
         cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
         cMapPacked: true,
+        standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
         disableXFA: true,
         enableXfa: false,
     }), []);
@@ -153,14 +154,26 @@ export default function DrawingSearchModal({ isOpen, onClose, file, pdfFile, fil
             const formData = new FormData();
             formData.append('queryImage', blob, 'query.png');
 
+            // [DEBUG] 検索パラメータの確認
+            console.log('[DrawingSearch] Search params check:', {
+                hasPdfFile: !!pdfFile,
+                pdfFileType: pdfFile?.constructor?.name,
+                pdfFileSize: pdfFile?.size,
+                fileId: fileId,
+                isFileInstance: pdfFile instanceof File,
+                isBlobInstance: pdfFile instanceof Blob
+            });
+
             // pHash高速パス用: 元PDFファイルを送信（サーバーで登録時と同一パイプラインでdHash生成）
             if (pdfFile && (pdfFile instanceof File || pdfFile instanceof Blob)) {
                 formData.append('pdfFile', pdfFile, pdfFile.name || 'source.pdf');
-                console.log(`[DrawingSearch] Attaching original PDF for pHash (${Math.round(pdfFile.size/1024)}KB)`);
+                console.log(`[DrawingSearch] ★ Attaching original PDF for pHash (${Math.round(pdfFile.size/1024)}KB)`);
             } else if (fileId) {
                 // 既存ファイル: fileIdを送信してDB上のハッシュを参照
                 formData.append('fileId', fileId);
-                console.log(`[DrawingSearch] Attaching fileId for pHash: ${fileId}`);
+                console.log(`[DrawingSearch] ★ Attaching fileId for pHash: ${fileId}`);
+            } else {
+                console.warn('[DrawingSearch] ⚠ No pdfFile or fileId found for pHash fast path!');
             }
 
             // fullPageImageはフォールバックとして常に送信（pdfFile/fileIdがない場合の保険）

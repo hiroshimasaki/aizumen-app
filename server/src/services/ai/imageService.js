@@ -249,17 +249,31 @@ async function getTileImage(buffer, mimeType, coords) {
         }
 
         const metadata = await sharp(imageBuffer).metadata();
-        const left = Math.max(0, Math.round(coords.x));
-        const top = Math.max(0, Math.round(coords.y));
-        const width = Math.min(Math.round(coords.width), metadata.width - left);
-        const height = Math.min(Math.round(coords.height), metadata.height - top);
+        
+        // 正規化座標 (0.0 - 1.0) の場合はピクセル座標に変換
+        let x = coords.x;
+        let y = coords.y;
+        let width = coords.width;
+        let height = coords.height;
 
-        if (width <= 0 || height <= 0) {
-            throw new Error(`Invalid dimensions: ${width}x${height}`);
+        if (x <= 1.0 && y <= 1.0 && width <= 1.0 && height <= 1.0) {
+            x = x * metadata.width;
+            y = y * metadata.height;
+            width = width * metadata.width;
+            height = height * metadata.height;
+        }
+
+        const left = Math.max(0, Math.round(x));
+        const top = Math.max(0, Math.round(y));
+        const finalWidth = Math.min(Math.round(width), metadata.width - left);
+        const finalHeight = Math.min(Math.round(height), metadata.height - top);
+
+        if (finalWidth <= 1 || finalHeight <= 1) { // 1px以下の切り出しはエラーとして扱う
+            throw new Error(`Invalid dimensions: ${finalWidth}x${finalHeight} (from ${x},${y},${width},${height})`);
         }
 
         return await sharp(imageBuffer)
-            .extract({ left, top, width, height })
+            .extract({ left, top, width: finalWidth, height: finalHeight })
             .png()
             .toBuffer();
     } catch (err) {
