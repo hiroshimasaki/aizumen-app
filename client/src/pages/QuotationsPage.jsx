@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Search, Filter, RefreshCw, Database, X, Trash2, ArchiveRestore, Trash, UploadCloud, FileText, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import { cn } from '../lib/utils';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useNotification } from '../contexts/NotificationContext';
