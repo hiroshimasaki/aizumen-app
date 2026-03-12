@@ -82,7 +82,25 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
             }
         });
     } catch (err) {
-        console.error('[OCR] Analysis error:', err);
+        console.error('[OCR] Analysis error details:', {
+            message: err.message,
+            stack: err.stack,
+            tenantId: req.tenantId,
+            userId: req.user?.id,
+            file: req.file?.originalname
+        });
+        
+        // 詳細なエラーをシステムログに保存
+        await logService.error({
+            message: `OCR Analysis failed: ${err.message}`,
+            stack: err.stack,
+            source: 'server_ocr_analyze',
+            tenantId: req.tenantId,
+            userId: req.user?.id,
+            path: req.path,
+            method: req.method
+        });
+
         next(err);
     }
 });

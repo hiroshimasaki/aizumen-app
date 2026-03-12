@@ -34,14 +34,10 @@ class AIService {
             // Stronger normalization for private_key (handles various env var escaping)
             if (credentials.private_key) {
                 let pk = credentials.private_key;
-                // 1. If it has literal newlines, normalize them
                 pk = pk.replace(/\n/g, ' '); 
-                // 2. Convert escaped \\n to real \n
                 pk = pk.replace(/\\n/g, '\n');
-                // 3. Ensure BEGIN/END markers are on their own lines and trim
                 pk = pk.trim();
                 if (!pk.includes('\n') && pk.includes('-----BEGIN PRIVATE KEY-----')) {
-                    // Pathological case: all on one line without even \n
                     pk = pk.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
                            .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
                 }
@@ -54,8 +50,11 @@ class AIService {
             });
             this.model = this.vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash-002' });
             this.mode = 'PRODUCTION (Vertex AI)';
-            console.log(`[AIService] Success: Initialized in ${this.mode} mode.`);
+            this.isInitialized = true;
+            console.log(`[AIService] Success: Initialized in ${this.mode} mode. Project: ${projectId}`);
         } catch (error) {
+            this.isInitialized = false;
+            this.initError = error.message;
             console.error('[AIService] Production initialization failed:', error);
         }
     }
@@ -237,6 +236,25 @@ class AIService {
                 items: []
             };
         }
+    }
+
+    /**
+     * Get Service Status (for diagnostics)
+     */
+    getStatus() {
+        return {
+            initialized: !!this.model && this.isInitialized !== false,
+            mode: this.mode || 'UNINITIALIZED',
+            model: this.model?.model || null,
+            hasVertexAI: !!this.vertexAI,
+            hasGoogleAI: !!this.genAI,
+            initError: this.initError || null,
+            config: {
+                hasProjectId: !!process.env.GOOGLE_CLOUD_PROJECT_ID,
+                hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+                hasApiKey: !!process.env.GEMINI_API_KEY
+            }
+        };
     }
 }
 

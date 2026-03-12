@@ -242,11 +242,17 @@ router.get('/thumbnail/:id', authMiddleware, async (req, res, next) => {
             });
 
         // 5. 署名付きURLを返す
-        const { data: signedUrl } = await supabaseAdmin.storage
+        const { data: signedUrlData, error: signedUrlErr } = await supabaseAdmin.storage
             .from('quotation-files')
             .createSignedUrl(thumbnailPath, 3600);
 
-        res.json({ url: signedUrl.signedUrl });
+        if (signedUrlErr || !signedUrlData) {
+            console.error('[Files/Thumbnail] Failed to create signed URL:', signedUrlErr);
+            // URLが取得できない場合はエラーとする（クライアント側でリトライ可能）
+            throw new AppError('Failed to create signed URL', 500, 'SIGNED_URL_FAILED');
+        }
+
+        res.json({ url: signedUrlData.signedUrl });
 
     } catch (err) {
         console.error('[Files/Thumbnail] Failed to get/generate thumbnail:', err);

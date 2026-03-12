@@ -23,6 +23,8 @@ const exportRoutes = require('./routes/export');
 const superAdminRoutes = require('./routes/superAdmin');
 const forumRoutes = require('./routes/forum');
 const searchRoutes = require('./routes/search');
+const healthRoutes = require('./routes/health');
+
 
 // Middleware imports
 const { errorHandler } = require('./middleware/errorHandler');
@@ -143,6 +145,8 @@ app.use('/api/credits', creditsRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/forum', forumRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/health', healthRoutes);
+
 
 // --- 404 Handler ---
 app.use('/api', (req, res) => {
