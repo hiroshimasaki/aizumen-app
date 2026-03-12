@@ -22,8 +22,8 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000, filter
         const lost = filteredQuotations.filter(q => q.status === 'lost').length;
         const pending = filteredQuotations.filter(q => q.status === 'pending').length;
 
-        const totalCount = ordered + lost + pending;
-        const winRate = totalCount > 0 ? Math.round((ordered / totalCount) * 100) : 0;
+        const totalCount = ordered + delivered + lost + pending;
+        const winRate = totalCount > 0 ? Math.round(((ordered + delivered) / totalCount) * 100) : 0;
 
         const calculateAmount = (quotes, filterType = 'delivery') => {
             return quotes.reduce((sum, q) => {
@@ -81,15 +81,9 @@ export default function DashboardMetrics({ quotations, hourlyRate = 8000, filter
                     const qty = Number(i.quantity) || 1;
                     orderedProcEstTotal += (Number(i.processingCost) || 0) * qty;
 
-                    let act = Number(i.actualProcessingCost) || 0;
                     const actHours = Number(i.actualHours) || 0;
-
-                    if (act <= 0 && actHours > 0) {
-                        act = Math.round(actHours * hourlyRate) / qty;
-                    }
-
-                    if (act > 0 || actHours > 0) {
-                        orderedProcActTotal += Math.round(act * qty);
+                    if (actHours > 0) {
+                        orderedProcActTotal += Math.round(actHours * hourlyRate);
                         orderedHasActuals = true;
                     }
                 });
