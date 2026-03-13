@@ -965,3 +965,85 @@ Raw: ```json
 [2026-03-12T00:50:44.730Z]   [pHash] file: 96443dad... hamming: 0
 [2026-03-12T00:50:44.731Z] [DrawingSearch] ★ pHash FAST PATH (dist <= 2): 1 file(s). Skipping Gemini.
 [2026-03-12T00:50:44.810Z] [SearchPerformance] Total (FAST PATH): 868ms
+[2026-03-13T11:22:59.334Z] [DrawingSearch] Starting hybrid search for tenant: c94934bf-d5b4-4e94-8987-60d07db7c022
+[2026-03-13T11:22:59.335Z] [DrawingSearch] Input params: hasPdfFile=true, fileId=null
+[2026-03-13T11:22:59.600Z] [SearchPerformance] pHash from PDF pipeline: 265ms, hash: a0c0c0c48c9c8ccc, threshold: 15
+[2026-03-13T11:22:59.710Z] [SearchPerformance] pHash DB Match (RPC): 110ms, hits: 0
+[2026-03-13T11:22:59.711Z] [DrawingSearch] RPC returned 0 hits. Checking quotation_files table directly...
+[2026-03-13T11:23:05.148Z] [DrawingSearch] Total candidates for Gemini: 10 (pHash: 0, Vector: 10)
+[2026-03-13T11:23:41.646Z] [SearchPerformance] Gemini API: 31415ms
+[2026-03-13T11:23:41.647Z] [DrawingSearch] Gemini raw response (first 500 chars): ```json
+[
+  {
+    "id": "78173a1b-d3bf-4fc9-b810-891609a48c98",
+    "score": 5,
+    "reason": "図面枠内の文字情報（M12等）が表示されているが、クエリ画像の幾何学的構造とは全く関連性がない。"
+  },
+  {
+    "id": "7282091d-8cc4-4ba5-91d8-87cb6a219da1",
+    "score": 5,
+    "reason": "円周上の孔配置（PCD101）を示す図面であり、クエリ画像の矩形プレートおよび孔のレイアウトと一致しない。"
+  },
+  {
+    "id": "17a93efd-13a7-4aef-8713-c9f8689f9c01",
+    "score": 2,
+    "reason": "油溝の詳細や手書き注記を含む図面であり、クエリの部品形状や寸法情報との類似性が認められない。"
+  },
+  {
+    "id": "39ca5d37-c741-4173-993e-6e93dd297c33",
+    "score": 
+[2026-03-13T11:23:41.647Z] Parse Error: Cannot access 'debugLog' before initialization
+Raw: ```json
+[
+  {
+    "id": "78173a1b-d3bf-4fc9-b810-891609a48c98",
+    "score": 5,
+    "reason": "図面枠内の文字情報（M12等）が表示されているが、クエリ画像の幾何学的構造とは全く関連性がない。"
+  },
+  {
+    "id": "7282091d-8cc4-4ba5-91d8-87cb6a219da1",
+    "score": 5,
+    "reason": "円周上の孔配置（PCD101）を示す図面であり、クエリ画像の矩形プレートおよび孔のレイアウトと一致しない。"
+  },
+  {
+    "id": "17a93efd-13a7-4aef-8713-c9f8689f9c01",
+    "score": 2,
+    "reason": "油溝の詳細や手書き注記を含む図面であり、クエリの部品形状や寸法情報との類似性が認められない。"
+  },
+  {
+    "id": "39ca5d37-c741-4173-993e-6e93dd297c33",
+    "score": 5,
+    "reason": "軸受け部のはめ合い（H7, H8）を含む詳細断面図であり、単純なプレート形状のクエリ画像とは構造が異なる。"
+  },
+  {
+    "id": "e184a7ee-378f-498a-81c8-67e743fd74fb",
+    "score": 10,
+    "reason": "矩形プレートに孔が配置されている点は共通するが、全体の寸法、孔の数、配置がクエリ画像と一致しない。"
+  },
+  {
+    "id": "a4fbd07e-9e8d-4878-b688-f722e513d7fe",
+    "score": 2,
+    "reason": "断面図の指示記号（A-A断面矢視）であり、クエリ画像の形状を評価する対象とはならない。"
+  },
+  {
+    "id": "b7b2f1b2-8638-458e-a0a6-4a0fdf63e411",
+    "score": 8,
+    "reason": "一部に寸法（18, 25）やフィレットの記載があるが、これらは複雑な部品の断面の一部であり、クエリの全体構造とは別物である。"
+  },
+  {
+    "id": "c174c8d7-6f3f-4abe-801f-0cdb45c66fcd",
+    "score": 5,
+    "reason": "円形の詳細図であり、直線的な外形を持つクエリ画像の部品構造とは論理的に一致しない。"
+  },
+  {
+    "id": "c25339a5-a29a-4715-ac9e-fb1dde83cdda",
+    "score": 15,
+    "reason": "M8の加工指示や矩形ベースの部品である点は共通するが、部品サイズ（250x223）や孔のレイアウトがクエリ画像とは明らかに異なる。"
+  },
+  {
+    "id": "96443dad-4bfc-41f6-9c17-48f1ddf14f68",
+    "score": 100,
+    "reason": "クエリ画像と完全に同一の図面である。左側の面取り「2-C10」、大径孔の位置、垂直寸法「19」のフォントや配置が完全に一致しており、同一設計の図面から抽出されたものと断定できる。"
+  }
+]
+```

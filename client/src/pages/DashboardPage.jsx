@@ -45,6 +45,7 @@ export default function DashboardPage() {
                     dueDate: item.due_date,
                     deliveryDate: item.delivery_date,
                     scheduledStartDate: item.scheduled_start_date,
+                    scheduledEndDate: item.scheduled_end_date,
                     actualHours: item.actual_hours,
                     actualProcessingCost: item.actual_processing_cost,
                 }))

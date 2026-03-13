@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Check, ExternalLink, PackageCheck } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Check, ExternalLink, PackageCheck, GripVertical } from 'lucide-react';
 import api from '../lib/api';
 import { useNotification } from '../contexts/NotificationContext';
 
@@ -8,13 +8,24 @@ export default function ScheduleGantt({ quotations, onEdit, onRefresh, isAdmin =
     const [dayOffset, setDayOffset] = useState(0);
     const [selectedItems, setSelectedItems] = useState([]); // Array of item IDs
     const [deliveryProcessing, setDeliveryProcessing] = useState(false);
+    const [dragState, setDragState] = useState(null); // { itemId, type: 'start'|'end', originalDate, startX }
+    const [dragDaysDiff, setDragDaysDiff] = useState(0);
+    const containerRef = useRef(null);
+    const clickBlockRef = useRef(false);
     const VISIBLE_DAYS = 30;
 
-    // Get the base date (today + offset)
+    const toYMD = (date) => {
+        if (!date) return null;
+        const d = new Date(date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    // Get the base date (today centered + offset)
     const baseDate = useMemo(() => {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() + dayOffset);
+        // 初期表示で本日を左寄り(8日目)に配置して将来を広く見せる
+        d.setDate(d.getDate() - 8 + dayOffset);
         return d;
     }, [dayOffset]);
 
@@ -59,7 +70,8 @@ export default function ScheduleGantt({ quotations, onEdit, onRefresh, isAdmin =
                     itemName: item.name || '(品名なし)',
                     quantity: item.quantity || 1,
                     dueDate: new Date(item.dueDate),
-                    scheduledStartDate: scheduledStartDate,
+                    scheduledStartDate: item.scheduledStartDate ? new Date(item.scheduledStartDate) : null,
+                    scheduledEndDate: item.scheduledEndDate ? new Date(item.scheduledEndDate) : null,
                     isCompleted: isCompleted,
                     rawQuotation: q
                 });
@@ -116,6 +128,120 @@ export default function ScheduleGantt({ quotations, onEdit, onRefresh, isAdmin =
         } finally {
             setDeliveryProcessing(false);
         }
+    };
+
+    const handleDragStart = (e, item, type) => {
+        if (!isAdmin) return;
+        e.stopPropagation();
+        
+        let originalDate;
+        if (type === 'start') {
+            originalDate = item.scheduledStartDate ? new Date(item.scheduledStartDate) : null;
+        } else if (type === 'end') {
+            originalDate = item.scheduledEndDate ? new Date(item.scheduledEndDate) : (item.scheduledStartDate ? new Date(item.scheduledStartDate) : null);
+        } else if (type === 'new') {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const daysFromBase = Math.floor(x / 40);
+            originalDate = new Date(baseDate);
+            originalDate.setDate(originalDate.getDate() + daysFromBase);
+        }
+
+        setDragState({
+            itemId: item.id,
+            type,
+            originalDate,
+            startX: e.clientX,
+            moved: false
+        });
+    };
+
+    const handleMouseMove = useCallback((e) => {
+        if (!dragState) return;
+        const diffX = e.clientX - dragState.startX;
+        const daysDiff = Math.round(diffX / 40);
+        setDragDaysDiff(daysDiff);
+        if (Math.abs(diffX) > 5 && !dragState.moved) {
+            setDragState(prev => prev ? { ...prev, moved: true } : null);
+        }
+    }, [dragState]);
+
+    const handleMouseUp = useCallback(async (e) => {
+        if (!dragState) return;
+        const diffX = e.clientX - dragState.startX;
+        const daysDiff = Math.round(diffX / 40);
+        const st = dragState;
+        
+        if (st.moved) {
+            clickBlockRef.current = true;
+            setTimeout(() => { clickBlockRef.current = false; }, 100);
+        }
+
+        setDragState(null);
+        setDragDaysDiff(0);
+
+        if (st.type === 'new') {
+            // daysDiff が 0 (クリックまたは微動) の場合でも1日分として登録を許可
+            const d1 = new Date(st.originalDate);
+            const d2 = new Date(st.originalDate);
+            d2.setDate(d2.getDate() + daysDiff);
+            
+            const start = d1 < d2 ? d1 : d2;
+            const end = d1 < d2 ? d2 : d1;
+
+            try {
+                await api.patch(`/api/quotations/items/${st.itemId}`, {
+                    scheduledStartDate: toYMD(start),
+                    scheduledEndDate: toYMD(end)
+                });
+                if (onRefresh) onRefresh();
+            } catch (err) {
+                console.error('Failed to create project bar:', err);
+                await showAlert('バーの作成に失敗しました。', 'error');
+            }
+            return;
+        }
+
+        if (daysDiff === 0 || !st.originalDate) return;
+
+        const newDate = new Date(st.originalDate);
+        newDate.setDate(newDate.getDate() + daysDiff);
+        const dateStr = toYMD(newDate);
+
+        try {
+            const payload = st.type === 'start' 
+                ? { scheduledStartDate: dateStr } 
+                : { scheduledEndDate: dateStr };
+            
+            await api.patch(`/api/quotations/items/${st.itemId}`, payload);
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            console.error('Failed to update date via drag:', err);
+            await showAlert('日程の更新に失敗しました。', 'error');
+        }
+    }, [dragState, onRefresh, showAlert, baseDate]);
+
+    useEffect(() => {
+        if (dragState) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        } else {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [dragState, handleMouseMove, handleMouseUp]);
+
+    const getPreviewDates = (item) => {
+        if (!dragState || dragState.itemId !== item.id) return { start: item.scheduledStartDate, end: item.dueDate };
+        
+        // This is a bit tricky since mousemove doesn't trigger re-render easily without a state update.
+        // But for visual feedback during drag, we might need a "tempDragOffset" state.
+        // Let's add it.
+        return { start: item.scheduledStartDate, end: item.dueDate }; // Placeholder
     };
 
     return (
@@ -207,17 +333,37 @@ export default function ScheduleGantt({ quotations, onEdit, onRefresh, isAdmin =
                             {scheduledItems.map((item, rowIdx) => {
                                 const barColor = getBarColor(item.dueDate);
                                 const startIdx = item.scheduledStartDate ? getDayIndex(item.scheduledStartDate) : null;
+                                const endIdx = item.scheduledEndDate ? getDayIndex(item.scheduledEndDate) : (item.scheduledStartDate ? getDayIndex(item.scheduledStartDate) : null);
                                 const dueIdx = getDayIndex(item.dueDate);
                                 const isSelected = selectedItems.includes(item.id);
 
-                                const barStart = startIdx !== null ? Math.max(0, Math.min(startIdx, VISIBLE_DAYS)) : null;
-                                const barEnd = Math.max(0, Math.min(dueIdx + 1, VISIBLE_DAYS));
-                                const hasBar = barStart !== null && barStart < VISIBLE_DAYS && barEnd > 0 && barStart < barEnd;
+                                const isDraggingThis = dragState?.itemId === item.id;
+                                let barStart = startIdx !== null ? Math.max(0, Math.min(startIdx, VISIBLE_DAYS)) : null;
+                                let barEnd = endIdx !== null ? Math.max(0, Math.min(endIdx + 1, VISIBLE_DAYS)) : null;
+
+                                if (isDraggingThis) {
+                                    if (dragState.type === 'start') {
+                                        barStart = Math.round(Math.max(0, Math.min((startIdx || 0) + dragDaysDiff, (barEnd || VISIBLE_DAYS) - 1)));
+                                    } else if (dragState.type === 'end') {
+                                        barEnd = Math.round(Math.max((barStart || 0) + 1, Math.min((endIdx || 0) + 1 + dragDaysDiff, VISIBLE_DAYS)));
+                                    } else if (dragState.type === 'new') {
+                                        const clickDayIdx = getDayIndex(dragState.originalDate);
+                                        const d1 = clickDayIdx;
+                                        const d2 = clickDayIdx + dragDaysDiff;
+                                        barStart = Math.max(0, Math.min(d1, d2));
+                                        barEnd = Math.min(VISIBLE_DAYS, Math.max(d1, d2) + 1);
+                                    }
+                                }
+                                const hasBar = barStart !== null && barEnd !== null && barStart < VISIBLE_DAYS && barEnd > 0 && barStart < barEnd;
 
                                 return (
                                     <div
                                         key={`${item.quotationId}-${rowIdx}`}
-                                        onClick={() => onEdit(item.rawQuotation)}
+                                        onClick={() => {
+                                            if (!clickBlockRef.current && !dragState?.moved) {
+                                                onEdit(item.rawQuotation);
+                                            }
+                                        }}
                                         className={`flex border-b border-slate-800/50 hover:bg-indigo-500/5 transition-all group cursor-pointer ${isSelected ? 'bg-indigo-500/10' : ''}`}
                                     >
                                         {/* Label Area */}
@@ -252,7 +398,7 @@ export default function ScheduleGantt({ quotations, onEdit, onRefresh, isAdmin =
                                         </div>
 
                                         {/* Timeline Area */}
-                                        <div className="flex flex-1 relative min-h-[56px]">
+                                        <div className="flex flex-1 relative min-h-[56px]" onMouseDown={(e) => !hasBar && handleDragStart(e, item, 'new')}>
                                             {visibleDates.map((d, i) => {
                                                 const isToday = d.getTime() === today.getTime();
                                                 const isWkend = isWeekend(d);
@@ -266,25 +412,47 @@ export default function ScheduleGantt({ quotations, onEdit, onRefresh, isAdmin =
                                             {/* Bar */}
                                             {hasBar && (
                                                 <div
-                                                    className={`absolute top-3 h-7 ${item.isCompleted ? 'bg-slate-700/80' : barColor.bg} ${item.isCompleted ? 'border-slate-600' : barColor.border} border rounded-lg shadow-lg flex items-center justify-start group-hover:brightness-110 active:scale-[0.98] transition-all z-20`}
+                                                    className={`absolute top-3 h-7 ${barColor.bg} ${barColor.border} border rounded-lg shadow-lg flex items-center justify-between group-hover:brightness-110 active:shadow-md transition-all z-20 overflow-hidden`}
                                                     style={{
                                                         left: `${barStart * 40}px`,
                                                         width: `${(barEnd - barStart) * 40}px`,
                                                         backgroundImage: item.isCompleted ? 'repeating-linear-gradient(45deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 10px, transparent 10px, transparent 20px)' : 'none'
                                                     }}
                                                 >
-                                                    <div className="flex items-center gap-2 px-2 truncate">
+                                                    {/* Resize Handle: Start */}
+                                                    {isAdmin && !item.isCompleted && (
+                                                        <div 
+                                                            onMouseDown={(e) => handleDragStart(e, item, 'start')}
+                                                            className="absolute left-0 top-0 bottom-0 w-2.5 bg-white/10 hover:bg-white/30 cursor-col-resize flex items-center justify-center transition-colors z-30"
+                                                            title="着手予定日を変更"
+                                                        >
+                                                            <div className="w-[1px] h-3 bg-white/40" />
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex items-center gap-2 px-3 truncate flex-1 min-w-0 pointer-events-none">
                                                         {item.isCompleted ? (
-                                                            <div className="p-0.5 bg-slate-800 rounded">
-                                                                <Check size={10} className="text-emerald-400" />
+                                                            <div className="p-0.5 bg-emerald-500 rounded">
+                                                                <Check size={10} className="text-white" />
                                                             </div>
                                                         ) : (
                                                             <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                                         )}
-                                                        <span className={`text-[10px] font-black truncate tracking-tight ${item.isCompleted ? 'text-slate-400' : 'text-white'}`}>
+                                                        <span className="text-[10px] font-black truncate tracking-tight text-white">
                                                             {item.itemName}
                                                         </span>
                                                     </div>
+
+                                                    {/* Resize Handle: End */}
+                                                    {isAdmin && !item.isCompleted && (
+                                                        <div 
+                                                            onMouseDown={(e) => handleDragStart(e, item, 'end')}
+                                                            className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/10 hover:bg-white/30 cursor-col-resize flex items-center justify-center transition-colors z-30"
+                                                            title="完了予定日を変更"
+                                                        >
+                                                            <div className="w-[1px] h-3 bg-white/40" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -316,10 +484,6 @@ export default function ScheduleGantt({ quotations, onEdit, onRefresh, isAdmin =
                 <div className="flex items-center gap-2">
                     <div className="w-5 h-2 bg-red-500/80 border border-red-600 rounded-sm" />
                     <span className="uppercase tracking-widest text-red-500/80">納期超過</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-5 h-2 bg-slate-700 border border-slate-600 rounded-sm opacity-50" style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1) 2px, transparent 2px, transparent 4px)' }} />
-                    <span className="uppercase tracking-widest">仕掛 / 作業中</span>
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
                     <span className="text-indigo-400 font-black">▼</span>

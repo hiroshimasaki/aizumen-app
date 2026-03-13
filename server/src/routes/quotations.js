@@ -556,6 +556,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 due_date: item.dueDate || null,
                 delivery_date: item.deliveryDate || null,
                 scheduled_start_date: item.scheduledStartDate || null,
+                scheduled_end_date: item.scheduledEndDate || null,
                 actual_hours: parsePrice(item.actualHours),
                 actual_processing_cost: parsePrice(item.actualProcessingCost),
                 actual_material_cost: parsePrice(item.actualMaterialCost),
@@ -712,6 +713,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                     due_date: item.dueDate || null,
                     delivery_date: item.deliveryDate || null,
                     scheduled_start_date: item.scheduledStartDate || null,
+                    scheduled_end_date: item.scheduledEndDate || null,
                     actual_hours: parsePrice(item.actualHours),
                     actual_processing_cost: parsePrice(item.actualProcessingCost),
                     actual_material_cost: parsePrice(item.actualMaterialCost),
@@ -893,6 +895,72 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
  * POST /api/quotations/batch-delivery
  * 一括納品処理
  */
+/**
+ * PATCH /api/quotations/items/:itemId
+ * 明細項目の個別更新（日程調整用）
+ */
+router.patch('/items/:itemId', authMiddleware, async (req, res, next) => {
+    try {
+        const { itemId } = req.params;
+        const { scheduledStartDate, scheduledEndDate, dueDate } = req.body;
+
+        const updates = {};
+        if (scheduledStartDate !== undefined) updates.scheduled_start_date = scheduledStartDate;
+        if (scheduledEndDate !== undefined) updates.scheduled_end_date = scheduledEndDate;
+        if (dueDate !== undefined) updates.due_date = dueDate;
+
+        if (Object.keys(updates).length === 0) {
+            return res.json({ message: 'No changes provided' });
+        }
+
+        const { data: updatedItem, error } = await supabaseAdmin
+            .from('quotation_items')
+            .update(updates)
+            .eq('id', itemId)
+            .eq('tenant_id', req.tenantId)
+            .select('*, quotations(order_number, company_name)')
+            .single();
+
+        if (error || !updatedItem) {
+            throw new AppError('Failed to update item', 500, 'UPDATE_FAILED');
+        }
+
+        // 事後処理
+        (async () => {
+            try {
+                // 変更内容の構築
+                const changes = {};
+                if (scheduledStartDate !== undefined) changes['着手予定日'] = scheduledStartDate;
+                if (scheduledEndDate !== undefined) changes['完了予定日'] = scheduledEndDate;
+                if (dueDate !== undefined) changes['納期'] = dueDate;
+
+                await supabaseAdmin.from('quotation_history').insert({
+                    quotation_id: updatedItem.quotation_id,
+                    tenant_id: req.tenantId,
+                    changed_by: req.user.id,
+                    change_type: 'updated',
+                    changes: { message: 'ガントチャートから日程を更新しました', ...changes },
+                });
+
+                await logService.audit({
+                    action: 'quotation_item_updated',
+                    entityType: 'quotation_item',
+                    entityId: itemId,
+                    description: `案件明細日程更新 (ガント): ${updatedItem.quotations?.order_number || '番号なし'}`,
+                    tenantId: req.tenantId,
+                    userId: req.userId
+                });
+            } catch (bgErr) {
+                console.error('[Quotations] Background task error (PATCH):', bgErr);
+            }
+        })();
+
+        res.json(updatedItem);
+    } catch (err) {
+        next(err);
+    }
+});
+
 router.post('/batch-delivery', authMiddleware, async (req, res, next) => {
     try {
         const { itemIds, deliveryDate } = req.body;

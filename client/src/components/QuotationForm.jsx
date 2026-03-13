@@ -49,7 +49,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
     });
 
     const [items, setItems] = useState([
-        { id: Date.now(), name: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: '' }
+        { id: Date.now(), name: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: '', scheduledEndDate: '' }
     ]);
 
     const [files, setFiles] = useState([]); // 新規追加用ファイルオブジェクトの配列
@@ -131,6 +131,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                 id: item.id || Date.now() + Math.random(),
                 responseDate: item.responseDate || '',
                 scheduledStartDate: item.scheduledStartDate || '',
+                scheduledEndDate: item.scheduledEndDate || '',
                 dueDate: item.dueDate || '',
                 deliveryDate: item.deliveryDate || ''
             })));
@@ -936,6 +937,12 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                 <div className="md:col-span-3 space-y-1 text-slate-400 focus-within:text-cyan-400">
                                     <label className="text-xs font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={12} />着手予定日</label>
                                     <input type="date" value={item.scheduledStartDate || ''} onChange={e => handleItemChange(item.id, 'scheduledStartDate', e.target.value)}
+                                        readOnly={!isAdmin} className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 text-xs focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
+                                        style={{ colorScheme: 'dark' }} />
+                                </div>
+                                <div className="md:col-span-3 space-y-1 text-slate-400 focus-within:text-cyan-400">
+                                    <label className="text-xs font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={12} />完了予定日</label>
+                                    <input type="date" value={item.scheduledEndDate || ''} onChange={e => handleItemChange(item.id, 'scheduledEndDate', e.target.value)}
                                         readOnly={!isAdmin} className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 text-xs focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
                                         style={{ colorScheme: 'dark' }} />
                                 </div>

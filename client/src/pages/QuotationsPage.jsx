@@ -96,6 +96,7 @@ export default function QuotationsPage() {
                     dueDate: item.due_date,
                     deliveryDate: item.delivery_date,
                     scheduledStartDate: item.scheduled_start_date,
+                    scheduledEndDate: item.scheduled_end_date,
                     actualHours: item.actual_hours,
                     actualProcessingCost: item.actual_processing_cost,
                     actualMaterialCost: item.actual_material_cost,
@@ -704,9 +705,15 @@ export default function QuotationsPage() {
 
             {/* Quotation Form Modal */}
             {isFormOpen && (
-                <div className="fixed inset-0 z-[75] flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto pt-10 pb-20">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl animate-in zoom-in-95 duration-200 p-6 sm:p-8 relative">
-                        <button
+                <div 
+                    className="fixed inset-0 z-[75] flex items-start justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto pt-10 pb-20"
+                    onClick={handleFormCancel}
+                >
+                    <div 
+                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl animate-in zoom-in-95 duration-200 p-6 sm:p-8 relative"
+                        onClick={e => e.stopPropagation()}
+                    >
+                       <button
                             onClick={handleFormCancel}
                             className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors z-10"
                         >
