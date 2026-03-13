@@ -150,6 +150,39 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
 });
 
 /**
+ * GET /api/quotations/stats
+ * ダッシュボード統計パネル用の軽量データ取得
+ */
+router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => {
+    try {
+        // 統計に必要な最小限のフィールドのみを取得（1000件リミット）
+        const { data, error } = await supabaseAdmin
+            .from('quotations')
+            .select(`
+                id,
+                status,
+                created_at,
+                quotation_items (
+                    processing_cost,
+                    material_cost,
+                    other_cost,
+                    quantity,
+                    delivery_date,
+                    due_date
+                )
+            `)
+            .eq('tenant_id', req.tenantId)
+            .eq('is_deleted', false)
+            .limit(1000);
+
+        if (error) throw new AppError('Failed to fetch stats data', 500, 'FETCH_FAILED');
+        res.json(data);
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
  * GET /api/quotations/check-duplicate
  * 重複チェック（注文番号・工事番号）
  */

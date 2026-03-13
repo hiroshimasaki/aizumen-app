@@ -24,6 +24,7 @@ export default function QuotationsPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [showDeleted, setShowDeleted] = useState(false);
+    const isFetchingRef = useRef(false);
 
     // Filters
     const [search, setSearch] = useState('');
@@ -50,6 +51,9 @@ export default function QuotationsPage() {
     };
 
     const fetchQuotations = async (showLoading = true, overrides = {}) => {
+        if (isFetchingRef.current) return;
+        isFetchingRef.current = true;
+        
         if (showLoading) setLoading(true);
         try {
             const currentPage = overrides.hasOwnProperty('page') ? overrides.page : page;
@@ -107,15 +111,29 @@ export default function QuotationsPage() {
             setTotalCount(data.total);
 
             // Fetch all for metrics calculation (only non-deleted)
-            // 常に最新の統計を反映するため、全件取得を毎回実行する
+            // Fetch all for metrics calculation (only non-deleted) - Use lightweight stats API
             if (!showDeleted) {
-                const { data: allData } = await api.get('/api/quotations?limit=1000');
-                setAllQuotations(allData.data.map(mapQuote));
+                const { data: allData } = await api.get('/api/quotations/stats');
+                const mappedStats = allData.map(q => ({
+                    id: q.id,
+                    status: q.status,
+                    createdAt: q.created_at,
+                    items: (q.quotation_items || []).map(i => ({
+                        processingCost: i.processing_cost,
+                        materialCost: i.material_cost,
+                        otherCost: i.other_cost,
+                        quantity: i.quantity,
+                        deliveryDate: i.delivery_date,
+                        dueDate: i.due_date
+                    }))
+                }));
+                setAllQuotations(mappedStats);
             }
         } catch (err) {
             console.error('Failed to fetch quotations:', err);
         } finally {
             if (showLoading) setLoading(false);
+            isFetchingRef.current = false;
         }
     };
 
@@ -197,7 +215,9 @@ export default function QuotationsPage() {
             if (updatedItems) payload.items = updatedItems;
 
             await api.put(`/api/quotations/${id}`, payload);
-            fetchQuotations(false); // バックグラウンドで再取得して反映
+            // Realtime 購読が fetchQuotations を呼び出すため、ここでは明示的な fetch は控えるか
+            // もしくは即時反映のために行うが、isFetchingRef で重複は防止される
+            fetchQuotations(false);
         } catch (err) {
             console.error('Status update failed:', err);
             await showAlert('ステータス更新に失敗しました', 'error');
