@@ -69,6 +69,7 @@ router.get('/tenants', async (req, res) => {
                 name,
                 slug,
                 plan,
+                storage_usage_bytes,
                 created_at,
                 subscriptions (
                     status,
@@ -84,16 +85,6 @@ router.get('/tenants', async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-
-        // ストレージ使用量の集計 (全量取得してサーバーサイドで集計)
-        const { data: allFiles } = await supabaseAdmin
-            .from('quotation_files')
-            .select('tenant_id, file_size');
-
-        const storageMap = allFiles?.reduce((acc, f) => {
-            acc[f.tenant_id] = (acc[f.tenant_id] || 0) + (f.file_size || 0);
-            return acc;
-        }, {}) || {};
 
         // 扱いやすいようにフラットに整形
         const formattedTenants = tenants.map(t => {
@@ -114,7 +105,7 @@ router.get('/tenants', async (req, res) => {
                 creditBalance: t.ai_credits?.balance || 0,
                 monthlyQuota: t.ai_credits?.monthly_quota || 0,
                 purchasedBalance: t.ai_credits?.purchased_balance || 0,
-                storageUsage: storageMap[t.id] || 0,
+                storageUsage: t.storage_usage_bytes || 0,
                 maxStorageGB: config?.maxStorageGB || 1
             };
         });
@@ -327,20 +318,15 @@ router.get('/usage', async (req, res) => {
 
         // 1. 企業別の合計ストレージ使用量 (Top 10)
         const { data: storageUsage } = await supabaseAdmin
-            .from('quotation_files')
-            .select('tenant_id, file_size, tenants(name)');
+            .from('tenants')
+            .select('name, storage_usage_bytes')
+            .order('storage_usage_bytes', { ascending: false })
+            .limit(10);
 
-        const storageByTenant = storageUsage?.reduce((acc, curr) => {
-            const name = curr.tenants?.name || '不明';
-            if (!acc[name]) acc[name] = 0;
-            acc[name] += (curr.file_size || 0);
-            return acc;
-        }, {}) || {};
-
-        const sortedStorage = Object.entries(storageByTenant)
-            .map(([name, size]) => ({ name, size }))
-            .sort((a, b) => b.size - a.size)
-            .slice(0, 10);
+        const sortedStorage = storageUsage?.map(t => ({
+            name: t.name || '不明',
+            size: t.storage_usage_bytes || 0
+        })) || [];
 
         // 2. 企業別の AI 解析履歴 (直近30日の消費量順)
         const last30Days = new Date();
@@ -377,7 +363,11 @@ router.get('/usage', async (req, res) => {
         const estimatedCost = monthUsage * 0.1;
 
         // 3. 全体の合計値
-        const totalStorage = storageUsage?.reduce((sum, curr) => sum + (curr.file_size || 0), 0) || 0;
+        const { data: tenantStorageTotals } = await supabaseAdmin
+            .from('tenants')
+            .select('storage_usage_bytes');
+        
+        const totalStorage = tenantStorageTotals?.reduce((sum, curr) => sum + (curr.storage_usage_bytes || 0), 0) || 0;
         const totalAi = aiUsage?.reduce((sum, curr) => sum + Math.abs(curr.amount || 0), 0) || 0;
 
         // DB使用量の取得 (正式には pg_database_size 等が必要だが、ここでは主要テーブルから推定)
