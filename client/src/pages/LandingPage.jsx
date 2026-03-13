@@ -40,14 +40,14 @@ export default function LandingPage() {
                 <section className="max-w-7xl mx-auto px-4 md:px-8 pt-16 md:pt-32 pb-20 text-center">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold mb-8 animate-[fade-in-up_0.8s_ease-out_forwards]">
                         <Sparkles className="w-4 h-4" />
-                        <span>注文書AI解析・工程管理SaaS</span>
+                        <span>製造業・町工場のDXを支える AI図面検索・工程管理SaaS</span>
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight tracking-tight opacity-0 animate-[fade-in-up_0.8s_ease-out_0.1s_forwards]">
-                        注文書の入力と図面管理を、<br />
+                        製造業・町工場のDXを、<br />
                         <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">AIとクラウドで一元化。</span>
                     </h1>
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 mb-10 opacity-0 animate-[fade-in-up_0.8s_ease-out_0.2s_forwards]">
-                        製造業の受発注業務を革新するクラウドサービス。AIが注文書からテキスト情報を自動抽出して入力の手間を大幅削減。図面データも紐付けて管理できるため、現場でのペーパーレス化を実現します。
+                        製造現場を刷新するDXクラウドサービス。AIが注文書から項目を自動抽出し、高度な図面検索で過去の知見を瞬時に活用。町工場のペーパーレス化と見積精度の向上を強力に支援します。
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 opacity-0 animate-[fade-in-up_0.8s_ease-out_0.3s_forwards]">
                         <Link
@@ -103,7 +103,7 @@ export default function LandingPage() {
                     <div className="absolute top-1/2 left-0 -translate-y-1/2 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none"></div>
                     <div className="text-center mb-16 relative z-10">
                         <h2 className="text-3xl md:text-5xl font-black text-white mb-6">こんなお困りごとないですか？</h2>
-                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">製造現場の「当たり前」になってしまっている非効率。AiZumenが変えます。</p>
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">町工場や製造現場の「当たり前」になってしまっている非効率。AiZumenがDXで変えます。</p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-8 relative z-10">
@@ -158,7 +158,7 @@ export default function LandingPage() {
                             SIMPLE WORKFLOW
                         </div>
                         <h2 className="text-3xl md:text-5xl font-black text-white mb-6">利用の流れ</h2>
-                        <p className="text-lg text-slate-400 md:max-w-2xl mx-auto">わずか3ステップ。注文書の処理から現場の図面確認・工程管理まで、すべての業務がブラウザ上で完結します。</p>
+                        <p className="text-lg text-slate-400 md:max-w-2xl mx-auto">わずか3ステップ。注文書の処理からAI図面検索、工程管理まで、すべての業務のDXがブラウザ上で完結します。</p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-8 relative mt-12">
