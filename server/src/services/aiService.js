@@ -93,92 +93,78 @@ class AIService {
      */
     async generateText(prompt, fileBuffer, mimeType, additionalImages = []) {
         if (!this.model) throw new Error('AI Service not initialized');
-        const timestamp = new Date().toISOString();
+        const MAX_RETRIES = 3;
+        let retryCount = 0;
 
-        console.log(`[AIService][${timestamp}] --- NEW REQUEST ---`);
-        console.log(`[AIService][${timestamp}] Mode: ${this.mode}`);
-        console.log(`[AIService][${timestamp}] Model Name: ${this.model.model}`);
+        const executeRequest = async () => {
+            const timestamp = new Date().toISOString();
+            logService.debug(`[AIService][${timestamp}] Request to ${this.mode} (Retry: ${retryCount})`);
 
-        try {
-            // SDK response extraction
-            if (this.mode.includes('Vertex')) {
-                const parts = [{ text: prompt }];
-                
-                if (fileBuffer && mimeType) {
-                    parts.push({
-                        inlineData: {
-                            data: fileBuffer.toString('base64'),
-                            mimeType: mimeType
-                        }
+            try {
+                if (this.mode.includes('Vertex')) {
+                    const parts = [{ text: prompt }];
+                    
+                    if (fileBuffer && mimeType) {
+                        parts.push({
+                            inlineData: {
+                                data: fileBuffer.toString('base64'),
+                                mimeType: mimeType
+                            }
+                        });
+                    }
+
+                    for (const img of additionalImages) {
+                        parts.push({
+                            inlineData: {
+                                data: img.buffer.toString('base64'),
+                                mimeType: img.mimeType
+                            }
+                        });
+                    }
+
+                    const response = await this.model.generateContent({
+                        contents: [{ role: 'user', parts }]
                     });
+                    
+                    if (!response || !response.response) throw new Error('AI response is empty');
+                    const candidates = response.response.candidates;
+                    if (!candidates || candidates.length === 0) {
+                        throw new Error('AI returned no response candidates (possibly blocked by safety filters)');
+                    }
+                    const text = candidates[0].content?.parts?.[0]?.text;
+                    if (!text) throw new Error('AI response candidate has no text parts');
+                    return text;
+                } else {
+                    const parts = [prompt];
+                    if (fileBuffer && mimeType) {
+                        parts.push({ inlineData: { data: fileBuffer.toString('base64'), mimeType } });
+                    }
+                    for (const img of additionalImages) {
+                        parts.push({ inlineData: { data: img.buffer.toString('base64'), mimeType: img.mimeType } });
+                    }
+                    const response = await this.model.generateContent(parts);
+                    return response.response.text();
+                }
+            } catch (error) {
+                // 429 (Rate Limit / Resource Exhausted) の判定
+                const isRateLimit = error.message?.includes('429') || 
+                                   error.message?.includes('RESOURCE_EXHAUSTED') ||
+                                   error.status === 429;
+
+                if (isRateLimit && retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    const waitTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
+                    console.warn(`[AIService] Rate limit hit. Retrying in ${waitTime}ms... (Attempt ${retryCount}/${MAX_RETRIES})`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    return executeRequest();
                 }
 
-                for (const [idx, img] of additionalImages.entries()) {
-                    logService.debug(`[AIService] (Vertex AI) Adding additional image ${idx}: ${img.buffer?.length} bytes, type ${img.mimeType}`);
-                    parts.push({
-                        inlineData: {
-                            data: img.buffer.toString('base64'),
-                            mimeType: img.mimeType
-                        }
-                    });
-                }
-
-                const request = {
-                    contents: [{ role: 'user', parts }]
-                };
-
-                logService.debug(`[AIService] Sending request to Vertex AI...`);
-                const response = await this.model.generateContent(request);
-                
-                // --- Safety Guard ---
-                if (!response || !response.response) {
-                    throw new Error('AI response is empty');
-                }
-                const candidates = response.response.candidates;
-                if (!candidates || candidates.length === 0) {
-                    // Gemini might block content for safety reasons
-                    console.warn('[AIService] Vertex AI returned no candidates. This usually means the content was blocked by safety filters.');
-                    throw new Error('AI returned no response candidates (possibly blocked by safety filters)');
-                }
-                const firstPart = candidates[0].content?.parts?.[0];
-                if (!firstPart || !firstPart.text) {
-                    throw new Error('AI response candidate has no text parts');
-                }
-                // -------------------
-
-                return firstPart.text;
-            } else {
-                // Google AI SDK (Development) format
-                const parts = [prompt];
-
-                if (fileBuffer && mimeType) {
-                    parts.push({
-                        inlineData: {
-                            data: fileBuffer.toString('base64'),
-                            mimeType: mimeType
-                        }
-                    });
-                }
-
-                for (const [idx, img] of additionalImages.entries()) {
-                    logService.debug(`[AIService] (Google AI) Adding additional image ${idx}: ${img.buffer?.length} bytes, type ${img.mimeType}`);
-                    parts.push({
-                        inlineData: {
-                            data: img.buffer.toString('base64'),
-                            mimeType: img.mimeType
-                        }
-                    });
-                }
-
-                const response = await this.model.generateContent(parts);
-                const text = response.response.text();
-                return text;
+                logService.error(`[AIService] Error after ${retryCount} retries: ${error.message}`);
+                throw error;
             }
-        } catch (error) {
-            logService.debug(`[AIService] CRITICAL ERROR in generateText: ${error.message}`);
-            if (error.stack) logService.debug(`[AIService] Error Stack: ${error.stack}`);
-            throw error;
-        }
+        };
+
+        return executeRequest();
     }
 
     /**
