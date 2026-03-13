@@ -2,104 +2,15 @@ import { useMemo } from 'react';
 import { TrendingUp, FileCheck, Activity, AlertCircle, CalendarDays } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export default function DashboardMetrics({ quotations, hourlyRate = 8000, filterMonth = null }) {
+export default function DashboardMetrics({ stats, filterMonth = null }) {
     const metrics = useMemo(() => {
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-
-        // フィルタリング対象の案件を抽出
-        const filteredQuotations = filterMonth === 'current' 
-            ? quotations.filter(q => {
-                const date = new Date(q.createdAt);
-                return date.getFullYear() === currentYear && date.getMonth() === currentMonth;
-            })
-            : quotations;
-
-        const total = filteredQuotations.length;
-        const ordered = filteredQuotations.filter(q => q.status === 'ordered').length;
-        const delivered = filteredQuotations.filter(q => q.status === 'delivered').length;
-        const lost = filteredQuotations.filter(q => q.status === 'lost').length;
-        const pending = filteredQuotations.filter(q => q.status === 'pending').length;
-
-        const totalCount = ordered + delivered + lost + pending;
-        const winRate = totalCount > 0 ? Math.round(((ordered + delivered) / totalCount) * 100) : 0;
-
-        const calculateAmount = (quotes, filterType = 'delivery') => {
-            return quotes.reduce((sum, q) => {
-                let qTotal = 0;
-                if (q.items && q.items.length > 0) {
-                    qTotal = q.items.reduce((s, i) => {
-                        // 今月フィルタが有効な場合の判定
-                        if (filterMonth === 'current') {
-                            if (filterType === 'creation') {
-                                // 検討中などは「作成日」が今月のものを対象にする
-                                const cDate = new Date(q.createdAt);
-                                if (cDate.getFullYear() !== currentYear || cDate.getMonth() !== currentMonth) {
-                                    return s;
-                                }
-                            } else {
-                                // 売上などは「納品日/納期」が今月のものを対象にする
-                                const dDate = i.deliveryDate ? new Date(i.deliveryDate) : (i.dueDate ? new Date(i.dueDate) : null);
-                                if (!dDate || dDate.getFullYear() !== currentYear || dDate.getMonth() !== currentMonth) {
-                                    return s;
-                                }
-                            }
-                        }
-                        const cost = (Number(i.processingCost) || 0) + (Number(i.materialCost) || 0) + (Number(i.otherCost) || 0);
-                        const qty = Number(i.quantity) || 1;
-                        return s + (cost * qty);
-                    }, 0);
-                }
-                return sum + qTotal;
-            }, 0);
+        if (!stats) return {
+            winRate: 0, pending: 0, ordered: 0, delivered: 0, lost: 0,
+            salesAmount: 0, pendingAmount: 0, orderedVariance: 0, orderedVariancePct: 0
         };
 
-        const salesAmount = calculateAmount(quotations.filter(q => q.status === 'ordered' || q.status === 'delivered'), 'delivery');
-        const pendingAmount = calculateAmount(quotations.filter(q => q.status !== 'ordered' && q.status !== 'lost' && q.status !== 'delivered'), 'creation');
-
-        // Calculate Budget vs Actual (Processing ONLY)
-        const targetQuotes = filterMonth === 'current' 
-            ? quotations.filter(q => (q.status === 'ordered' || q.status === 'delivered'))
-            : quotations.filter(q => q.status === 'ordered');
-
-        let orderedProcEstTotal = 0;
-        let orderedProcActTotal = 0;
-        let orderedHasActuals = false;
-
-        targetQuotes.forEach(q => {
-            if (q.items && q.items.length > 0) {
-                q.items.forEach(i => {
-                    // 収支差も「売上」の対象（今月納品/予定）に絞る
-                    if (filterMonth === 'current') {
-                        const dDate = i.deliveryDate ? new Date(i.deliveryDate) : (i.dueDate ? new Date(i.dueDate) : null);
-                        if (!dDate || dDate.getFullYear() !== currentYear || dDate.getMonth() !== currentMonth) {
-                            return;
-                        }
-                    }
-
-                    const qty = Number(i.quantity) || 1;
-                    orderedProcEstTotal += (Number(i.processingCost) || 0) * qty;
-
-                    const actHours = Number(i.actualHours) || 0;
-                    if (actHours > 0) {
-                        orderedProcActTotal += Math.round(actHours * hourlyRate);
-                        orderedHasActuals = true;
-                    }
-                });
-            }
-        });
-
-        const orderedVariance = orderedProcActTotal - orderedProcEstTotal;
-        const orderedVariancePct = orderedProcEstTotal > 0 ? (orderedVariance / orderedProcEstTotal) * 100 : 0;
-
-        return {
-            total, ordered, delivered, lost, pending, winRate,
-            salesAmount, pendingAmount,
-            orderedProcEstTotal, orderedProcActTotal,
-            orderedHasActuals, orderedVariance, orderedVariancePct
-        };
-    }, [quotations, hourlyRate, filterMonth]);
+        return filterMonth === 'current' ? stats.currentMonth : stats.allTime;
+    }, [stats, filterMonth]);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

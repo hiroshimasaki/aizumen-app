@@ -151,15 +151,23 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
 
 /**
  * GET /api/quotations/stats
- * ダッシュボード統計パネル用の軽量データ取得
+ * ダッシュボード統計パネル用の集計済みデータ取得
  */
 router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
+        // テナントの基本情報を取得（時給計算用）
+        const { data: tenant, error: tenantError } = await supabaseAdmin
+            .from('tenants')
+            .select('hourly_rate')
+            .eq('id', req.tenantId)
+            .single();
+
+        const hourlyRate = tenant?.hourly_rate || 8000;
+
         // 統計に必要な最小限のフィールドのみを取得（1000件リミット）
         const { data, error } = await supabaseAdmin
             .from('quotations')
             .select(`
-                id,
                 status,
                 created_at,
                 quotation_items (
@@ -168,15 +176,97 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
                     other_cost,
                     quantity,
                     delivery_date,
-                    due_date
+                    due_date,
+                    actual_hours
                 )
             `)
             .eq('tenant_id', req.tenantId)
             .eq('is_deleted', false)
+            .order('created_at', { ascending: false })
             .limit(1000);
 
         if (error) throw new AppError('Failed to fetch stats data', 500, 'FETCH_FAILED');
-        res.json(data);
+
+        // 集計ロジックをサーバーサイドに移行
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth();
+
+        const initializeMetrics = () => ({
+            total: 0, ordered: 0, delivered: 0, lost: 0, pending: 0,
+            salesAmount: 0, pendingAmount: 0,
+            orderedProcEstTotal: 0, orderedProcActTotal: 0,
+            orderedHasActuals: false
+        });
+
+        const allTime = initializeMetrics();
+        const currentMonth = initializeMetrics();
+
+        data.forEach(q => {
+            const qDate = new Date(q.created_at);
+            const isQInCurMonth = qDate.getFullYear() === curYear && qDate.getMonth() === curMonth;
+
+            // 状態カウント
+            allTime.total++;
+            if (isQInCurMonth) currentMonth.total++;
+
+            if (q.status === 'ordered') { allTime.ordered++; if (isQInCurMonth) currentMonth.ordered++; }
+            else if (q.status === 'delivered') { allTime.delivered++; if (isQInCurMonth) currentMonth.delivered++; }
+            else if (q.status === 'lost') { allTime.lost++; if (isQInCurMonth) currentMonth.lost++; }
+            else if (q.status === 'pending') { allTime.pending++; if (isQInCurMonth) currentMonth.pending++; }
+
+            const items = q.quotation_items || [];
+            items.forEach(i => {
+                const qty = Number(i.quantity) || 1;
+                const cost = (Number(i.processing_cost) || 0) + (Number(i.material_cost) || 0) + (Number(i.other_cost) || 0);
+                const totalCost = cost * qty;
+
+                const dDateStr = i.delivery_date || i.due_date;
+                const dDate = dDateStr ? new Date(dDateStr) : null;
+                const isDInCurMonth = dDate && dDate.getFullYear() === curYear && dDate.getMonth() === curMonth;
+
+                // 売上集計 (ordered or delivered)
+                if (q.status === 'ordered' || q.status === 'delivered') {
+                    allTime.salesAmount += totalCost;
+                    if (isDInCurMonth) currentMonth.salesAmount += totalCost;
+
+                    // 加工費収支 (ordered のみ、今月フィルタは納期/納品日で判定)
+                    if (q.status === 'ordered') {
+                        const estProc = (Number(i.processing_cost) || 0) * qty;
+                        const actHours = Number(i.actual_hours) || 0;
+                        const actProc = actHours > 0 ? Math.round(actHours * hourlyRate) : 0;
+
+                        allTime.orderedProcEstTotal += estProc;
+                        allTime.orderedProcActTotal += actProc;
+                        if (actHours > 0) allTime.orderedHasActuals = true;
+
+                        if (isDInCurMonth) {
+                            currentMonth.orderedProcEstTotal += estProc;
+                            currentMonth.orderedProcActTotal += actProc;
+                            if (actHours > 0) currentMonth.orderedHasActuals = true;
+                        }
+                    }
+                } 
+                // 検討中残高
+                else if (q.status !== 'lost') {
+                    allTime.pendingAmount += totalCost;
+                    if (isQInCurMonth) currentMonth.pendingAmount += totalCost;
+                }
+            });
+        });
+
+        // 勝率等の算出
+        const finalize = (m) => {
+            const totalCount = m.ordered + m.delivered + m.lost + m.pending;
+            m.winRate = totalCount > 0 ? Math.round(((m.ordered + m.delivered) / totalCount) * 100) : 0;
+            m.orderedVariance = m.orderedProcActTotal - m.orderedProcEstTotal;
+            m.orderedVariancePct = m.orderedProcEstTotal > 0 ? (m.orderedVariance / m.orderedProcEstTotal) * 100 : 0;
+        };
+
+        finalize(allTime);
+        finalize(currentMonth);
+
+        res.json({ allTime, currentMonth });
     } catch (err) {
         next(err);
     }

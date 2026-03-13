@@ -18,7 +18,7 @@ export default function QuotationsPage() {
     const { showAlert, showConfirm } = useNotification();
 
     const [quotations, setQuotations] = useState([]);
-    const [allQuotations, setAllQuotations] = useState([]); // For metrics tracking
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -111,23 +111,10 @@ export default function QuotationsPage() {
             setTotalCount(data.total);
 
             // Fetch all for metrics calculation (only non-deleted)
-            // Fetch all for metrics calculation (only non-deleted) - Use lightweight stats API
+            // Fetch stats (aggregated by server)
             if (!showDeleted) {
-                const { data: allData } = await api.get('/api/quotations/stats');
-                const mappedStats = allData.map(q => ({
-                    id: q.id,
-                    status: q.status,
-                    createdAt: q.created_at,
-                    items: (q.quotation_items || []).map(i => ({
-                        processingCost: i.processing_cost,
-                        materialCost: i.material_cost,
-                        otherCost: i.other_cost,
-                        quantity: i.quantity,
-                        deliveryDate: i.delivery_date,
-                        dueDate: i.due_date
-                    }))
-                }));
-                setAllQuotations(mappedStats);
+                const { data: statsData } = await api.get('/api/quotations/stats');
+                setStats(statsData);
             }
         } catch (err) {
             console.error('Failed to fetch quotations:', err);
@@ -531,8 +518,7 @@ export default function QuotationsPage() {
                         </div>
                     </div>
                     <DashboardMetrics 
-                        quotations={allQuotations} 
-                        hourlyRate={tenant?.hourly_rate || 8000} 
+                        stats={stats} 
                         filterMonth={filterPeriod}
                     />
                 </div>
