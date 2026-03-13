@@ -324,6 +324,7 @@ export default function QuotationsPage() {
     const shouldStopRef = useRef(false);
 
     const handleStartBulkAnalyze = async () => {
+        console.log('>>> [BulkAnalysis] handleStartBulkAnalyze TRIGGERED');
         if (bulkFiles.length === 0) return;
 
         setIsBulkAnalyzing(true);
@@ -345,6 +346,7 @@ export default function QuotationsPage() {
                 continue;
             }
 
+            console.log(`>>> [BulkAnalysis] Starting file: ${file.name}`);
             setBulkStatuses(prev => ({ ...prev, [file.name]: 'analyzing' }));
 
             try {
@@ -452,7 +454,10 @@ export default function QuotationsPage() {
                 setBulkStatuses(prev => ({ ...prev, [file.name]: 'completed' }));
                 successCount++;
             } catch (err) {
-                console.error(`Error processing bulk file ${file.name}:`, err);
+                console.error(`>>> [BulkAnalysis] Error processing bulk file ${file.name}:`, err);
+                if (err.response) {
+                    console.error('>>> [BulkAnalysis] API Error Response:', err.response.data);
+                }
                 setBulkStatuses(prev => ({ ...prev, [file.name]: 'error' }));
             }
 
