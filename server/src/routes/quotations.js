@@ -573,64 +573,73 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
             }
         }
 
-        // 変更履歴に新規作成を追加
-        await supabaseAdmin.from('quotation_history').insert({
-            quotation_id: quotation.id,
-            tenant_id: req.tenantId,
-            changed_by: req.user.id,
-            change_type: 'created',
-            changes: { message: '案件が新規登録されました' }
-        });
+        console.log('[Quotations] Created successfully');
+        res.status(201).json(quotation);
 
-        // 転用元ファイルの物理コピー
-        if (copyFileIds && copyFileIds.length > 0) {
-            console.log(`[Quotations] Copying ${copyFileIds.length} files...`);
-            for (const fileId of copyFileIds) {
-                const { data: sf } = await supabaseAdmin
-                    .from('quotation_files')
-                    .select('*')
-                    .eq('id', fileId)
-                    .eq('tenant_id', req.tenantId)
-                    .single();
+        // --- 以降はレスポンス返却後のバックグラウンド処理 ---
+        (async () => {
+            try {
+                // 変更履歴に新規作成を追加
+                await supabaseAdmin.from('quotation_history').insert({
+                    quotation_id: quotation.id,
+                    tenant_id: req.tenantId,
+                    changed_by: req.user.id,
+                    change_type: 'created',
+                    changes: { message: '案件が新規登録されました' }
+                });
 
-                if (sf) {
-                    const newFileId = uuidv4();
-                    const ext = sf.original_name.split('.').pop();
-                    const newStoragePath = `${req.tenantId}/${newId}/${newFileId}.${ext}`;
+                // 転用元ファイルの物理コピー
+                if (copyFileIds && copyFileIds.length > 0) {
+                    console.log(`[Quotations] Background: Copying ${copyFileIds.length} files...`);
+                    for (const fileId of copyFileIds) {
+                        const { data: sf } = await supabaseAdmin
+                            .from('quotation_files')
+                            .select('*')
+                            .eq('id', fileId)
+                            .eq('tenant_id', req.tenantId)
+                            .single();
 
-                    const { error: copyErr } = await supabaseAdmin.storage
-                        .from('quotation-files')
-                        .copy(sf.storage_path, newStoragePath);
+                        if (sf) {
+                            const newFileId = uuidv4();
+                            const ext = sf.original_name.split('.').pop();
+                            const newStoragePath = `${req.tenantId}/${newId}/${newFileId}.${ext}`;
 
-                    if (!copyErr) {
-                        await supabaseAdmin.from('quotation_files').insert({
-                            id: newFileId,
-                            quotation_id: newId,
-                            tenant_id: req.tenantId,
-                            storage_path: newStoragePath,
-                            original_name: sf.original_name,
-                            file_hash: sf.file_hash,
-                            file_size: sf.file_size,
-                            mime_type: sf.mime_type,
-                            file_type: sf.file_type
-                        });
-                    } else {
-                        console.error('[Quotations] File copy failed:', copyErr);
+                            const { error: copyErr } = await supabaseAdmin.storage
+                                .from('quotation-files')
+                                .copy(sf.storage_path, newStoragePath);
+
+                            if (!copyErr) {
+                                await supabaseAdmin.from('quotation_files').insert({
+                                    id: newFileId,
+                                    quotation_id: newId,
+                                    tenant_id: req.tenantId,
+                                    storage_path: newStoragePath,
+                                    original_name: sf.original_name,
+                                    file_hash: sf.file_hash,
+                                    file_size: sf.file_size,
+                                    mime_type: sf.mime_type,
+                                    file_type: sf.file_type
+                                });
+                            } else {
+                                console.error('[Quotations] Background: File copy failed:', copyErr);
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        console.log('[Quotations] Created successfully');
-        await logService.audit({
-            action: 'quotation_created',
-            entityType: 'quotation',
-            entityId: quotation.id,
-            description: `案件新規作成: ${displayId}`,
-            tenantId: req.tenantId,
-            userId: req.userId
-        });
-        res.status(201).json(quotation);
+                await logService.audit({
+                    action: 'quotation_created',
+                    entityType: 'quotation',
+                    entityId: quotation.id,
+                    description: `案件新規作成: ${displayId}`,
+                    tenantId: req.tenantId,
+                    userId: req.userId
+                });
+                console.log(`[Quotations] Background cleanup complete for ${newId}`);
+            } catch (bgErr) {
+                console.error('[Quotations] Background task error:', bgErr);
+            }
+        })();
     } catch (err) {
         console.error('[Quotations] FATAL ERROR in POST /:', err);
         next(err);
@@ -714,41 +723,6 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             }
         }
 
-        // 転用元ファイルの物理コピー (PUT時)
-        if (copyFileIds && copyFileIds.length > 0) {
-            for (const fileId of copyFileIds) {
-                const { data: sf } = await supabaseAdmin
-                    .from('quotation_files')
-                    .select('*')
-                    .eq('id', fileId)
-                    .eq('tenant_id', req.tenantId)
-                    .single();
-
-                if (sf) {
-                    const newFileId = require('uuid').v4();
-                    const ext = sf.original_name.split('.').pop();
-                    const newStoragePath = `${req.tenantId}/${id}/${newFileId}.${ext}`;
-
-                    const { error: copyErr } = await supabaseAdmin.storage
-                        .from('quotation-files')
-                        .copy(sf.storage_path, newStoragePath);
-
-                    if (!copyErr) {
-                        await supabaseAdmin.from('quotation_files').insert({
-                            id: newFileId,
-                            quotation_id: id,
-                            tenant_id: req.tenantId,
-                            storage_path: newStoragePath,
-                            original_name: sf.original_name,
-                            file_hash: sf.file_hash,
-                            file_size: sf.file_size,
-                            mime_type: sf.mime_type,
-                            file_type: sf.file_type
-                        });
-                    }
-                }
-            }
-        }
 
         // 変更履歴
         const changes = {};
@@ -827,28 +801,69 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
         // 先にクライアントにレスポンスを返す
         res.json(updated);
 
-        // 重い事後処理（履歴・監査ログ）はレスポンス後に非同期で実行
+        // 重い事後処理（図面コピー・履歴・監査ログ）はレスポンス後に非同期で実行
         (async () => {
-            if (Object.keys(changes).length > 0) {
-                await supabaseAdmin.from('quotation_history').insert({
-                    quotation_id: id,
-                    tenant_id: req.tenantId,
-                    changed_by: req.user.id,
-                    change_type: 'updated',
-                    changes,
-                });
-            }
+            try {
+                // 転用元ファイルの物理コピー (PUT時)
+                if (copyFileIds && copyFileIds.length > 0) {
+                    console.log(`[Quotations] Background: Copying ${copyFileIds.length} files during update...`);
+                    for (const fileId of copyFileIds) {
+                        const { data: sf } = await supabaseAdmin
+                            .from('quotation_files')
+                            .select('*')
+                            .eq('id', fileId)
+                            .eq('tenant_id', req.tenantId)
+                            .single();
 
-            await logService.audit({
-                action: 'quotation_updated',
-                entityType: 'quotation',
-                entityId: id,
-                description: `案件情報更新: ${updated.display_id}`,
-                tenantId: req.tenantId,
-                userId: req.userId
-            });
+                        if (sf) {
+                            const newFileId = require('uuid').v4();
+                            const ext = sf.original_name.split('.').pop();
+                            const newStoragePath = `${req.tenantId}/${id}/${newFileId}.${ext}`;
+
+                            const { error: copyErr } = await supabaseAdmin.storage
+                                .from('quotation-files')
+                                .copy(sf.storage_path, newStoragePath);
+
+                            if (!copyErr) {
+                                await supabaseAdmin.from('quotation_files').insert({
+                                    id: newFileId,
+                                    quotation_id: id,
+                                    tenant_id: req.tenantId,
+                                    storage_path: newStoragePath,
+                                    original_name: sf.original_name,
+                                    file_hash: sf.file_hash,
+                                    file_size: sf.file_size,
+                                    mime_type: sf.mime_type,
+                                    file_type: sf.file_type
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (Object.keys(changes).length > 0) {
+                    await supabaseAdmin.from('quotation_history').insert({
+                        quotation_id: id,
+                        tenant_id: req.tenantId,
+                        changed_by: req.user.id,
+                        change_type: 'updated',
+                        changes,
+                    });
+                }
+
+                await logService.audit({
+                    action: 'quotation_updated',
+                    entityType: 'quotation',
+                    entityId: id,
+                    description: `案件情報更新: ${updated.display_id}`,
+                    tenantId: req.tenantId,
+                    userId: req.userId
+                });
+            } catch (bgErr) {
+                console.error('[Quotations] Background task error (PUT):', bgErr);
+            }
         })().catch(err => {
-            console.error('[Quotations] Background task error:', err);
+            console.error('[Quotations] Background task error (Outer):', err);
         });
 
     } catch (err) {
