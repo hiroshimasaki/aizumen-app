@@ -11,6 +11,7 @@ import QuotationList from '../components/QuotationList';
 import QuotationForm from '../components/QuotationForm';
 import QuotationPrintView from '../components/QuotationPrintView';
 import DashboardMetrics from '../components/DashboardMetrics';
+import { splitPdf } from '../utils/pdfSplitter';
 
 export default function QuotationsPage() {
     const { isAdmin, tenant, setCredits } = useAuth();
@@ -409,11 +410,35 @@ export default function QuotationsPage() {
 
                 const { data: newQuote } = await api.post('/api/quotations', quotationPayload);
 
-                // 4. Upload File
+                // 4. Split and Upload Files
                 if (newQuote && newQuote.id) {
                     const formData = new FormData();
                     formData.append('quotationId', newQuote.id);
-                    formData.append('files', file);
+
+                    const orderFormPages = (ocrData.pageClassifications || [])
+                        .filter(p => p.type === 'order_form').map(p => p.page);
+                    const drawingPages = (ocrData.pageClassifications || [])
+                        .filter(p => p.type === 'drawing').map(p => p.page);
+
+                    const suffix = quotationPayload.orderNumber ? `_${quotationPayload.orderNumber}` : '';
+                    let splitUploaded = false;
+                    
+                    if (orderFormPages.length > 0) {
+                        const blob = await splitPdf(file, orderFormPages);
+                        if (blob) {
+                            formData.append('files', new File([blob], `注文書${suffix}.pdf`, { type: 'application/pdf' }));
+                            splitUploaded = true;
+                        }
+                    }
+                    if (drawingPages.length > 0) {
+                        const blob = await splitPdf(file, drawingPages);
+                        if (blob) {
+                            formData.append('files', new File([blob], `図面${suffix}.pdf`, { type: 'application/pdf' }));
+                            splitUploaded = true;
+                        }
+                    }
+
+                    if (!splitUploaded) formData.append('files', file);
 
                     await api.post('/api/files/upload', formData, {
                         headers: { 'Content-Type': 'multipart/form-data' }
