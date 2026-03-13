@@ -412,6 +412,7 @@ export default function QuotationsPage() {
 
                 // 4. Split and Upload Files
                 if (newQuote && newQuote.id) {
+                    console.log('[BulkAnalysis] OCR Data:', ocrData);
                     const formData = new FormData();
                     formData.append('quotationId', newQuote.id);
 
@@ -420,10 +421,13 @@ export default function QuotationsPage() {
                     const drawingPages = (ocrData.pageClassifications || [])
                         .filter(p => p.type === 'drawing').map(p => p.page);
 
+                    console.log('[BulkAnalysis] Split Decision:', { orderFormPages, drawingPages });
+
                     const suffix = quotationPayload.orderNumber ? `_${quotationPayload.orderNumber}` : '';
                     let splitUploaded = false;
                     
                     if (orderFormPages.length > 0) {
+                        console.log('[BulkAnalysis] Splitting Order Form:', orderFormPages);
                         const blob = await splitPdf(file, orderFormPages);
                         if (blob) {
                             formData.append('files', new File([blob], `注文書${suffix}.pdf`, { type: 'application/pdf' }));
