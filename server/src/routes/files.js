@@ -122,10 +122,12 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
             const isPdf = contentType === 'application/pdf' || originalName.toLowerCase().endsWith('.pdf');
 
             if (quotationId && (isPdf || isImage)) {
-                // 重い処理のため、レスポンスを待たずに非同期で実行（バックグラウンド処理）
-                drawingSearchService.registerDrawing(quotationId, fileId, req.tenantId, file.buffer, contentType)
-                    .then(() => console.log(`[Files] Background indexing complete for ${fileId}`))
-                    .catch(err => console.error(`[Files] Background indexing failed for ${fileId}:`, err));
+                // 重い処理のため、ジョブキューに登録して1件ずつバックグラウンドで処理
+                const jobQueueService = require('../services/jobQueueService');
+                jobQueueService.enqueue(
+                    () => drawingSearchService.registerDrawing(quotationId, fileId, req.tenantId, file.buffer, contentType),
+                    `DrawIndexing:${fileId}`
+                ).catch(err => console.error(`[Files] Background indexing failed for ${fileId}:`, err));
             }
         }
 
@@ -230,38 +232,38 @@ router.get('/thumbnail/:id', authMiddleware, async (req, res, next) => {
         }
 
         // 3. 元ファイルをダウンロードして画像生成
-        const { data: fileData, error: dlErr } = await supabaseAdmin.storage
-            .from('quotation-files')
-            .download(fileMeta.storage_path);
+        const jobQueueService = require('../services/jobQueueService');
+        const signedUrlData = await jobQueueService.enqueue(async () => {
+            const { data: fileData, error: dlErr } = await supabaseAdmin.storage
+                .from('quotation-files')
+                .download(fileMeta.storage_path);
 
-        if (dlErr || !fileData) {
-            throw new AppError('Original file not found in storage', 404, 'STORAGE_NOT_FOUND');
-        }
+            if (dlErr || !fileData) {
+                throw new AppError('Original file not found in storage', 404, 'STORAGE_NOT_FOUND');
+            }
 
-        const buffer = Buffer.from(await fileData.arrayBuffer());
-        const { preprocessImage } = require('../services/ai/imageService');
-        
-        // 1ページ目を画像化
-        const processedBuffer = await preprocessImage(buffer, fileMeta.mime_type);
+            const buffer = Buffer.from(await fileData.arrayBuffer());
+            const { preprocessImage } = require('../services/ai/imageService');
+            
+            // 1ページ目を画像化
+            const processedBuffer = await preprocessImage(buffer, fileMeta.mime_type);
 
-        // 4. サムネイルを保存
-        await supabaseAdmin.storage
-            .from('quotation-files')
-            .upload(thumbnailPath, processedBuffer, {
-                contentType: 'image/png',
-                upsert: true
-            });
+            // 4. サムネイルを保存
+            await supabaseAdmin.storage
+                .from('quotation-files')
+                .upload(thumbnailPath, processedBuffer, {
+                    contentType: 'image/png',
+                    upsert: true
+                });
 
-        // 5. 署名付きURLを返す
-        const { data: signedUrlData, error: signedUrlErr } = await supabaseAdmin.storage
-            .from('quotation-files')
-            .createSignedUrl(thumbnailPath, 3600);
-
-        if (signedUrlErr || !signedUrlData) {
-            console.error('[Files/Thumbnail] Failed to create signed URL:', signedUrlErr);
-            // URLが取得できない場合はエラーとする（クライアント側でリトライ可能）
-            throw new AppError('Failed to create signed URL', 500, 'SIGNED_URL_FAILED');
-        }
+            // 5. 署名付きURLを生成して返す
+            const { data: sUrl, error: sErr } = await supabaseAdmin.storage
+                .from('quotation-files')
+                .createSignedUrl(thumbnailPath, 3600);
+            
+            if (sErr || !sUrl) throw new AppError('Failed to create signed URL', 500, 'SIGNED_URL_FAILED');
+            return sUrl;
+        }, `ThumbGen:${fileId}`);
 
         res.json({ url: signedUrlData.signedUrl });
 
