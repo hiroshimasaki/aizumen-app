@@ -155,19 +155,10 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
  */
 router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
-        // テナントの基本情報を取得（時給計算用）
-        const { data: tenant, error: tenantError } = await supabaseAdmin
-            .from('tenants')
-            .select('hourly_rate')
-            .eq('id', req.tenantId)
-            .single();
-
-        const hourlyRate = tenant?.hourly_rate || 8000;
-
-        // 統計に必要な最小限のフィールドのみを取得（1000件リミット）
-        const { data, error } = await supabaseAdmin
-            .from('quotations')
-            .select(`
+        // テナント情報と案件データを並列で取得
+        const [tenantRes, quotesRes] = await Promise.all([
+            supabaseAdmin.from('tenants').select('hourly_rate').eq('id', req.tenantId).single(),
+            supabaseAdmin.from('quotations').select(`
                 status,
                 created_at,
                 quotation_items (
@@ -183,9 +174,12 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
             .eq('tenant_id', req.tenantId)
             .eq('is_deleted', false)
             .order('created_at', { ascending: false })
-            .limit(1000);
+            .limit(1000)
+        ]);
 
-        if (error) throw new AppError('Failed to fetch stats data', 500, 'FETCH_FAILED');
+        if (quotesRes.error) throw new AppError('Failed to fetch stats data', 500, 'FETCH_FAILED');
+        const hourlyRate = tenantRes.data?.hourly_rate || 8000;
+        const data = quotesRes.data || [];
 
         // 集計ロジックをサーバーサイドに移行
         const now = new Date();
@@ -830,26 +824,33 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             }
         }
 
-        if (Object.keys(changes).length > 0) {
-            await supabaseAdmin.from('quotation_history').insert({
-                quotation_id: id,
-                tenant_id: req.tenantId,
-                changed_by: req.user.id,
-                change_type: 'updated',
-                changes,
-            });
-        }
+        // 先にクライアントにレスポンスを返す
+        res.json(updated);
 
-        await logService.audit({
-            action: 'quotation_updated',
-            entityType: 'quotation',
-            entityId: id,
-            description: `案件情報更新: ${updated.display_id}`,
-            tenantId: req.tenantId,
-            userId: req.userId
+        // 重い事後処理（履歴・監査ログ）はレスポンス後に非同期で実行
+        (async () => {
+            if (Object.keys(changes).length > 0) {
+                await supabaseAdmin.from('quotation_history').insert({
+                    quotation_id: id,
+                    tenant_id: req.tenantId,
+                    changed_by: req.user.id,
+                    change_type: 'updated',
+                    changes,
+                });
+            }
+
+            await logService.audit({
+                action: 'quotation_updated',
+                entityType: 'quotation',
+                entityId: id,
+                description: `案件情報更新: ${updated.display_id}`,
+                tenantId: req.tenantId,
+                userId: req.userId
+            });
+        })().catch(err => {
+            console.error('[Quotations] Background task error:', err);
         });
 
-        res.json(updated);
     } catch (err) {
         next(err);
     }

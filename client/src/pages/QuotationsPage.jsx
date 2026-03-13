@@ -64,8 +64,14 @@ export default function QuotationsPage() {
             if (statusFilter) params.append('status', statusFilter);
             if (showDeleted) params.append('showDeleted', 'true');
 
-            const { data } = await api.get(`/api/quotations?${params.toString()}`);
-            // ... mapQuote remains the same ...
+            const promises = [api.get(`/api/quotations?${params.toString()}`)];
+            if (!showDeleted) {
+                promises.push(api.get('/api/quotations/stats'));
+            }
+
+            const results = await Promise.all(promises);
+            const { data } = results[0];
+
             const mapQuote = (q) => ({
                 id: q.id,
                 displayId: q.display_id,
@@ -110,11 +116,8 @@ export default function QuotationsPage() {
             setTotalPages(data.totalPages);
             setTotalCount(data.total);
 
-            // Fetch all for metrics calculation (only non-deleted)
-            // Fetch stats (aggregated by server)
-            if (!showDeleted) {
-                const { data: statsData } = await api.get('/api/quotations/stats');
-                setStats(statsData);
+            if (!showDeleted && results[1]) {
+                setStats(results[1].data);
             }
         } catch (err) {
             console.error('Failed to fetch quotations:', err);
@@ -197,13 +200,14 @@ export default function QuotationsPage() {
     };
 
     const handleStatusUpdate = async (id, newStatus, updatedItems = null) => {
+        // 楽観的更新：UI上のステータスを即座に書き換える
+        setQuotations(prev => prev.map(q => q.id === id ? { ...q, status: newStatus } : q));
+
         try {
             const payload = { status: newStatus };
             if (updatedItems) payload.items = updatedItems;
 
             await api.put(`/api/quotations/${id}`, payload);
-            // Realtime 購読が fetchQuotations を呼び出すため、ここでは明示的な fetch は控えるか
-            // もしくは即時反映のために行うが、isFetchingRef で重複は防止される
             fetchQuotations(false);
         } catch (err) {
             console.error('Status update failed:', err);
