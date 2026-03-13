@@ -271,7 +271,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
             formData.append('file', file);
 
             const { data } = await api.post('/api/ocr/analyze', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 180000 // 3分 (一括処理や巨大PDF対策)
             });
 
             // クレジット残高を更新

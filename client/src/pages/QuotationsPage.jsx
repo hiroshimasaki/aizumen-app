@@ -354,7 +354,8 @@ export default function QuotationsPage() {
                 const ocrFormData = new FormData();
                 ocrFormData.append('file', file);
                 const { data: ocrData } = await api.post('/api/ocr/analyze', ocrFormData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 180000 // 3分 (一括解析・長大ファイル対策)
                 });
 
                 // クレジット残高を更新

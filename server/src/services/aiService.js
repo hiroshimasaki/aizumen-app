@@ -185,6 +185,8 @@ class AIService {
      * Analyze a document (PDF or Image)
      */
     async analyzeDocument(fileBuffer, mimeType, mappingData = {}, tenantName = '') {
+        const analyzeStart = Date.now();
+        console.log(`[AIService] Starting analysis...`);
         try {
             const map = {
                 processingCost: mappingData.processingCostLabel || '加工費, 工賃, 作業代',
@@ -252,7 +254,8 @@ class AIService {
 `;
 
             const responseText = await this.generateText(prompt, fileBuffer, mimeType);
-            console.log('[AIService] Raw Response:', responseText);
+            const duration = Date.now() - analyzeStart;
+            console.log(`[AIService] Analysis complete in ${duration}ms. Raw Response:`, responseText);
             return this.parseJsonResponse(responseText);
         } catch (error) {
             console.error('[AIService] Analysis failed:', error);
