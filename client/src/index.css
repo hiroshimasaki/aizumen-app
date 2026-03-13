@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&family=BIZ+UDGothic:wght@400;700&display=swap');
 @import "tailwindcss";
 
 /* Base styles */
@@ -60,4 +60,23 @@
 
 .animate-activity-in {
   animation: activityEntrance 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+
+/* Print styles */
+@media print {
+  #root {
+    display: none !important;
+  }
+  
+  #print-portal {
+    display: block !important;
+    width: 100%;
+  }
+}
+
+@media screen {
+  #print-portal {
+    display: none;
+  }
 }

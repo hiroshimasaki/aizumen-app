@@ -1,8 +1,10 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 export default function QuotationPrintView({ quotation, companyInfo }) {
     if (!quotation) return null;
 
+    // ... (既存のロジック) ...
     const info = {
         name: companyInfo?.name || '',
         zip: companyInfo?.zip || '',
@@ -12,7 +14,6 @@ export default function QuotationPrintView({ quotation, companyInfo }) {
         email: companyInfo?.email || ''
     };
 
-    // Calculate totals
     const total = (quotation.items || []).reduce((sum, item) => {
         const cost = (Number(item.processingCost) || 0) + (Number(item.materialCost) || 0) + (Number(item.otherCost) || 0);
         return sum + (cost * (item.quantity || 1));
@@ -23,10 +24,14 @@ export default function QuotationPrintView({ quotation, companyInfo }) {
 
     const todayDateStr = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-    return (
-        <div id="print-area" className="hidden print:block p-8 bg-white text-black font-serif fixed inset-0 z-[100] m-0 overflow-visible h-screen w-screen">
+    const fontBizUD = { fontFamily: '"BIZ UDGothic", sans-serif' };
+    const fontYuGothic = { fontFamily: '"Yu Gothic Medium", "Yu Gothic", "YuGothic", sans-serif' };
+    const fontBoldGothic = { fontFamily: 'sans-serif', fontWeight: '900' };
+
+    const content = (
+        <div id="print-area" className="hidden print:block p-8 bg-white text-black" style={fontYuGothic}>
             <div className="flex justify-between items-start mb-8 pb-2 border-b border-slate-200">
-                <h1 className="text-2xl font-bold tracking-widest">御見積書</h1>
+                <h1 className="text-2xl tracking-widest" style={fontBoldGothic}>御見積書</h1>
                 <div className="text-right">
                     <p className="text-sm">No. {quotation.orderNumber || quotation.displayId || quotation.id}</p>
                     <p className="text-sm">日付: {todayDateStr}</p>
@@ -36,18 +41,18 @@ export default function QuotationPrintView({ quotation, companyInfo }) {
             <div className="flex justify-between mb-8">
                 <div className="w-1/2">
                     <div className="mb-4">
-                        <h2 className="text-xl border-b border-black inline-block min-w-[300px] pb-1">
+                        <h2 className="text-xl border-b border-black inline-block min-w-[300px] pb-1" style={fontBizUD}>
                             {quotation.companyName} 御中
                         </h2>
                     </div>
-                    <p className="mt-4 text-sm whitespace-pre-line">
+                    <p className="mt-4 text-sm whitespace-pre-line" style={fontYuGothic}>
                         下記の通り、御見積り申し上げます。
                     </p>
                 </div>
 
                 <div className="w-1/2 text-right relative text-sm">
                     <div className="space-y-1">
-                        <p className="text-lg font-bold">{info.name}</p>
+                        <p className="text-lg" style={fontBoldGothic}>{info.name}</p>
                         <p>〒{info.zip}</p>
                         <p>{info.address}</p>
                         <p>TEL: {info.tel}</p>
@@ -62,10 +67,10 @@ export default function QuotationPrintView({ quotation, companyInfo }) {
 
             <div className="mb-8 p-4 bg-slate-50 border-2 border-black flex justify-between items-center">
                 <span className="text-base font-bold tracking-widest">御見積合計金額（税込）</span>
-                <span className="text-2xl font-bold tracking-tight">¥ {grandTotal.toLocaleString()} -</span>
+                <span className="text-2xl tracking-tight" style={fontBizUD}>¥ {grandTotal.toLocaleString()} -</span>
             </div>
 
-            <table className="w-full border-collapse border border-black mb-8 text-sm">
+            <table className="w-full border-collapse border border-black mb-8 text-sm" style={fontYuGothic}>
                 <thead>
                     <tr className="bg-slate-100 text-[10px]">
                         <th className="border border-black p-1 text-center w-6 tracking-widest">No</th>
@@ -118,7 +123,7 @@ export default function QuotationPrintView({ quotation, companyInfo }) {
                 </tfoot>
             </table>
 
-            <div className="border border-black p-4 min-h-[100px]">
+            <div className="border border-black p-4 min-h-[100px]" style={fontYuGothic}>
                 <p className="text-xs font-bold border-b border-black mb-2 inline-block tracking-widest">【 備考 】</p>
                 <p className="text-xs whitespace-pre-wrap leading-relaxed">{quotation.notes}</p>
             </div>
@@ -128,4 +133,10 @@ export default function QuotationPrintView({ quotation, companyInfo }) {
             </div>
         </div>
     );
+
+    const portalTarget = document.getElementById('print-portal');
+    if (!portalTarget) return content;
+
+    return createPortal(content, portalTarget);
 }
+
