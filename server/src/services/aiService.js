@@ -201,21 +201,27 @@ class AIService {
 
             const prompt = `
 あなたは製造業の注文書・図面解析のエキスパートです。
-添付されたドキュメント（注文書、発注書、または図面）から必要な情報を抽出し、指定されたJSONフォーマットで回答してください。
+添付されたドキュメントの全ページを詳細に確認し、指定されたフォーマットで回答してください。
 
-### 抽出ルール (以下の項目名・類義語を重点的に探してください):
-1. **会社名 (companyName)**: 発注元（顧客）の会社名を正確に抽出してください。${tenantExcludeInstruction}
-2. **注文番号 (orderNumber)**: 「${map.orderNumber}」に該当する項目。なければ空文字。
-3. **工事番号 (constructionNumber)**: 「${map.constructionNumber}」に該当する項目。なければ空文字。
-4. **特記事項 (notes)**: 解析時の注意点や、納期・支払条件などの重要な備考があれば抽出してください。
-5. **明細 (items)**: 注文内容の明細をリストで抽出してください。以下の項目マッピングを参考にしてください：
-    - **name**: 「${map.itemName}」に該当する項目（品名や品番）。
-    - **quantity**: 「${map.quantity}」に該当する項目（数値のみ）。
-    - **unit**: 単位（個、枚、kg等）。
-    - **processingCost**: 「${map.processingCost}」に該当する費用（加工費・工賃など。数値のみ、不明な場合は 0）。
-    - **materialCost**: 「${map.materialCost}」に該当する費用（材料代など。数値のみ、不明な場合は 0）。
-    - **otherCost**: 「${map.otherCost}」に該当する費用（諸経費・運賃・型代など。数値のみ、不明な場合は 0）。
-    - **dueDate**: 「${map.deadline}」に該当する日付。形式は必ず **YYYY-MM-DD** としてください。もし特定の日付がない場合は null としてください。
+### 【重要】ページ種別判定 (pageClassifications):
+添付されたPDFの全ページに対して、1ページ目から順に以下の種別を判定してください：
+- **page**: ページ番号（数値）。
+- **type**: 「order_form」（注文書・発注書）、「drawing」（図面）、「other」（その他）のいずれか。
+- **label**: 日本語のラベル（「注文書」、「図面」など）。
+
+### 抽出ルール (項目抽出):
+1. **会社名 (companyName)**: 発注元（顧客）の会社名。${tenantExcludeInstruction}
+2. **注文番号 (orderNumber)**: 「${map.orderNumber}」に該当する項目。
+3. **工事番号 (constructionNumber)**: 「${map.constructionNumber}」に該当する項目。
+4. **特記事項 (notes)**: 注意事項、納期・支払条件など。
+5. **明細 (items)**: 以下の項目をリストで抽出してください：
+    - **name**: 品名や品番。
+    - **quantity**: 数量（数値のみ）。
+    - **unit**: 単位。
+    - **processingCost**: 加工費。
+    - **materialCost**: 材料費。
+    - **otherCost**: その他費用。
+    - **dueDate**: 納期。形式は **YYYY-MM-DD**。
 
 ### 出力フォーマット (JSONのみ):
 \`\`\`json
@@ -224,6 +230,10 @@ class AIService {
   "orderNumber": "...",
   "constructionNumber": "...",
   "notes": "...",
+  "pageClassifications": [
+    { "page": 1, "type": "order_form", "label": "注文書" },
+    { "page": 2, "type": "drawing", "label": "図面" }
+  ],
   "items": [
     {
       "name": "...",
@@ -242,6 +252,7 @@ class AIService {
 `;
 
             const responseText = await this.generateText(prompt, fileBuffer, mimeType);
+            console.log('[AIService] Raw Response:', responseText);
             return this.parseJsonResponse(responseText);
         } catch (error) {
             console.error('[AIService] Analysis failed:', error);
