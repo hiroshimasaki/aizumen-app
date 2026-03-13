@@ -134,6 +134,11 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
             files: results,
         });
 
+        // 非同期で使用量を再計算
+        const storageService = require('../services/storageService');
+        storageService.updateTenantUsage(req.tenantId)
+            .catch(err => console.error('[Files] Failed to update storage usage after upload:', err));
+
         await logService.audit({
             action: 'file_uploaded',
             entityType: 'file',
@@ -323,16 +328,22 @@ router.delete('/:id', authMiddleware, checkTrialLimit, async (req, res, next) =>
 
         if (!fileMeta) throw new AppError('File not found', 404, 'NOT_FOUND');
 
-        // Storageから削除
+        // Storageから削除 (本体 + サムネイル)
+        const pathsToDelete = [fileMeta.storage_path, `thumbnails/${req.params.id}.png`];
         await supabaseAdmin.storage
             .from('quotation-files')
-            .remove([fileMeta.storage_path]);
+            .remove(pathsToDelete);
 
         // DBから削除
         await supabaseAdmin
             .from('quotation_files')
             .delete()
             .eq('id', req.params.id);
+
+        // 使用量を再計算
+        const storageService = require('../services/storageService');
+        storageService.updateTenantUsage(req.tenantId)
+            .catch(err => console.error('[Files] Failed to update storage usage after delete:', err));
 
         await logService.audit({
             action: 'file_deleted',

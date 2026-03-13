@@ -63,20 +63,22 @@ async function purgeTrash() {
                 .eq('quotation_id', target.id);
 
             if (files && files.length > 0) {
-                const paths = files.map(f => f.storage_path).filter(Boolean);
-                if (paths.length > 0) {
-                    await supabase.storage.from('quotation-files').remove(paths);
+                // 本体ファイル + サムネイルのパスを作成
+                const storagePaths = [];
+                files.forEach(f => {
+                    if (f.storage_path) storagePaths.push(f.storage_path);
+                    storagePaths.push(`thumbnails/${f.id}.png`); // サムネイル追加
+                });
+
+                if (storagePaths.length > 0) {
+                    await supabase.storage.from('quotation-files').remove(storagePaths);
                 }
-                // quotation_files レコード削除 (CASCADE設定がなければ手動)
+
+                // quotation_files レコード削除
                 await supabase.from('quotation_files').delete().eq('quotation_id', target.id);
             }
 
-            // 2. 関連明細を削除
-            await supabase.from('quotation_items').delete().eq('quotation_id', target.id);
-
-            // 3. 関連履歴を削除
-            await supabase.from('quotation_history').delete().eq('quotation_id', target.id);
-
+            // ... (既存の削除処理)
             // 4. 案件本体を完全削除
             const { error: deleteError } = await supabase
                 .from('quotations')
@@ -89,6 +91,15 @@ async function purgeTrash() {
             } else {
                 console.log(`[PurgeTrash] Purged: ${target.id}`);
                 successCount++;
+
+                // 使用量を再計算 (storageService を require して使用)
+                // このスクリプトはスタンドアロンなため、サービスパスに注意
+                try {
+                    const storageService = require('./src/services/storageService');
+                    await storageService.updateTenantUsage(target.tenantId);
+                } catch (sErr) {
+                    console.warn(`[PurgeTrash] Could not update usage for ${target.tenantId}:`, sErr.message);
+                }
             }
         } catch (err) {
             console.error(`[PurgeTrash] Error processing ${target.id}:`, err.message);

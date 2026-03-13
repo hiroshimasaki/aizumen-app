@@ -129,9 +129,27 @@ async function runTenantBackup(tenantId) {
     return { message: 'バックアップを作成しました', fileName };
 }
 
+async function deleteBackup(tenantId, fileName) {
+    const filePath = `backups/${tenantId}/${fileName}`;
+    
+    // Storageから削除
+    const { error } = await supabaseAdmin.storage
+        .from('quotation-files')
+        .remove([filePath]);
+
+    if (error) throw error;
+
+    // 使用量を再計算
+    const storageService = require('./storageService');
+    await storageService.updateTenantUsage(tenantId);
+
+    return { message: 'バックアップを削除しました' };
+}
+
 module.exports = {
     runDailyBackup,
     runTenantBackup,
     listBackups,
-    getBackupFileUrl
+    getBackupFileUrl,
+    deleteBackup
 };

@@ -53,4 +53,26 @@ router.post('/', authMiddleware, requireRole('system_admin'), async (req, res, n
     }
 });
 
+/**
+ * DELETE /api/backups/:fileName
+ * バックアップを削除
+ */
+router.delete('/:fileName', authMiddleware, requireRole('system_admin'), async (req, res, next) => {
+    try {
+        const result = await backupService.deleteBackup(req.tenantId, req.params.fileName);
+
+        await logService.audit({
+            action: 'backup_deleted',
+            entityType: 'backup',
+            description: `バックアップを削除しました: ${req.params.fileName}`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
+        res.json(result);
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;

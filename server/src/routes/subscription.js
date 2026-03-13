@@ -26,7 +26,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
 
         const { data: tenant } = await supabaseAdmin
             .from('tenants')
-            .select('plan')
+            .select('plan, storage_usage_bytes')
             .eq('id', req.tenantId)
             .single();
 
@@ -68,13 +68,8 @@ router.get('/', authMiddleware, async (req, res, next) => {
             .eq('tenant_id', req.tenantId)
             .eq('is_active', true);
 
-        // 2. ストレージ使用量取得
-        const { data: usageData } = await supabaseAdmin
-            .from('quotation_files')
-            .select('file_size')
-            .eq('tenant_id', req.tenantId);
-
-        const storageUsage = usageData?.reduce((sum, f) => sum + (f.file_size || 0), 0) || 0;
+        // 2. ストレージ使用量取得 (DBカラムから取得)
+        const storageUsage = tenant?.storage_usage_bytes || 0;
 
         res.json({
             subscription: sub,
@@ -83,7 +78,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
                 maxUsers: planConfig?.maxUsers || 1,
                 currentUsers: userCount || 0,
                 monthlyCredits: planConfig?.monthlyCredits || 200,
-                storageUsage, // current bytes
+                storageUsage, // current bytes (total: files + thumbs + backups)
                 maxStorageGB: planConfig?.maxStorageGB || 1
             }
         });

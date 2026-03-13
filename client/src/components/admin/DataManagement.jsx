@@ -352,14 +352,34 @@ export default function DataManagement() {
                                             </div>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => handleDownloadBackup(backup.name)}
-                                        className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-2"
-                                        title="ダウンロード"
-                                    >
-                                        <Download size={18} />
-                                        <span className="text-xs font-bold hidden sm:inline">ダウンロード</span>
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleDownloadBackup(backup.name)}
+                                            className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-2"
+                                            title="ダウンロード"
+                                        >
+                                            <Download size={18} />
+                                            <span className="text-xs font-bold hidden sm:inline">ダウンロード</span>
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm('このバックアップを削除してもよろしいですか？')) {
+                                                    try {
+                                                        await api.delete(`/api/backups/${backup.name}`);
+                                                        await fetchBackups();
+                                                        showAlert('バックアップを削除しました。', 'success');
+                                                    } catch (err) {
+                                                        console.error('Failed to delete backup:', err);
+                                                        showAlert('バックアップの削除に失敗しました。', 'error');
+                                                    }
+                                                }
+                                            }}
+                                            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                            title="削除"
+                                        >
+                                            <XCircle size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
