@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import PdfEditorModal from './PdfEditorModal';
 import DrawingSearchModal from './DrawingSearchModal';
+import { splitPdf } from '../utils/pdfSplitter';
 
 export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin = true }) {
     const { credits, setCredits } = useAuth();
@@ -322,6 +323,41 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
             }
 
             setFileStatuses(prev => ({ ...prev, [file.name]: 'completed' }));
+
+            // --- PDF 分割ロジックの追加 ---
+            if (data.pageClassifications && data.pageClassifications.length > 0) {
+                console.log('[AIAnalyze] Split Decision Started:', data.pageClassifications);
+                
+                const orderFormPages = data.pageClassifications
+                    .filter(p => p.type === 'order_form').map(p => p.page);
+                const drawingPages = data.pageClassifications
+                    .filter(p => p.type === 'drawing').map(p => p.page);
+
+                const suffix = data.orderNumber ? `_${data.orderNumber}` : '';
+                const newFilesToAdd = [];
+
+                if (orderFormPages.length > 0) {
+                    const blob = await splitPdf(file, orderFormPages);
+                    if (blob) {
+                        newFilesToAdd.push(new File([blob], `注文書${suffix}.pdf`, { type: 'application/pdf' }));
+                    }
+                }
+                if (drawingPages.length > 0) {
+                    const blob = await splitPdf(file, drawingPages);
+                    if (blob) {
+                        newFilesToAdd.push(new File([blob], `図面${suffix}.pdf`, { type: 'application/pdf' }));
+                    }
+                }
+
+                if (newFilesToAdd.length > 0) {
+                    setFiles(prev => {
+                        // 元のファイルを削除し、新しいファイルを追加
+                        const filtered = prev.filter(f => f.name !== file.name);
+                        return [...filtered, ...newFilesToAdd];
+                    });
+                    await showAlert('PDFが「注文書」と「図面」に分割されました。', 'success');
+                }
+            }
         } catch (error) {
             console.error('AI Analysis error:', error);
             setFileStatuses(prev => ({ ...prev, [file.name]: 'error' }));
