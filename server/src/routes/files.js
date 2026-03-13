@@ -49,9 +49,13 @@ router.post('/upload', authMiddleware, checkTrialLimit, upload.array('files', 10
         for (const file of req.files) {
             const fileId = uuidv4();
             // 文字化け対策: Latin-1 → UTF-8 変換
-            const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-            const ext = originalName.split('.').pop();
+            const rawName = file.originalname;
+            const originalName = Buffer.from(rawName, 'latin1').toString('utf8');
+            console.log(`[Files/Upload] Processing file: rawName=${rawName}, convertedName=${originalName}, size=${file.size}`);
+            
+            const ext = originalName.split('.').pop() || 'file';
             const storagePath = `${req.tenantId}/${quotationId || 'pool'}/${fileId}.${ext}`;
+            console.log(`[Files/Upload] storagePath: ${storagePath}`);
 
             // ファイルハッシュ計算
             const hash = crypto.createHash('sha256').update(file.buffer).digest('hex');
@@ -156,9 +160,11 @@ router.get('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             .single();
 
         if (error || !fileMeta) {
+            console.error(`[Files/GET] File not found in DB. ID: ${req.params.id}`);
             throw new AppError('File not found', 404, 'NOT_FOUND');
         }
 
+        console.log(`[Files/GET] Generating signed URL for: ${fileMeta.storage_path}`);
         const { data: signedUrl, error: urlError } = await supabaseAdmin.storage
             .from('quotation-files')
             .createSignedUrl(fileMeta.storage_path, 300); // 5分間有効

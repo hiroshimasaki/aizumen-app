@@ -339,12 +339,14 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                 if (orderFormPages.length > 0) {
                     const blob = await splitPdf(file, orderFormPages);
                     if (blob) {
+                        console.log(`[AIAnalyze] Order Form Blob size: ${blob.size}`);
                         newFilesToAdd.push(new File([blob], `注文書${suffix}.pdf`, { type: 'application/pdf' }));
                     }
                 }
                 if (drawingPages.length > 0) {
                     const blob = await splitPdf(file, drawingPages);
                     if (blob) {
+                        console.log(`[AIAnalyze] Drawing Blob size: ${blob.size}`);
                         newFilesToAdd.push(new File([blob], `図面${suffix}.pdf`, { type: 'application/pdf' }));
                     }
                 }
@@ -494,11 +496,14 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                 quotationId = data.id;
             }
 
-            // 2. Handle File Uploads
             if (files.length > 0) {
+                console.log(`[Submit] Uploading ${files.length} files...`);
                 const formData = new FormData();
                 formData.append('quotationId', quotationId);
-                files.forEach(file => formData.append('files', file));
+                files.forEach(f => {
+                    console.log(`  - File: ${f.name}, size: ${f.size}, type: ${f.type}`);
+                    formData.append('files', f);
+                });
 
                 await api.post('/api/files/upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
