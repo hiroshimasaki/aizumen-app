@@ -562,6 +562,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 actual_material_cost: parsePrice(item.actualMaterialCost),
                 actual_other_cost: parsePrice(item.actualOtherCost),
                 actual_mode: item.actualMode || 'amount',
+                material_metadata: item.material_metadata || null,
             }));
 
             const { error: itemError } = await supabaseAdmin
@@ -719,6 +720,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                     actual_material_cost: parsePrice(item.actualMaterialCost),
                     actual_other_cost: parsePrice(item.actualOtherCost),
                     actual_mode: item.actualMode || 'amount',
+                    material_metadata: item.material_metadata || null,
                 }));
 
                 await supabaseAdmin.from('quotation_items').insert(itemRows);

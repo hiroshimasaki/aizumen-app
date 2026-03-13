@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, FileText, X, Save, DollarSign, User, Plus, Trash2, Calendar, Link as LinkIcon, StickyNote, Sparkles, AlertCircle, Download, Search, RefreshCw, Activity } from 'lucide-react';
+import { UploadCloud, FileText, X, Save, DollarSign, User, Plus, Trash2, Calendar, Link as LinkIcon, StickyNote, Sparkles, AlertCircle, Download, Search, RefreshCw, Activity, Calculator } from 'lucide-react';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +9,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import PdfEditorModal from './PdfEditorModal';
 import DrawingSearchModal from './DrawingSearchModal';
 import { splitPdf } from '../utils/pdfSplitter';
-
+import MaterialCostCalcModal from './MaterialCostCalcModal';
 export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin = true }) {
     const { credits, setCredits } = useAuth();
     const { showAlert, showConfirm } = useNotification();
@@ -68,7 +69,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
     const [queryCache, setQueryCache] = useState({});   // { [fileId/name]: queryPreview (blob url) }
     const [showHistory, setShowHistory] = useState(false);
     const [history, setHistory] = useState([]);
-
+    const [calcModalState, setCalcModalState] = useState({ isOpen: false, targetItemId: null });
     const notesRef = useRef(null);
 
     // Auto-resize notes textarea
@@ -399,9 +400,16 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
         setSearchModalState({
             isOpen: true,
             fileIndex: index,
-            file,
+            file: file,
             isExisting
         });
+    };
+
+    const handleApplyMaterialCalc = ({ cost, metadata }) => {
+        const targetId = calcModalState.targetItemId;
+        setItems(prev => prev.map(item => 
+            item.id === targetId ? { ...item, materialCost: cost, material_metadata: metadata } : item
+        ));
     };
 
     const handleCacheSearchResults = (fileIdOrName, results) => {
@@ -917,7 +925,18 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                         readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
                                 <div className="md:col-span-2 space-y-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">材料費</label>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">材料費</label>
+                                        {isAdmin && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setCalcModalState({ isOpen: true, targetItemId: item.id })}
+                                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+                                            >
+                                                <Calculator size={10} /> 自動計算
+                                            </button>
+                                        )}
+                                    </div>
                                     <input type="number" value={item.materialCost} onChange={e => handleItemChange(item.id, 'materialCost', e.target.value)}
                                         readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
@@ -994,7 +1013,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
             </div>
 
             {/* Past Item Search Modal */}
-            {pastItemSearch.isOpen && (
+            {pastItemSearch.isOpen && createPortal(
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
                         <div className="flex justify-between items-center mb-4">
@@ -1092,10 +1111,11 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
             {/* Source Quotation Detail Modal */}
-            {sourceQuotationView && (
+            {sourceQuotationView && createPortal(
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
                     <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
                         <button
@@ -1157,7 +1177,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* PDF Editor Modal */}
@@ -1182,6 +1203,12 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                     onSaveQueryPreview={(blobUrl) => handleCacheQueryPreview(searchModalState.file?.id || searchModalState.file?.name, blobUrl)}
                 />
             )}
+
+            <MaterialCostCalcModal
+                isOpen={calcModalState.isOpen}
+                onClose={() => setCalcModalState({ isOpen: false, targetItemId: null })}
+                onApply={handleApplyMaterialCalc}
+            />
         </form >
     );
 }

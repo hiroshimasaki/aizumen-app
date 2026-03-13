@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FileJson, FileSpreadsheet, Info, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function ImportGuide({ isOpen, onClose }) {
@@ -54,9 +55,9 @@ export default function ImportGuide({ isOpen, onClose }) {
 株式会社マルイチ,PO-2024-001,ordered,ブラケット A,10,1500
 株式会社マルイチ,PO-2024-002,pending,プレート B,5,3000`;
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                     <div className="flex items-center gap-3">
@@ -182,6 +183,7 @@ export default function ImportGuide({ isOpen, onClose }) {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

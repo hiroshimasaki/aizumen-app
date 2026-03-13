@@ -8,12 +8,14 @@ import Billing from '../components/admin/Billing';
 import CompanyInfo from '../components/admin/CompanyInfo';
 import DataManagement from '../components/admin/DataManagement';
 import HotFolderDownload from '../components/admin/HotFolderDownload';
+import MaterialPriceMaster from '../components/admin/MaterialPriceMaster';
 
 const ALL_TABS = [
     { id: 'users', label: 'ユーザー管理', icon: Users, desc: '招待や権限の設定', roles: ['system_admin'] },
     { id: 'settings', label: 'テナント設定', icon: Settings, desc: 'AI OCRのマッピング等', roles: ['admin', 'system_admin'] },
     { id: 'billing', label: 'プラン・クレジット', icon: Zap, desc: 'ご契約状況の確認', roles: ['system_admin'] },
     { id: 'company', label: '企業情報', icon: Building, desc: '基本情報の変更', roles: ['admin', 'system_admin'] },
+    { id: 'material', label: '材料単価設定', icon: Database, desc: '鋼材別のキロ単価管理', roles: ['admin', 'system_admin'] },
     { id: 'data', label: 'データ管理', icon: Database, desc: 'エクスポート・バックアップ', roles: ['system_admin'] },
     { id: 'tools', label: '外部ツール', icon: Monitor, desc: 'ホットフォルダ等のDL', roles: ['admin', 'system_admin'] }
 ];
@@ -103,6 +105,7 @@ export default function AdminPage() {
                 {activeTab === 'settings' && <TenantSettings />}
                 {activeTab === 'billing' && <Billing />}
                 {activeTab === 'company' && <CompanyInfo />}
+                {activeTab === 'material' && <MaterialPriceMaster />}
                 {activeTab === 'data' && <DataManagement />}
                 {activeTab === 'tools' && <HotFolderDownload />}
             </div>

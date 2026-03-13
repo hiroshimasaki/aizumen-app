@@ -24,6 +24,7 @@ const superAdminRoutes = require('./routes/superAdmin');
 const forumRoutes = require('./routes/forum');
 const searchRoutes = require('./routes/search');
 const healthRoutes = require('./routes/health');
+const materialPriceRoutes = require('./routes/materialPrices');
 
 
 // Middleware imports
@@ -146,6 +147,7 @@ app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/forum', forumRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/material-prices', materialPriceRoutes);
 
 
 // --- 404 Handler ---
