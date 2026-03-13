@@ -407,9 +407,9 @@ export default function SuperAdminPage() {
                                 <div className="p-5 bg-[#141414] border border-white/5 rounded-lg shadow-lg shrink-0">
                                     <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">System Integrity</h3>
                                     <div className="space-y-2">
-                                        <HealthRow label="DB Nodes" status={health.db === 'online' ? 'online' : 'error'} latency="< 5ms" />
-                                        <HealthRow label="Asset Mesh" status={health.storage === 'online' ? 'online' : 'error'} latency="12ms" />
-                                        <HealthRow label="AI Pipeline" status={health.ai === 'online' ? 'online' : 'error'} latency="ACTIVE" />
+                                        <HealthRow label="Supabase DB" status={health.db === 'online' ? 'online' : 'error'} />
+                                        <HealthRow label="Supabase Storage" status={health.storage === 'online' ? 'online' : 'error'} />
+                                        <HealthRow label="Gemini (Vertex AI)" status={health.ai === 'online' ? 'online' : 'error'} />
                                     </div>
                                 </div>
 
@@ -624,14 +624,16 @@ function ActivityItem({ icon: Icon, title, time, detail, colorClass }) {
     );
 }
 
-function HealthRow({ label, status, latency }) {
+function HealthRow({ label, status }) {
     return (
-        <div className="flex items-center justify-between py-1">
-            <div className="flex items-center gap-2">
-                <div className={cn("w-2 h-2 rounded-full", status === 'online' ? "bg-[#52c41a]" : "bg-[#ff4d4f]")} />
-                <span className="text-xs text-slate-400">{label}</span>
+        <div className="flex items-center justify-between py-1.5">
+            <div className="flex items-center gap-3">
+                <div className={cn(
+                    "w-3 h-3 rounded-full shadow-lg", 
+                    status === 'online' ? "bg-[#52c41a] shadow-[#52c41a]/20" : "bg-[#ff4d4f] shadow-[#ff4d4f]/20"
+                )} />
+                <span className="text-sm text-slate-400 font-medium">{label}</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-600">{latency}</span>
         </div>
     );
 }
