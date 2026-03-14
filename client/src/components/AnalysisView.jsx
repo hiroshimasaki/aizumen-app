@@ -133,7 +133,7 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                 companyStats[name].ordered += 1;
                 const amount = (q.items || []).reduce((sum, item) => {
                     const cost = (Number(item.processingCost) || 0) + (Number(item.materialCost) || 0) + (Number(item.otherCost) || 0);
-                    return sum + (cost * (Number(item.quantity) || 1));
+                    return sum + Math.round(cost * (Number(item.quantity) || 1));
                 }, 0);
                 companyStats[name].amount += amount;
             }
@@ -157,15 +157,15 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                 let hasActual = false;
 
                 if (item.actualProcessingCost && Number(item.actualProcessingCost) > 0) {
-                    actualVal = Number(item.actualProcessingCost) * qty;
+                    actualVal = Math.round(Number(item.actualProcessingCost) * qty);
                     hasActual = true;
                 } else if (item.actualHours && Number(item.actualHours) > 0) {
-                    actualVal = Number(item.actualHours) * hourlyRate;
+                    actualVal = Math.round(Number(item.actualHours) * hourlyRate);
                     hasActual = true;
                 }
 
                 if (hasActual) {
-                    totalPlan += (Number(item.processingCost) || 0) * qty;
+                    totalPlan += Math.round((Number(item.processingCost) || 0) * qty);
                     totalActual += actualVal;
                     itemsWithActuals++;
                 }

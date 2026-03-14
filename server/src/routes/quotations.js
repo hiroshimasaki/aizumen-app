@@ -226,7 +226,7 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
             items.forEach(i => {
                 const qty = Number(i.quantity) || 1;
                 const cost = (Number(i.processing_cost) || 0) + (Number(i.material_cost) || 0) + (Number(i.other_cost) || 0);
-                const totalCost = cost * qty;
+                const totalCost = Math.round(cost * qty);
                 qTotalCost += totalCost;
 
                 const dDateStr = i.delivery_date || i.due_date;
@@ -240,7 +240,7 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
 
                     // 加工費収支 (ordered のみ、今月フィルタは納期/納品日で判定)
                     if (q.status === 'ordered') {
-                        const estProc = (Number(i.processing_cost) || 0) * qty;
+                        const estProc = Math.round((Number(i.processing_cost) || 0) * qty);
                         const actHours = Number(i.actual_hours) || 0;
                         const actProc = actHours > 0 ? Math.round(actHours * hourlyRate) : 0;
 
