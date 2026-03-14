@@ -30,7 +30,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
  */
 router.post('/', authMiddleware, requireRole('admin'), async (req, res, next) => {
     try {
-        const { vendorName, materialType, shape, minDim, maxDim, basePriceType, unitPrice, density, cuttingCostFactor, overheadFactor } = req.body;
+        const { vendorName, materialType, shape, minDim, maxDim, basePriceType, unitPrice, density, cuttingCostFactor } = req.body;
         
         if (!vendorName || !materialType || !shape || unitPrice === undefined || density === undefined) {
             throw new AppError('Required fields are missing', 400, 'VALIDATION_ERROR');
@@ -48,13 +48,15 @@ router.post('/', authMiddleware, requireRole('admin'), async (req, res, next) =>
                 base_price_type: basePriceType || 'kg',
                 unit_price: Number(unitPrice),
                 density: Number(density),
-                cutting_cost_factor: Number(cuttingCostFactor) || 0,
-                overhead_factor: Number(overheadFactor) || 1.0
+                cutting_cost_factor: Number(cuttingCostFactor) || 0
             })
             .select()
             .single();
 
-        if (error) throw new AppError('Failed to create material price', 500, 'CREATE_FAILED');
+        if (error) {
+            console.error('[MaterialPrices][POST] Supabase error:', error);
+            throw new AppError('Failed to create material price', 500, 'CREATE_FAILED');
+        }
         res.status(201).json(data);
     } catch (err) {
         next(err);
@@ -79,7 +81,6 @@ router.put('/:id', authMiddleware, requireRole('admin'), async (req, res, next) 
         if (unitPrice !== undefined) updates.unit_price = Number(unitPrice);
         if (density !== undefined) updates.density = Number(density);
         if (cuttingCostFactor !== undefined) updates.cutting_cost_factor = Number(cuttingCostFactor);
-        if (overheadFactor !== undefined) updates.overhead_factor = Number(overheadFactor);
         if (isActive !== undefined) updates.is_active = isActive;
 
         const { data, error } = await supabaseAdmin

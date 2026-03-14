@@ -25,9 +25,10 @@ export default function MaterialPriceMaster() {
     const [saving, setSaving] = useState(false);
 
     const [globalOverheadFactor, setGlobalOverheadFactor] = useState(1.0);
+    const [isCustomMode, setIsCustomMode] = useState(false);
     const [newEntry, setNewEntry] = useState({
         vendorName: '',
-        materialType: '',
+        materialType: 'SS400',
         shape: 'plate',
         minDim: 0,
         maxDim: 9999,
@@ -74,12 +75,15 @@ export default function MaterialPriceMaster() {
     };
 
     const handleMaterialChange = (materialValue) => {
+        const isOther = materialValue === 'OTHER';
+        setIsCustomMode(isOther);
+        
         const material = COMMON_MATERIALS.find(m => m.value === materialValue);
         setNewEntry(prev => ({
             ...prev,
             materialType: materialValue,
             // 「その他」の場合は現在の値を維持、プリセットの場合はその比重をセット
-            density: (material && materialValue !== 'OTHER') ? material.density : prev.density
+            density: (material && !isOther) ? material.density : prev.density
         }));
     };
 
@@ -89,13 +93,26 @@ export default function MaterialPriceMaster() {
             return;
         }
 
+        // 数値項目のサニタイズ
+        const payload = {
+            vendorName: newEntry.vendorName,
+            materialType: newEntry.materialType,
+            shape: newEntry.shape,
+            minDim: Number(newEntry.minDim) || 0,
+            maxDim: Number(newEntry.maxDim) || 0,
+            unitPrice: Number(newEntry.unitPrice) || 0,
+            density: Number(newEntry.density) || 0,
+            cuttingCostFactor: Number(newEntry.cuttingCostFactor) || 0,
+            basePriceType: 'kg'
+        };
+
         setSaving(true);
         try {
-            await api.post('/api/material-prices', newEntry);
+            await api.post('/api/material-prices', payload);
             await showAlert('登録しました', 'success');
             setNewEntry({
                 vendorName: '',
-                materialType: '',
+                materialType: 'SS400',
                 shape: 'plate',
                 minDim: 0,
                 maxDim: 9999,
@@ -103,10 +120,12 @@ export default function MaterialPriceMaster() {
                 density: 7.85,
                 cuttingCostFactor: 1.0,
             });
+            setIsCustomMode(false);
             fetchPrices();
         } catch (err) {
             console.error('Failed to add price:', err);
-            await showAlert('登録に失敗しました', 'error');
+            const errorMsg = err.response?.data?.error || '登録に失敗しました';
+            await showAlert(errorMsg, 'error');
         } finally {
             setSaving(false);
         }
@@ -159,7 +178,7 @@ export default function MaterialPriceMaster() {
                     <div className="space-y-1.5 relative">
                         <label className="text-xs font-bold text-slate-400 pl-1">材質</label>
                         <select
-                            value={COMMON_MATERIALS.some(m => m.value === newEntry.materialType) ? newEntry.materialType : 'OTHER'}
+                            value={COMMON_MATERIALS.some(m => m.value === newEntry.materialType) && !isCustomMode ? newEntry.materialType : 'OTHER'}
                             onChange={e => handleMaterialChange(e.target.value)}
                             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none"
                         >
@@ -167,7 +186,8 @@ export default function MaterialPriceMaster() {
                                 <option key={m.value} value={m.value}>{m.label}</option>
                             ))}
                         </select>
-                        {(newEntry.materialType === 'OTHER' || !COMMON_MATERIALS.some(m => m.value === newEntry.materialType)) && (
+                        {/* 修正：isCustomMode が true の間、または既に入力された値がプリセットにない間は表示を維持する */}
+                        {(isCustomMode || (newEntry.materialType !== '' && !COMMON_MATERIALS.some(m => m.value === newEntry.materialType))) && (
                             <div className="absolute left-0 right-0 top-full mt-1 z-10">
                                 <input
                                     type="text"
@@ -175,6 +195,7 @@ export default function MaterialPriceMaster() {
                                     onChange={e => setNewEntry(prev => ({ ...prev, materialType: e.target.value }))}
                                     className="w-full bg-slate-800 border border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 shadow-xl outline-none"
                                     placeholder="材質名を入力 (例: SS400-D)"
+                                    autoFocus
                                 />
                             </div>
                         )}

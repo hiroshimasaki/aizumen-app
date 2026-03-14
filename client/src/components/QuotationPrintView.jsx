@@ -59,9 +59,6 @@ export default function QuotationPrintView({ quotation, companyInfo }) {
                         <p>FAX: {info.fax}</p>
                         <p>Email: {info.email}</p>
                     </div>
-                    <div className="absolute right-0 bottom-[-20px] w-16 h-16 border-2 border-red-500 rounded-full flex items-center justify-center text-red-500 font-bold rotate-12 opacity-80 leading-tight text-xs border-dashed">
-                        社印
-                    </div>
                 </div>
             </div>
 

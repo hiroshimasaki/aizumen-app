@@ -310,14 +310,14 @@ export default function QuotationsPage() {
 
     const handlePrintMaterialOrder = (quotation) => {
         // 熱処理指示があるか確認
-        const hasHeatTreatment = (quotation.items || []).some(item => 
-            item.material_metadata?.heatTreatment?.type && item.material_metadata.heatTreatment.type !== 'none'
-        );
+        const hasHeatTreatment = (quotation.items || []).some(item => {
+            if (item.heat_treatment?.type && item.heat_treatment.type !== 'none') return true;
+            const meta = item.material_metadata;
+            const entries = Array.isArray(meta) ? meta : (meta?.entries || []);
+            return entries.some(e => e.heatTreatment?.type && e.heatTreatment.type !== 'none');
+        });
 
         setMaterialOrderPrintData(quotation);
-        if (hasHeatTreatment) {
-            setHeatTreatmentOrderPrintData(quotation);
-        }
 
         setTimeout(() => {
             window.print();
@@ -738,9 +738,6 @@ export default function QuotationsPage() {
             )}
             {materialOrderPrintData && (
                 <MaterialOrderPrintView quotation={materialOrderPrintData} companyInfo={tenant} />
-            )}
-            {heatTreatmentOrderPrintData && (
-                <HeatTreatmentOrderPrintView quotation={heatTreatmentOrderPrintData} companyInfo={tenant} />
             )}
 
             {/* Quotation Form Modal */}
