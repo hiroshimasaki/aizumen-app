@@ -29,7 +29,7 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
             });
         }
 
-        const { page = 1, limit, status, search, sortBy = 'created_at', sortDir = 'desc', showDeleted = 'false' } = req.query;
+        const { page = 1, limit, status, search, isVerified, sortBy = 'created_at', sortDir = 'desc', showDeleted = 'false' } = req.query;
 
         let from = 0;
         let to = PAGE_SIZE - 1;
@@ -50,6 +50,10 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
             query = query.eq('status', status);
         } else if (status === 'delivered' || status === 'unentered_actuals') {
             query = query.eq('status', 'ordered'); // 両者とも受注ステータスが前提
+        }
+
+        if (isVerified !== undefined && isVerified !== '') {
+            query = query.eq('is_verified', isVerified === 'true');
         }
 
         if (search) {
@@ -500,7 +504,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
         const {
             companyName, contactPerson, emailLink, notes,
             orderNumber, constructionNumber, status = 'pending',
-            items = [], sourceId, copyFileIds = [],
+            isVerified = true, items = [], sourceId, copyFileIds = [],
         } = req.body;
 
         const displayId = await generateQuotationId(supabaseAdmin, req.tenantId);
@@ -526,6 +530,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 order_number: orderNumber || '',
                 construction_number: constructionNumber || '',
                 status,
+                is_verified: isVerified,
                 source_id: sourceId || null,
                 created_by: req.user.id,
             })
@@ -684,6 +689,9 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
         if (orderNumber !== undefined) updates.order_number = orderNumber;
         if (constructionNumber !== undefined) updates.construction_number = constructionNumber;
         if (status !== undefined) updates.status = status;
+        
+        // ユーザーが明示的に更新した場合は確認済み（true）にする
+        updates.is_verified = true;
 
         const { data: updated, error: updateError } = await supabaseAdmin
             .from('quotations')

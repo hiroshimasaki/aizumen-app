@@ -14,6 +14,7 @@ import MaterialOrderPrintView from '../components/MaterialOrderPrintView';
 import HeatTreatmentOrderPrintView from '../components/HeatTreatmentOrderPrintView';
 import DashboardMetrics from '../components/DashboardMetrics';
 import { splitPdf } from '../utils/pdfSplitter';
+import { QuotationCardSkeleton } from '../components/common/Skeleton';
 
 export default function QuotationsPage() {
     const { isAdmin, tenant, setCredits } = useAuth();
@@ -31,6 +32,7 @@ export default function QuotationsPage() {
     // Filters
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [isVerifiedFilter, setIsVerifiedFilter] = useState('');
     const [filterPeriod, setFilterPeriod] = useState('current'); // 'current' or 'all'
 
     // Modal state
@@ -66,6 +68,7 @@ export default function QuotationsPage() {
             const params = new URLSearchParams({ page: currentPage });
             if (currentSearch) params.append('search', currentSearch);
             if (statusFilter) params.append('status', statusFilter);
+            if (isVerifiedFilter) params.append('isVerified', isVerifiedFilter);
             if (showDeleted) params.append('showDeleted', 'true');
 
             const promises = [api.get(`/api/quotations?${params.toString()}`)];
@@ -86,6 +89,7 @@ export default function QuotationsPage() {
                 orderNumber: q.order_number,
                 constructionNumber: q.construction_number,
                 status: q.status,
+                isVerified: q.is_verified,
                 createdAt: q.created_at,
                 updatedAt: q.updated_at,
                 isDeleted: q.is_deleted,
@@ -180,7 +184,7 @@ export default function QuotationsPage() {
         return () => {
             channel.unsubscribe();
         };
-    }, [page, statusFilter, showDeleted, isAdmin, tenant?.id]);
+    }, [page, statusFilter, isVerifiedFilter, showDeleted, isAdmin, tenant?.id]);
 
     // 背景スクロールロック
     useEffect(() => {
@@ -279,6 +283,7 @@ export default function QuotationsPage() {
             id: null,
             displayId: null,
             status: 'pending',
+            isVerified: false,
             orderNumber: '',
             constructionNumber: '',
             sourceId: quotation.id,
@@ -436,7 +441,8 @@ export default function QuotationsPage() {
                     orderNumber: ocrData.orderNumber || '',
                     constructionNumber: ocrData.constructionNumber || '',
                     status: 'ordered',
-                    notes: ocrData.notes || '',
+                    isVerified: false,
+                    notes: ocrData.notes || '一括解析により自動登録',
                     items: items
                 };
 
@@ -593,7 +599,7 @@ export default function QuotationsPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col gap-4">
                 <form onSubmit={handleSearchSubmit} className="flex-1 relative flex items-center">
                     <button
                         type="submit"
@@ -669,13 +675,21 @@ export default function QuotationsPage() {
                         ))}
                     </div>
 
-                    <button
-                        onClick={() => fetchQuotations()}
-                        className="p-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
-                        title="更新"
-                    >
-                        <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-                    </button>
+                    <div className="flex gap-3">
+                        <div className="space-y-1.5 min-w-[140px]">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">確認状態</label>
+                            <select
+                                value={isVerifiedFilter}
+                                onChange={(e) => setIsVerifiedFilter(e.target.value)}
+                                className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">すべて</option>
+                                <option value="false">未確認のみ</option>
+                                <option value="true">確認済みのみ</option>
+                            </select>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -689,9 +703,8 @@ export default function QuotationsPage() {
 
             {/* List */}
             {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                    <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                    <p className="animate-pulse">案件データを読み込み中...</p>
+                <div className="grid grid-cols-1 gap-4 animate-in fade-in duration-500">
+                    {[1, 2, 3, 4].map(i => <QuotationCardSkeleton key={i} />)}
                 </div>
             ) : (
                 <QuotationList

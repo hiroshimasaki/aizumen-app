@@ -557,18 +557,18 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
         <form onSubmit={handleSubmit} className="space-y-6">
             {/* Header Data */}
             <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                    <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-                        <div className="w-2 h-2 bg-cyan-500 rounded-full" />
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <h3 className="text-xs font-black text-cyan-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                        <div className="w-2.5 h-2.5 bg-cyan-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
                         基本情報
                     </h3>
 
                     {/* Status Toggle */}
-                    <div className="flex bg-slate-900/50 p-1 rounded-xl w-full sm:w-auto border border-slate-800">
+                    <div className="flex bg-slate-900/80 p-1.5 rounded-2xl w-full sm:w-auto border border-slate-700/50 shadow-inner">
                         {[
-                            { id: 'pending', label: '検討中', active: 'bg-slate-700 text-white shadow-sm' },
-                            { id: 'ordered', label: '受注済', active: 'bg-emerald-600 text-white shadow-sm' },
-                            { id: 'lost', label: '失注', active: 'bg-red-600 text-white shadow-sm' },
+                            { id: 'pending', label: '検討中', active: 'bg-slate-700 text-white shadow-md scale-105' },
+                            { id: 'ordered', label: '受注済', active: 'bg-emerald-600 text-white shadow-md scale-105' },
+                            { id: 'lost', label: '失注', active: 'bg-red-600 text-white shadow-md scale-105' },
                         ].map((s) => (
                             <button
                                 key={s.id} type="button"
@@ -590,7 +590,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                         <input
                             type="text" name="companyName" value={headerData.companyName} onChange={handleHeaderChange}
                             list="company-suggestions" readOnly={!isAdmin} placeholder="株式会社〇〇"
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-cyan-500"
+                            className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-slate-600"
                         />
                         <datalist id="company-suggestions">
                             {companySuggestions.map((c, i) => <option key={i} value={c.name} />)}
@@ -933,10 +933,29 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                                         readOnly={!isAdmin} placeholder="100x200..." className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none" />
                                     {item.material_metadata && (
                                         <div className="text-[10px] text-cyan-500/80 mt-1 font-mono flex flex-wrap gap-x-2 gap-y-0.5">
-                                            {item.material_metadata.dims && Object.entries(item.material_metadata.dims).map(([label, val]) => (
-                                                <span key={label}>{label}:{val}</span>
-                                            ))}
-                                            {item.material_metadata.weight && <span>{item.material_metadata.weight}kg</span>}
+                                            {(() => {
+                                                const meta = item.material_metadata;
+                                                const entries = Array.isArray(meta) ? meta : (meta.entries || (meta.material ? [meta] : []));
+                                                if (entries.length === 0) return null;
+                                                
+                                                const first = entries[0];
+                                                const othersCount = entries.length - 1;
+                                                
+                                                return (
+                                                    <>
+                                                        {first.material && <span>{first.material}</span>}
+                                                        {first.dims && Object.entries(first.dims).map(([label, val]) => (
+                                                            <span key={label}>{label}:{val}</span>
+                                                        ))}
+                                                        {first.weight && <span>{first.weight}kg</span>}
+                                                        {othersCount > 0 && (
+                                                            <span className="bg-cyan-900/50 px-1 rounded border border-cyan-800 text-[9px] text-cyan-400">
+                                                                他{othersCount}件の材料
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     )}
                                 </div>

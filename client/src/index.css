@@ -3,15 +3,41 @@
 
 /* Base styles */
 @layer base {
+  :root {
+    /* Brand Colors - HSL based */
+    --brand-primary-h: 217;
+    --brand-primary-s: 91%;
+    --brand-primary-l: 60%;
+    
+    --brand-cyan-h: 189;
+    --brand-cyan-s: 94%;
+    --brand-cyan-l: 43%;
+
+    /* Typography scale */
+    --font-weight-thin: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-black: 900;
+
+    /* Semantic Colors */
+    --color-success: hsl(160, 84%, 39%);
+    --color-error: hsl(0, 84%, 60%);
+    --color-warning: hsl(38, 92%, 50%);
+    --color-background: #0c0e14;
+    --color-surface: #1e293b;
+    --color-text-primary: #f5f5f7;
+    --color-text-secondary: #94a3b8;
+  }
+
   body {
     font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #0c0e14;
-    /* より深い Apple 風の黒 */
-    color: #f5f5f7;
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
     font-size: 16px;
-    /* 基本サイズを16pxに */
     line-height: 1.5;
   }
 

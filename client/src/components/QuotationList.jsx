@@ -15,6 +15,7 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
     // ... existing state ...
     const [quickData, setQuickData] = useState([]);
     const [downloadingId, setDownloadingId] = useState(null);
+    const [justSavedId, setJustSavedId] = useState(null);
 
     const startQuickEdit = (quotation) => {
         setQuickEditId(quotation.id);
@@ -65,6 +66,8 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                 onStatusUpdate(quotation.id, quotation.status, updatedItems);
             }
             setQuickEditId(null);
+            setJustSavedId(quotation.id);
+            setTimeout(() => setJustSavedId(null), 2000); // Remove glow after 2 seconds
         } catch (err) {
             console.error('Failed to save quick edit:', err);
             await showAlert('実績の保存に失敗しました', 'error');
@@ -152,14 +155,16 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                 return (
                     <div key={quotation.id}
                         className={cn(
-                            "rounded-xl border-2 p-5 shadow-sm hover:shadow-lg transition-all duration-300 border-l-[6px] backdrop-blur-md will-change-transform",
+                            "rounded-xl border-2 p-5 shadow-sm hover:shadow-lg transition-all duration-700 border-l-[6px] backdrop-blur-md will-change-transform",
                             isFullyDelivered
                                 ? "bg-emerald-950/20 border-emerald-600/50 border-l-emerald-500 shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)]" :
                                 quotation.status === 'ordered'
                                     ? "bg-cyan-950/20 border-cyan-800/50 border-l-cyan-500 shadow-[0_0_20px_-5px_rgba(6,182,212,0.15)]" :
                                     quotation.status === 'lost'
                                         ? "bg-slate-800/40 border-slate-700 border-l-slate-600" :
-                                        "bg-slate-800/60 border-indigo-900/30 border-l-indigo-500 shadow-[0_0_20px_-5px_rgba(99,102,241,0.1)]"
+                                        "bg-slate-800/60 border-indigo-900/30 border-l-indigo-500 shadow-[0_0_20px_-5px_rgba(99,102,241,0.1)]",
+                            !quotation.isVerified && "border-amber-500/50 shadow-[0_0_15px_-5px_rgba(245,158,11,0.2)]",
+                            justSavedId === quotation.id && "ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900 shadow-[0_0_30px_rgba(99,102,241,0.6)] scale-[1.01]"
                         )}
                         style={{ contentVisibility: 'auto', containIntrinsicSize: '200px 400px' }}
                     >
@@ -169,6 +174,12 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                 <div className="space-y-4">
                                     <div className="flex flex-wrap items-center gap-2 mb-2">
                                         <h3 className="text-xl font-bold text-slate-100 break-words">{quotation.companyName || '（会社名なし）'}</h3>
+                                        {!quotation.isVerified && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                                                <Sparkles size={10} />
+                                                未確認 (AI)
+                                            </span>
+                                        )}
                                         <span className="text-xs text-slate-500 font-mono">#{quotation.displayId || quotation.id}</span>
                                         {quotation.orderNumber && (
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-900/40 text-purple-300 border border-purple-800/50">
@@ -333,24 +344,24 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                         <>
                                             {hasActuals ? (
                                                 <>
-                                                    <p className="text-xs text-slate-400 font-medium mb-0.5">見積合計(加工費)</p>
-                                                    <p className="text-2xl font-black text-slate-200 flex items-center justify-end gap-1 font-mono tracking-tight">
+                                                    <p className="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-wider">見込加工費</p>
+                                                    <p className="text-2xl font-black text-slate-100 flex items-center justify-end gap-1 font-mono tracking-tight -mb-1">
                                                         <span className="text-slate-500 text-sm font-normal">¥</span>
                                                         {totalProc.toLocaleString()}
                                                     </p>
-                                                    <div className="mt-2 pt-2 border-t border-slate-800/50">
-                                                        <p className="text-[10px] text-indigo-400 font-bold mb-0.5 uppercase tracking-wider">実績合計(加工費)</p>
-                                                        <p className="text-xl font-black text-indigo-300 flex items-center justify-end gap-1 font-mono tracking-tight">
-                                                            <span className="text-indigo-600/50 text-xs font-normal">¥</span>
+                                                    <div className="mt-4 pt-3 border-t border-slate-800">
+                                                        <p className="text-[10px] text-indigo-400 font-black mb-1 uppercase tracking-widest">実績加工費</p>
+                                                        <p className="text-2xl font-black text-white flex items-center justify-end gap-1 font-mono tracking-tighter drop-shadow-[0_0_10px_rgba(99,102,241,0.2)]">
+                                                            <span className="text-indigo-500 text-xs font-normal">¥</span>
                                                             {actualProcTotal.toLocaleString()}
                                                         </p>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <p className="text-xs text-slate-500 font-medium mb-0.5">見積合計(加工費)</p>
-                                                    <p className="text-2xl font-black text-slate-100 flex items-center justify-end gap-1 font-mono tracking-tight">
-                                                        <span className="text-slate-600 text-sm font-normal">¥</span>
+                                                    <p className="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-wider">見込加工費</p>
+                                                    <p className="text-3xl font-black text-white flex items-center justify-end gap-1 font-mono tracking-tighter">
+                                                        <span className="text-slate-600 text-base font-normal">¥</span>
                                                         {totalProc.toLocaleString()}
                                                     </p>
                                                 </>
@@ -358,23 +369,22 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
 
                                             {/* Variance indicator */}
                                             {hasActuals && (
-                                                <div className="mt-3 flex flex-col items-end gap-1.5">
+                                                <div className="mt-4 flex flex-col items-end gap-1.5">
                                                     <div className={cn(
-                                                        "text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider",
+                                                        "text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest flex items-center gap-1.5",
                                                         variancePercent > 20 ? "bg-red-500/20 text-red-400 border border-red-500/30" :
                                                             variancePercent > 0 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
                                                                 "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                     )}>
-                                                        <div className="flex justify-between w-full">
-                                                            <span>実績差異(加工費):</span>
-                                                            <span>{Math.round(variancePercent) > 0 ? '+' : ''}{Math.round(variancePercent)}%</span>
-                                                        </div>
+                                                        <span className="opacity-70 text-[8px]">差異率:</span>
+                                                        <span>{Math.round(variancePercent) > 0 ? '+' : ''}{Math.round(variancePercent)}%</span>
                                                     </div>
                                                     <p className={cn(
-                                                        "text-[10px] font-bold leading-tight",
-                                                        variance > 0 ? "text-red-400" : "text-emerald-400"
+                                                        "text-xs font-black tracking-tight",
+                                                        variance > 0 ? "text-red-500" : "text-emerald-500"
                                                     )}>
-                                                        {variance > 0 ? '加工費超過:' : '加工費内収益:'} ¥{Math.abs(variance).toLocaleString()}
+                                                        {variance > 0 ? 'コスト超過:' : '収益向上:'}
+                                                        <span className="ml-1 text-sm">¥{Math.abs(variance).toLocaleString()}</span>
                                                     </p>
                                                 </div>
                                             )}
@@ -406,7 +416,7 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                         </div>
                                     ) : (
                                         <div className={cn(
-                                            "px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 border shadow-sm",
+                                            "px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 border shadow-sm transition-all duration-700 ease-in-out",
                                             quotation.status === 'ordered' ? "bg-emerald-900/40 text-emerald-400 border-emerald-800/50" :
                                                 quotation.status === 'lost' ? "bg-slate-800 text-slate-400 border-slate-700" :
                                                     "bg-cyan-900/30 text-cyan-400 border-cyan-800/50"

@@ -354,6 +354,7 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
                 orderNumber: ocrData.orderNumber || '',
                 constructionNumber: ocrData.constructionNumber || '',
                 status: 'ordered',
+                is_verified: false,
                 notes: ocrData.notes || 'ホットフォルダから自動投入',
                 items: items
             };
