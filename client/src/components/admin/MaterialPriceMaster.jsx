@@ -258,7 +258,7 @@ export default function MaterialPriceMaster() {
                                 type="number"
                                 step="0.01"
                                 value={globalOverheadFactor}
-                                onChange={e => setGlobalOverheadFactor(Number(e.target.value))}
+                                onChange={e => setGlobalOverheadFactor(e.target.value)}
                                 className="w-full bg-slate-900 border border-blue-500/50 rounded-lg px-3 py-1.5 text-sm text-slate-200 outline-none font-mono focus:ring-1 focus:ring-blue-500"
                             />
                             <button
