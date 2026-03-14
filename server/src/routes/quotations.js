@@ -573,7 +573,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
 
             if (itemError) {
                 console.error('[Quotations] Item creation failed:', itemError);
-                // ヘッダーはできているので、ここではエラーを投げずに続行（ログのみ）
+                throw new AppError('Failed to create quotation items: ' + itemError.message, 500, 'CREATE_FAILED');
             }
         }
 
@@ -727,7 +727,11 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                     dimensions: item.dimensions || '',
                 }));
 
-                await supabaseAdmin.from('quotation_items').insert(itemRows);
+                const { error: insertError } = await supabaseAdmin.from('quotation_items').insert(itemRows);
+                if (insertError) {
+                    console.error('[Quotations] Item update failed:', insertError);
+                    throw new AppError('Failed to update quotation items: ' + insertError.message, 500, 'UPDATE_FAILED');
+                }
             }
         }
 

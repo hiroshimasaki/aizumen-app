@@ -130,11 +130,19 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
             setItems(initialData.items.map(item => ({
                 ...item,
                 id: item.id || Date.now() + Math.random(),
-                responseDate: item.responseDate || '',
-                scheduledStartDate: item.scheduledStartDate || '',
-                scheduledEndDate: item.scheduledEndDate || '',
-                dueDate: item.dueDate || '',
-                deliveryDate: item.deliveryDate || '',
+                // スネークケースをキャメルケースに正規化（保存時の消失を防ぐ）
+                processingCost: item.processingCost ?? item.processing_cost ?? '',
+                materialCost: item.materialCost ?? item.material_cost ?? '',
+                otherCost: item.otherCost ?? item.other_cost ?? '',
+                actualHours: item.actualHours ?? item.actual_hours ?? '',
+                actualProcessingCost: item.actualProcessingCost ?? item.actual_processing_cost ?? '',
+                actualMaterialCost: item.actualMaterialCost ?? item.actual_material_cost ?? '',
+                actualOtherCost: item.actualOtherCost ?? item.actual_other_cost ?? '',
+                responseDate: item.responseDate ?? item.response_date ?? '',
+                scheduledStartDate: item.scheduledStartDate ?? item.scheduled_start_date ?? '',
+                scheduledEndDate: item.scheduledEndDate ?? item.scheduled_end_date ?? '',
+                dueDate: item.dueDate ?? item.due_date ?? '',
+                deliveryDate: item.deliveryDate ?? item.delivery_date ?? '',
                 dimensions: item.dimensions || ''
             })));
             if (initialData.files && initialData.files.length > 0) {
