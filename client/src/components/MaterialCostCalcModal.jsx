@@ -19,6 +19,7 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
     const [shape, setShape] = useState('plate');
     const [dimValues, setDimValues] = useState({});
     const [globalOverheadFactor, setGlobalOverheadFactor] = useState(1.0);
+    const [htVendors, setHtVendors] = useState([]);
     // 熱処理情報
     const [heatTreatment, setHeatTreatment] = useState({ type: 'none', hardness: '', vendor: '', shipToVendor: false });
     // 計算結果
@@ -44,6 +45,21 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
             console.error('Failed to fetch data:', err);
         } finally {
             setLoading(false);
+        }
+        
+        // 熱処理業者の履歴を取得
+        try {
+            const quotationsRes = await api.get('/api/quotations');
+            const vendors = new Set();
+            (quotationsRes.data || []).forEach(q => {
+                (q.items || []).forEach(item => {
+                    const htVendor = item.material_metadata?.heatTreatment?.vendor;
+                    if (htVendor) vendors.add(htVendor);
+                });
+            });
+            setHtVendors(Array.from(vendors));
+        } catch (e) {
+            console.error('Failed to fetch HT vendors:', e);
         }
     };
 
@@ -249,12 +265,16 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
                                 <label className="text-[10px] font-bold text-slate-400">熱処理委託先</label>
                                 <input
                                     type="text"
+                                    list="ht-vendor-list"
                                     value={heatTreatment.vendor}
                                     onChange={e => setHeatTreatment(prev => ({ ...prev, vendor: e.target.value }))}
                                     disabled={heatTreatment.type === 'none'}
                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none disabled:opacity-30"
-                                    placeholder="熱処理業者名を入力"
+                                    placeholder="熱処理業者名を入力または選択"
                                 />
+                                <datalist id="ht-vendor-list">
+                                    {htVendors.map(v => <option key={v} value={v} />)}
+                                </datalist>
                             </div>
                             <div className="col-span-2 flex items-center gap-2 pt-1">
                                 <input

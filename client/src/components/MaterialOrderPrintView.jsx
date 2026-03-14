@@ -16,7 +16,7 @@ export default function MaterialOrderPrintView({ quotation, companyInfo }) {
     const materialItems = (quotation.items || []).filter(item => item.materialCost > 0);
 
     const content = (
-        <div className="hidden print:block p-12 bg-white text-slate-900 font-['BIZ_UDGothic',_sans-serif]">
+        <div className="hidden print:block p-12 bg-white text-slate-900 font-['BIZ_UDGothic',_sans-serif] material-order-page">
             {/* Header */}
             <div className="flex justify-between items-start mb-12">
                 <div>
@@ -126,13 +126,18 @@ export default function MaterialOrderPrintView({ quotation, companyInfo }) {
             <div className="mt-auto pt-12 border-t border-slate-100">
                 <div className="text-xs font-bold text-slate-400 mb-2">【特記事項 / 納品場所】</div>
                 <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">
-                    {quotation.notes || '上記内容にて発注申し上げます。納期、金額等に変更がある場合は至急ご連絡ください。\n納入場所：弊社工場'}
+                    {quotation.notes || (
+                        materialItems.some(i => i.material_metadata?.heatTreatment?.shipToVendor)
+                            ? '上記内容にて発注申し上げます。納期、金額等に変更がある場合は至急ご連絡ください。\n（材料は指定の熱処理業者へ直送してください）'
+                            : '上記内容にて発注申し上げます。納期、金額等に変更がある場合は至急ご連絡ください。\n納入場所：弊社工場'
+                    )}
                 </div>
             </div>
 
             <style>{`
                 @media print {
                     @page { size: A4; margin: 15mm; }
+                    .material-order-page { page-break-after: always; }
                 }
             `}</style>
         </div>

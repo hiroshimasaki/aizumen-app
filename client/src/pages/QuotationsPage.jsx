@@ -309,11 +309,21 @@ export default function QuotationsPage() {
     };
 
     const handlePrintMaterialOrder = (quotation) => {
+        // 熱処理指示があるか確認
+        const hasHeatTreatment = (quotation.items || []).some(item => 
+            item.material_metadata?.heatTreatment?.type && item.material_metadata.heatTreatment.type !== 'none'
+        );
+
         setMaterialOrderPrintData(quotation);
+        if (hasHeatTreatment) {
+            setHeatTreatmentOrderPrintData(quotation);
+        }
+
         setTimeout(() => {
             window.print();
             setMaterialOrderPrintData(null);
-        }, 100);
+            setHeatTreatmentOrderPrintData(null);
+        }, 300);
     };
 
     const handlePrintHeatTreatmentOrder = (quotation) => {
