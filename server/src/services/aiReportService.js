@@ -90,7 +90,7 @@ class AIReportService {
 
         if (createdError) throw createdError;
 
-        // 2. Fetch quotations that have items with deliveryDate in target month (for Actuals)
+        // 2. Fetch quotations that have items with delivery_date in target month (for Actuals)
         // Note: We use a join or fetch both to be safe. 
         // For simplicity and accuracy, we'll fetch quotes that were UPDATED recently or have items in the month.
         const { data: deliveredQ, error: deliveredError } = await supabaseAdmin
@@ -98,8 +98,8 @@ class AIReportService {
             .select('*, items:quotation_items(*)')
             .eq('tenant_id', tenantId)
             .or(`status.eq.delivered,status.eq.ordered`)
-            .filter('quotation_items.delivery_date', 'gte', startDate)
-            .filter('quotation_items.delivery_date', 'lt', endDate);
+            .filter('items.delivery_date', 'gte', startDate)
+            .filter('items.delivery_date', 'lt', endDate);
 
         if (deliveredError) throw deliveredError;
 
@@ -133,17 +133,17 @@ class AIReportService {
                     if (['ordered', 'delivered'].includes(q.status)) {
                         totalItemsInTarget++;
                         const qty = Number(item.quantity) || 1;
-                        const p = (Number(item.processingCost) || 0) * qty;
-                        const m = (Number(item.materialCost) || 0) * qty;
-                        const o = (Number(item.otherCost) || 0) * qty;
+                        const p = (Number(item.processing_cost) || 0) * qty;
+                        const m = (Number(item.material_cost) || 0) * qty;
+                        const o = (Number(item.other_cost) || 0) * qty;
                         
                         totalRevenue += (p + m + o);
                         totalEstProcCost += p;
 
-                        if (Number(item.actualProcessingCost) > 0 || Number(item.actualHours) > 0) {
-                            let act = Number(item.actualProcessingCost) || 0;
-                            if (act <= 0 && Number(item.actualHours) > 0) {
-                                act = Number(item.actualHours) * 8000;
+                        if (Number(item.actual_processing_cost) > 0 || Number(item.actual_hours) > 0) {
+                            let act = Number(item.actual_processing_cost) || 0;
+                            if (act <= 0 && Number(item.actual_hours) > 0) {
+                                act = Number(item.actual_hours) * 8000;
                             }
                             totalActProcCost += (act * qty);
                             itemsWithActuals++;
@@ -162,9 +162,9 @@ class AIReportService {
             totalCount,
             orderCount,
             winRate,
-            totalRevenue,
-            totalEstProcCost,
-            totalActProcCost,
+            totalRevenue: Math.round(totalRevenue),
+            totalEstProcCost: Math.round(totalEstProcCost),
+            totalActProcCost: Math.round(totalActProcCost),
             marginPct,
             actualInputRate,
             totalItems: totalItemsInTarget
