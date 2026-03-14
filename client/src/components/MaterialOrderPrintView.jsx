@@ -67,6 +67,14 @@ export default function MaterialOrderPrintView({ quotation, companyInfo }) {
                     <span className="text-[10px] font-black text-slate-400 uppercase mr-3">納入希望日:</span>
                     <span className="text-sm font-bold">{materialItems[0]?.deliveryDate ? materialItems[0].deliveryDate.replace(/-/g, '/') : '別途相談'}</span>
                 </div>
+                {materialItems[0]?.material_metadata?.heatTreatment?.shipToVendor && (
+                    <div className="col-span-2 mt-2 pt-2 border-t border-slate-200">
+                        <span className="text-[10px] font-black text-red-500 uppercase mr-3">【直送指示】:</span>
+                        <span className="text-sm font-bold text-red-600">
+                            以下の熱処理業者へ直送してください：{materialItems[0].material_metadata.heatTreatment.vendor} 御中
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Table */}
@@ -97,6 +105,11 @@ export default function MaterialOrderPrintView({ quotation, companyInfo }) {
                                         <div className="font-bold text-sm">{meta.material || item.name}</div>
                                         <div className="text-[10px] text-slate-500 mt-0.5">
                                             {meta.shape ? `${meta.shape} | ` : ''} {dimStr}
+                                            {meta.heatTreatment?.type !== 'none' && (
+                                                <span className="ml-2 text-red-500 font-bold border border-red-200 px-1 rounded bg-red-50">
+                                                    熱処理:{meta.heatTreatment.type} ({meta.heatTreatment.hardness})
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="border border-slate-200 p-3 text-right text-sm font-mono">{item.quantity}</td>

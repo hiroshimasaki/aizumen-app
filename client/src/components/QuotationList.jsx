@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import api from '../lib/api';
 import { useNotification } from '../contexts/NotificationContext';
 
-export default function QuotationList({ quotations, onEdit, onCopy, onDelete, onRestore, onPermanentDelete, onStatusUpdate, onPrint, onPrintMaterialOrder, isAdmin = true, isTrashView = false }) {
+export default function QuotationList({ quotations, onEdit, onCopy, onDelete, onRestore, onPermanentDelete, onStatusUpdate, onPrint, onPrintMaterialOrder, onPrintHeatTreatmentOrder, isAdmin = true, isTrashView = false }) {
     const { tenant } = useAuth();
     const { showAlert } = useNotification();
     const hourlyRate = tenant?.hourly_rate || 8000;
@@ -463,7 +463,12 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                             </button>
                                             {isAdmin && (
                                                 <button onClick={() => onPrintMaterialOrder(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title="材料注文書を印刷・PDF出力">
-                                                    <FileText size={16} className="text-blue-400" />
+                                                    <FileText size={16} className={cn("text-blue-400", quotation.items?.some(i => i.material_metadata?.heatTreatment?.shipToVendor) && "text-red-400")} />
+                                                </button>
+                                            )}
+                                            {isAdmin && quotation.items?.some(i => i.material_metadata?.heatTreatment?.type && i.material_metadata.heatTreatment.type !== 'none') && (
+                                                <button onClick={() => onPrintHeatTreatmentOrder(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors animate-pulse" title="熱処理注文書を印刷・PDF出力">
+                                                    <Activity size={16} className="text-red-500" />
                                                 </button>
                                             )}
                                             <button onClick={() => onEdit(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title={isAdmin ? "編集" : "詳細表示・実績入力"}>

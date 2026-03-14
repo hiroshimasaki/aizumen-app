@@ -11,6 +11,7 @@ import QuotationList from '../components/QuotationList';
 import QuotationForm from '../components/QuotationForm';
 import QuotationPrintView from '../components/QuotationPrintView';
 import MaterialOrderPrintView from '../components/MaterialOrderPrintView';
+import HeatTreatmentOrderPrintView from '../components/HeatTreatmentOrderPrintView';
 import DashboardMetrics from '../components/DashboardMetrics';
 import { splitPdf } from '../utils/pdfSplitter';
 
@@ -37,6 +38,7 @@ export default function QuotationsPage() {
     const [editingData, setEditingData] = useState(null);
     const [printData, setPrintData] = useState(null);
     const [materialOrderPrintData, setMaterialOrderPrintData] = useState(null);
+    const [heatTreatmentOrderPrintData, setHeatTreatmentOrderPrintData] = useState(null);
 
     // Bulk Analyze Modal state
     const [isBulkOpen, setIsBulkOpen] = useState(false);
@@ -312,6 +314,14 @@ export default function QuotationsPage() {
             window.print();
             setMaterialOrderPrintData(null);
         }, 100);
+    };
+
+    const handlePrintHeatTreatmentOrder = (quotation) => {
+        setHeatTreatmentOrderPrintData(quotation);
+        setTimeout(() => {
+            window.print();
+            setHeatTreatmentOrderPrintData(null);
+        }, 200);
     };
 
     // Bulk Analyze Handlers
@@ -718,6 +728,9 @@ export default function QuotationsPage() {
             )}
             {materialOrderPrintData && (
                 <MaterialOrderPrintView quotation={materialOrderPrintData} companyInfo={tenant} />
+            )}
+            {heatTreatmentOrderPrintData && (
+                <HeatTreatmentOrderPrintView quotation={heatTreatmentOrderPrintData} companyInfo={tenant} />
             )}
 
             {/* Quotation Form Modal */}

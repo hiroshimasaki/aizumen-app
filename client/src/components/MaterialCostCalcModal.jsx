@@ -19,6 +19,8 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
     const [shape, setShape] = useState('plate');
     const [dimValues, setDimValues] = useState({});
     const [globalOverheadFactor, setGlobalOverheadFactor] = useState(1.0);
+    // 熱処理情報
+    const [heatTreatment, setHeatTreatment] = useState({ type: 'none', hardness: '', vendor: '', shipToVendor: false });
     // 計算結果
     const [calculated, setCalculated] = useState({ weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0, overheadFactor: 1.0 });
 
@@ -134,7 +136,8 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
                 unitPrice: calculated.unitPrice,
                 density: calculated.density,
                 cuttingFactor: calculated.cuttingFactor,
-                overheadFactor: calculated.overheadFactor
+                overheadFactor: calculated.overheadFactor,
+                heatTreatment // 熱処理情報をメタデータに追加
             }
         });
         onClose();
@@ -211,6 +214,61 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
                                     />
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                             熱処理設定
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold text-slate-400">種類 (N/H)</label>
+                                <select
+                                    value={heatTreatment.type}
+                                    onChange={e => setHeatTreatment(prev => ({ ...prev, type: e.target.value }))}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none"
+                                >
+                                    <option value="none">なし</option>
+                                    <option value="N">N (焼きならし)</option>
+                                    <option value="H">H (焼き入れ)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold text-slate-400">目標硬度 (HRC等)</label>
+                                <input
+                                    type="text"
+                                    value={heatTreatment.hardness}
+                                    onChange={e => setHeatTreatment(prev => ({ ...prev, hardness: e.target.value }))}
+                                    disabled={heatTreatment.type === 'none'}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none disabled:opacity-30"
+                                    placeholder="例: 50±2"
+                                />
+                            </div>
+                            <div className="space-y-1.5 col-span-2">
+                                <label className="text-[10px] font-bold text-slate-400">熱処理委託先</label>
+                                <input
+                                    type="text"
+                                    value={heatTreatment.vendor}
+                                    onChange={e => setHeatTreatment(prev => ({ ...prev, vendor: e.target.value }))}
+                                    disabled={heatTreatment.type === 'none'}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none disabled:opacity-30"
+                                    placeholder="熱処理業者名を入力"
+                                />
+                            </div>
+                            <div className="col-span-2 flex items-center gap-2 pt-1">
+                                <input
+                                    type="checkbox"
+                                    id="shipToVendor"
+                                    checked={heatTreatment.shipToVendor}
+                                    onChange={e => setHeatTreatment(prev => ({ ...prev, shipToVendor: e.target.checked }))}
+                                    disabled={heatTreatment.type === 'none'}
+                                    className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 disabled:opacity-30"
+                                />
+                                <label htmlFor="shipToVendor" className="text-xs text-slate-400 cursor-pointer select-none disabled:opacity-30">
+                                    鋼材を熱処理業者へ直送する
+                                </label>
+                            </div>
                         </div>
                     </div>
 
