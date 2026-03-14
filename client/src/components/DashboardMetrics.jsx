@@ -75,7 +75,7 @@ export default function DashboardMetrics({ stats, filterMonth = null, showCharts
                     <div className={cn("text-3xl font-black relative z-10", metrics.orderedVariance > 0 ? "text-red-400" : "text-emerald-400")}>
                         {metrics.orderedVariance > 0 ? '+' : ''}¥{Math.abs(metrics.orderedVariance).toLocaleString()}
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-2">当初見積比 {metrics.orderedVariancePct.toFixed(1)}%</p>
+                    <p className="text-[10px] text-slate-500 mt-2">当初見積比 {Math.round(metrics.orderedVariancePct)}%</p>
                 </div>
             </div>
 

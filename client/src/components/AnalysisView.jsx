@@ -144,41 +144,44 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
             .sort((a, b) => b.amount - a.amount)
             .slice(0, 5);
 
-        // 4. Cost Category Breakdown
-        let actualProc = 0, actualMat = 0, actualOther = 0;
+        // 4. Processing Cost Performance (Plan vs Actual)
+        // Only include items where actual results (cost or hours) have been recorded
+        let totalPlan = 0;
+        let totalActual = 0;
+        let itemsWithActuals = 0;
+
         ordered.forEach(q => {
             (q.items || []).forEach(item => {
                 const qty = Number(item.quantity) || 1;
-                
-                let ap = (item.actualProcessingCost !== undefined && item.actualProcessingCost !== null && item.actualProcessingCost !== '') 
-                    ? Number(item.actualProcessingCost) * qty 
-                    : (Number(item.actualHours) > 0 ? Number(item.actualHours) * hourlyRate : (Number(item.processingCost) || 0) * qty);
-                
-                let am = (item.actualMaterialCost !== undefined && item.actualMaterialCost !== null && item.actualMaterialCost !== '')
-                    ? Number(item.actualMaterialCost) * qty
-                    : (Number(item.materialCost) || 0) * qty;
-                
-                let ao = (item.actualOtherCost !== undefined && item.actualOtherCost !== null && item.actualOtherCost !== '')
-                    ? Number(item.actualOtherCost) * qty
-                    : (Number(item.otherCost) || 0) * qty;
+                let actualVal = 0;
+                let hasActual = false;
 
-                actualProc += ap;
-                actualMat += am;
-                actualOther += ao;
+                if (item.actualProcessingCost && Number(item.actualProcessingCost) > 0) {
+                    actualVal = Number(item.actualProcessingCost) * qty;
+                    hasActual = true;
+                } else if (item.actualHours && Number(item.actualHours) > 0) {
+                    actualVal = Number(item.actualHours) * hourlyRate;
+                    hasActual = true;
+                }
+
+                if (hasActual) {
+                    totalPlan += (Number(item.processingCost) || 0) * qty;
+                    totalActual += actualVal;
+                    itemsWithActuals++;
+                }
             });
         });
-
-        const totalAll = actualProc + actualMat + actualOther;
 
         return { 
             trendData, 
             profitability, 
             topCompanies, 
-            costBreakdown: { 
-                totalProc: actualProc, 
-                totalMat: actualMat, 
-                totalOther: actualOther, 
-                totalAll
+            procPerformance: { 
+                totalPlan, 
+                totalActual, 
+                itemsWithActuals,
+                diff: totalPlan - totalActual,
+                efficiency: totalPlan > 0 ? Math.round(((totalPlan - totalActual) / totalPlan) * 100) : 0
             } 
         };
     }, [quotations, period, hourlyRate]);
@@ -264,42 +267,59 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                     </div>
                 </div>
 
-                {/* Cost Category Breakdown */}
+                {/* Processing Cost Plan vs Actual */}
                 <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
                     <div className="flex items-center gap-2 mb-6">
                         <div className="p-2 bg-purple-900/30 text-purple-400 rounded-lg">
                             <PieChart size={20} />
                         </div>
-                        <h3 className="font-bold text-slate-200">受注原価構成比</h3>
+                        <h3 className="font-bold text-slate-200">加工費 予実管理分析</h3>
                     </div>
                     <div className="flex flex-col h-48 justify-center gap-4">
-                        {analysisData.costBreakdown.totalAll > 0 ? (
+                        {analysisData.procPerformance.itemsWithActuals > 0 ? (
                             <>
-                                <div className="w-full h-8 flex rounded-full overflow-hidden shadow-inner border border-slate-700">
-                                    <div className="bg-blue-500 h-full transition-all" style={{ width: `${pctSafe(analysisData.costBreakdown.totalProc, analysisData.costBreakdown.totalAll)}%` }} />
-                                    <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pctSafe(analysisData.costBreakdown.totalMat, analysisData.costBreakdown.totalAll)}%` }} />
-                                    <div className="bg-amber-500 h-full transition-all" style={{ width: `${pctSafe(analysisData.costBreakdown.totalOther, analysisData.costBreakdown.totalAll)}%` }} />
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-[10px] font-bold text-slate-500 px-1">
+                                        <span>予定加工費 (合計)</span>
+                                        <span>¥{analysisData.procPerformance.totalPlan.toLocaleString()}</span>
+                                    </div>
+                                    <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden">
+                                        <div className="bg-blue-600/50 h-full transition-all" style={{ width: '100%' }} />
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500" /><span className="text-xs font-bold text-slate-400">加工費</span></div>
-                                        <div className="text-sm font-black text-slate-200">{pctSafe(analysisData.costBreakdown.totalProc, analysisData.costBreakdown.totalAll)}%</div>
-                                        <div className="text-[10px] text-slate-500">¥{analysisData.costBreakdown.totalProc.toLocaleString()}</div>
+
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-[10px] font-bold text-slate-500 px-1">
+                                        <span>実績加工費 (合計)</span>
+                                        <span>¥{analysisData.procPerformance.totalActual.toLocaleString()}</span>
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-xs font-bold text-slate-400">材料費</span></div>
-                                        <div className="text-sm font-black text-slate-200">{pctSafe(analysisData.costBreakdown.totalMat, analysisData.costBreakdown.totalAll)}%</div>
-                                        <div className="text-[10px] text-slate-500">¥{analysisData.costBreakdown.totalMat.toLocaleString()}</div>
+                                    <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden">
+                                        <div 
+                                            className={`${analysisData.procPerformance.diff >= 0 ? 'bg-emerald-500' : 'bg-red-500'} h-full transition-all`} 
+                                            style={{ width: `${Math.min(100, (analysisData.procPerformance.totalActual / analysisData.procPerformance.totalPlan) * 100)}%` }} 
+                                        />
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500" /><span className="text-xs font-bold text-slate-400">その他</span></div>
-                                        <div className="text-sm font-black text-slate-200">{pctSafe(analysisData.costBreakdown.totalOther, analysisData.costBreakdown.totalAll)}%</div>
-                                        <div className="text-[10px] text-slate-500">¥{analysisData.costBreakdown.totalOther.toLocaleString()}</div>
+                                </div>
+
+                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-slate-500">改善効率 (工賃利益率)</span>
+                                        <span className={`text-xl font-black ${analysisData.procPerformance.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {analysisData.procPerformance.diff >= 0 ? '+' : ''}{analysisData.procPerformance.efficiency}%
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-[10px] font-bold text-slate-500">利益額(改善分)</span>
+                                        <div className={`text-sm font-black ${analysisData.procPerformance.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {analysisData.procPerformance.diff >= 0 ? '¥' : '-¥'}{Math.abs(analysisData.procPerformance.diff).toLocaleString()}
+                                        </div>
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="text-center text-slate-500 italic">受注データがありません</div>
+                            <div className="text-center text-slate-500 italic py-10">
+                                実績データ（工数または工賃）が入力された<br/>案件がまだありません
+                            </div>
                         )}
                     </div>
                 </div>
@@ -371,7 +391,7 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                         <td className="text-right py-3 pr-2">
                                             <div className={`inline-flex items-center gap-0.5 font-black ${p.marginPct >= 30 ? 'text-emerald-400' : p.marginPct >= 10 ? 'text-blue-400' : p.marginPct >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
                                                 {p.marginPct > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                                                {p.marginPct.toFixed(1)}%
+                                                {Math.round(p.marginPct)}%
                                             </div>
                                         </td>
                                     </tr>
