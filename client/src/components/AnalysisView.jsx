@@ -8,8 +8,8 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
 
     // Helper function for percentage calculation
     function pctSafe(val, total) {
-        if (!total || total <= 0) return 0;
-        return Math.round((val / total) * 100);
+        if (!total || total <= 0) return "0.0";
+        return ((val / total) * 100).toFixed(1);
     }
 
     useEffect(() => {
@@ -140,7 +140,7 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
         });
 
         const topCompanies = Object.entries(companyStats)
-            .map(([name, stats]) => ({ name, ...stats, winRate: Math.round((stats.ordered / stats.total) * 100) }))
+            .map(([name, stats]) => ({ name, ...stats, winRate: ((stats.ordered / stats.total) * 100).toFixed(1) }))
             .sort((a, b) => b.amount - a.amount)
             .slice(0, 5);
 
@@ -181,7 +181,7 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                 totalActual, 
                 itemsWithActuals,
                 diff: totalPlan - totalActual,
-                efficiency: totalPlan > 0 ? Math.round(((totalPlan - totalActual) / totalPlan) * 100) : 0
+                efficiency: totalPlan > 0 ? ((totalPlan - totalActual) / totalPlan * 100).toFixed(1) : "0.0"
             } 
         };
     }, [quotations, period, hourlyRate]);
@@ -267,7 +267,6 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                     </div>
                 </div>
 
-                {/* Processing Cost Plan vs Actual */}
                 <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
                     <div className="flex items-center gap-2 mb-6">
                         <div className="p-2 bg-purple-900/30 text-purple-400 rounded-lg">
@@ -276,47 +275,53 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                         <h3 className="font-bold text-slate-200">加工費 予実管理分析</h3>
                     </div>
                     <div className="flex flex-col h-48 justify-center gap-4">
-                        {analysisData.procPerformance.itemsWithActuals > 0 ? (
-                            <>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] font-bold text-slate-500 px-1">
-                                        <span>予定加工費 (合計)</span>
-                                        <span>¥{analysisData.procPerformance.totalPlan.toLocaleString()}</span>
-                                    </div>
-                                    <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden">
-                                        <div className="bg-blue-600/50 h-full transition-all" style={{ width: '100%' }} />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] font-bold text-slate-500 px-1">
-                                        <span>実績加工費 (合計)</span>
-                                        <span>¥{analysisData.procPerformance.totalActual.toLocaleString()}</span>
-                                    </div>
-                                    <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden">
-                                        <div 
-                                            className={`${analysisData.procPerformance.diff >= 0 ? 'bg-emerald-500' : 'bg-red-500'} h-full transition-all`} 
-                                            style={{ width: `${Math.min(100, (analysisData.procPerformance.totalActual / analysisData.procPerformance.totalPlan) * 100)}%` }} 
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-slate-500">改善効率 (工賃利益率)</span>
-                                        <span className={`text-xl font-black ${analysisData.procPerformance.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                            {analysisData.procPerformance.diff >= 0 ? '+' : ''}{analysisData.procPerformance.efficiency}%
-                                        </span>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-[10px] font-bold text-slate-500">利益額(改善分)</span>
-                                        <div className={`text-sm font-black ${analysisData.procPerformance.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                            {analysisData.procPerformance.diff >= 0 ? '¥' : '-¥'}{Math.abs(analysisData.procPerformance.diff).toLocaleString()}
+                        {analysisData.procPerformance.itemsWithActuals > 0 ? (() => {
+                            const p = analysisData.procPerformance;
+                            const pWidth = p.totalActual > p.totalPlan ? (p.totalPlan / p.totalActual * 100) : 100;
+                            const aWidth = p.totalActual > p.totalPlan ? 100 : (p.totalPlan > 0 ? (p.totalActual / p.totalPlan * 100) : 0);
+                            
+                            return (
+                                <>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-[10px] font-bold text-slate-500 px-1">
+                                            <span>予定加工費 (合計)</span>
+                                            <span>¥{p.totalPlan.toLocaleString()}</span>
+                                        </div>
+                                        <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden">
+                                            <div className="bg-blue-600/50 h-full transition-all" style={{ width: `${pWidth}%` }} />
                                         </div>
                                     </div>
-                                </div>
-                            </>
-                        ) : (
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-[10px] font-bold text-slate-500 px-1">
+                                            <span>実績加工費 (合計)</span>
+                                            <span>¥{p.totalActual.toLocaleString()}</span>
+                                        </div>
+                                        <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden">
+                                            <div 
+                                                className={`${p.diff >= 0 ? 'bg-emerald-500' : 'bg-red-500'} h-full transition-all`} 
+                                                style={{ width: `${aWidth}%` }} 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-slate-500">改善効率 (工賃利益率)</span>
+                                            <span className={`text-xl font-black ${p.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {p.diff >= 0 ? '+' : ''}{p.efficiency}%
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-bold text-slate-500">利益額(改善分)</span>
+                                            <div className={`text-sm font-black ${p.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {p.diff >= 0 ? '¥' : '-¥'}{Math.abs(p.diff).toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })() : (
                             <div className="text-center text-slate-500 italic py-10">
                                 実績データ（工数または工賃）が入力された<br/>案件がまだありません
                             </div>
@@ -391,7 +396,7 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                         <td className="text-right py-3 pr-2">
                                             <div className={`inline-flex items-center gap-0.5 font-black ${p.marginPct >= 30 ? 'text-emerald-400' : p.marginPct >= 10 ? 'text-blue-400' : p.marginPct >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
                                                 {p.marginPct > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                                                {Math.round(p.marginPct)}%
+                                                {p.marginPct.toFixed(1)}%
                                             </div>
                                         </td>
                                     </tr>

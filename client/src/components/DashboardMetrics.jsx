@@ -32,7 +32,7 @@ export default function DashboardMetrics({ stats, filterMonth = null, showCharts
                         </div>
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">受注率</span>
                     </div>
-                    <div className="text-3xl font-black text-white relative z-10">{metrics.winRate}%</div>
+                    <div className="text-3xl font-black text-white relative z-10">{Number(metrics.winRate).toFixed(1)}%</div>
                     <div className="flex gap-2 mt-2 truncate relative z-10">
                         <span className="text-[10px] text-emerald-400 font-bold">納品:{metrics.delivered}</span>
                         <span className="text-[10px] text-blue-400 font-bold">受注:{metrics.ordered}</span>
@@ -75,7 +75,7 @@ export default function DashboardMetrics({ stats, filterMonth = null, showCharts
                     <div className={cn("text-3xl font-black relative z-10", metrics.orderedVariance > 0 ? "text-red-400" : "text-emerald-400")}>
                         {metrics.orderedVariance > 0 ? '+' : ''}¥{Math.abs(metrics.orderedVariance).toLocaleString()}
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-2">当初見積比 {Math.round(metrics.orderedVariancePct)}%</p>
+                    <p className="text-[10px] text-slate-500 mt-2">当初見積比 {Number(metrics.orderedVariancePct).toFixed(1)}%</p>
                 </div>
             </div>
 

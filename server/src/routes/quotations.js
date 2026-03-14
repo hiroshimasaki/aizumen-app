@@ -275,7 +275,7 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
         // 勝率等の算出
         const finalize = (m) => {
             const totalCount = m.ordered + m.delivered + m.lost + m.pending;
-            m.winRate = totalCount > 0 ? Math.round(((m.ordered + m.delivered) / totalCount) * 100) : 0;
+            m.winRate = totalCount > 0 ? ((m.ordered + m.delivered) / totalCount) * 100 : 0;
             m.orderedVariance = m.orderedProcActTotal - m.orderedProcEstTotal;
             m.orderedVariancePct = m.orderedProcEstTotal > 0 ? (m.orderedVariance / m.orderedProcEstTotal) * 100 : 0;
         };
