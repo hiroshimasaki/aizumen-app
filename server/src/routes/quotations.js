@@ -200,6 +200,14 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
         const allTime = initializeMetrics();
         const currentMonth = initializeMetrics();
 
+        // 直近6ヶ月の推移用データの初期化
+        const historyMap = {};
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            historyMap[key] = { date: key, sales: 0, count: 0 };
+        }
+
         data.forEach(q => {
             const qDate = new Date(q.created_at);
             const isQInCurMonth = qDate.getFullYear() === curYear && qDate.getMonth() === curMonth;
@@ -214,10 +222,12 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
             else if (q.status === 'pending') { allTime.pending++; if (isQInCurMonth) currentMonth.pending++; }
 
             const items = q.quotation_items || [];
+            let qTotalCost = 0;
             items.forEach(i => {
                 const qty = Number(i.quantity) || 1;
                 const cost = (Number(i.processing_cost) || 0) + (Number(i.material_cost) || 0) + (Number(i.other_cost) || 0);
                 const totalCost = cost * qty;
+                qTotalCost += totalCost;
 
                 const dDateStr = i.delivery_date || i.due_date;
                 const dDate = dDateStr ? new Date(dDateStr) : null;
@@ -251,6 +261,15 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
                     if (isQInCurMonth) currentMonth.pendingAmount += totalCost;
                 }
             });
+
+            // ヒストリ計算 (月別売上と件数)
+            if (q.status === 'ordered' || q.status === 'delivered') {
+                const key = `${qDate.getFullYear()}-${String(qDate.getMonth() + 1).padStart(2, '0')}`;
+                if (historyMap[key]) {
+                    historyMap[key].sales += qTotalCost;
+                    historyMap[key].count += 1;
+                }
+            }
         });
 
         // 勝率等の算出
@@ -264,7 +283,9 @@ router.get('/stats', authMiddleware, checkTrialLimit, async (req, res, next) => 
         finalize(allTime);
         finalize(currentMonth);
 
-        res.json({ allTime, currentMonth });
+        const history = Object.values(historyMap).sort((a, b) => a.date.localeCompare(b.date));
+
+        res.json({ allTime, currentMonth, history });
     } catch (err) {
         next(err);
     }
@@ -933,6 +954,18 @@ router.patch('/items/:itemId', authMiddleware, async (req, res, next) => {
             return res.json({ message: 'No changes provided' });
         }
 
+        // 既存データの取得（履歴用）
+        const { data: existingItem } = await supabaseAdmin
+            .from('quotation_items')
+            .select('*')
+            .eq('id', itemId)
+            .eq('tenant_id', req.tenantId)
+            .single();
+
+        if (!existingItem) {
+            throw new AppError('Item not found', 404, 'NOT_FOUND');
+        }
+
         const { data: updatedItem, error } = await supabaseAdmin
             .from('quotation_items')
             .update(updates)
@@ -948,19 +981,38 @@ router.patch('/items/:itemId', authMiddleware, async (req, res, next) => {
         // 事後処理
         (async () => {
             try {
-                // 変更内容の構築
+                // 変更内容の構築 ({ from: X, to: Y } 形式)
                 const changes = {};
-                if (scheduledStartDate !== undefined) changes['着手予定日'] = scheduledStartDate;
-                if (scheduledEndDate !== undefined) changes['完了予定日'] = scheduledEndDate;
-                if (dueDate !== undefined) changes['納期'] = dueDate;
+                const formatDate = (val) => val ? new Date(val).toLocaleDateString('ja-JP') : 'なし';
 
-                await supabaseAdmin.from('quotation_history').insert({
-                    quotation_id: updatedItem.quotation_id,
-                    tenant_id: req.tenantId,
-                    changed_by: req.user.id,
-                    change_type: 'updated',
-                    changes: { message: 'ガントチャートから日程を更新しました', ...changes },
-                });
+                if (scheduledStartDate !== undefined && existingItem.scheduled_start_date !== scheduledStartDate) {
+                    changes['着手予定日'] = { 
+                        from: formatDate(existingItem.scheduled_start_date), 
+                        to: formatDate(scheduledStartDate) 
+                    };
+                }
+                if (scheduledEndDate !== undefined && existingItem.scheduled_end_date !== scheduledEndDate) {
+                    changes['完了予定日'] = { 
+                        from: formatDate(existingItem.scheduled_end_date), 
+                        to: formatDate(scheduledEndDate) 
+                    };
+                }
+                if (dueDate !== undefined && existingItem.due_date !== dueDate) {
+                    changes['納期'] = { 
+                        from: formatDate(existingItem.due_date), 
+                        to: formatDate(dueDate) 
+                    };
+                }
+
+                if (Object.keys(changes).length > 0) {
+                    await supabaseAdmin.from('quotation_history').insert({
+                        quotation_id: updatedItem.quotation_id,
+                        tenant_id: req.tenantId,
+                        changed_by: req.user.id,
+                        change_type: 'updated',
+                        changes: changes,
+                    });
+                }
 
                 await logService.audit({
                     action: 'quotation_item_updated',

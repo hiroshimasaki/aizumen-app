@@ -3,60 +3,61 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 import AnalysisView from '../components/AnalysisView';
-import { BarChart3, Lock } from 'lucide-react';
+import DashboardMetrics from '../components/DashboardMetrics';
+import { BarChart3, Lock, RefreshCw } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
 export default function AnalysisPage() {
     const { tenant } = useAuth();
     const [allQuotations, setAllQuotations] = useState([]);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [filterPeriod, setFilterPeriod] = useState('current');
 
     const isPro = tenant?.plan === 'pro';
 
     useEffect(() => {
-        if (!isPro) {
-            setLoading(false);
-            return;
-        }
-
         const fetchAll = async () => {
             try {
-                const { data } = await api.get('/api/quotations?limit=1000');
-                const mapped = (data.data || []).map(q => ({
-                    id: q.id,
-                    companyName: q.company_name,
-                    contactPerson: q.contact_person,
-                    emailLink: q.email_link,
-                    notes: q.notes,
-                    orderNumber: q.order_number,
-                    constructionNumber: q.construction_number,
-                    status: q.status,
-                    createdAt: q.created_at,
-                    updatedAt: q.updated_at,
-                    items: (q.quotation_items || []).map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        quantity: item.quantity,
-                        processingCost: item.processing_cost,
-                        material_cost: item.material_cost,
-                        otherCost: item.other_cost,
-                        responseDate: item.response_date,
-                        dueDate: item.due_date,
-                        deliveryDate: item.delivery_date,
-                        scheduledStartDate: item.scheduled_start_date,
-                        actualHours: item.actual_hours,
-                        actualProcessingCost: item.actual_processing_cost,
-                        actualMaterialCost: item.actual_material_cost,
-                        actualOtherCost: item.actual_other_cost,
-                    })),
-                    files: (q.quotation_files || []).map(f => ({
-                        id: f.id,
-                        originalName: f.original_name,
-                    })),
-                }));
-                setAllQuotations(mapped);
+                const promises = [api.get('/api/quotations/stats')];
+                if (isPro) {
+                    promises.push(api.get('/api/quotations?limit=1000'));
+                }
+
+                const results = await Promise.all(promises);
+                setStats(results[0].data);
+
+                if (isPro && results[1]) {
+                    const mapped = (results[1].data.data || []).map(q => ({
+                        id: q.id,
+                        companyName: q.company_name,
+                        contactPerson: q.contact_person,
+                        status: q.status,
+                        createdAt: q.created_at,
+                        items: (q.quotation_items || []).map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            quantity: item.quantity,
+                            processingCost: item.processing_cost,
+                            materialCost: item.material_cost,
+                            otherCost: item.other_cost,
+                            dueDate: item.due_date,
+                            deliveryDate: item.delivery_date,
+                            actualHours: item.actual_hours,
+                            actualProcessingCost: item.actual_processing_cost,
+                            actualMaterialCost: item.actual_material_cost,
+                            actualOtherCost: item.actual_other_cost,
+                        })),
+                        files: (q.quotation_files || []).map(f => ({
+                            id: f.id,
+                            originalName: f.original_name,
+                        })),
+                    }));
+                    setAllQuotations(mapped);
+                }
             } catch (err) {
-                console.error('Failed to fetch quotations for analysis:', err);
+                console.error('Failed to fetch data for analysis:', err);
             } finally {
                 setLoading(false);
             }
@@ -103,9 +104,58 @@ export default function AnalysisPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-black text-white">データ分析</h1>
-                    <p className="text-slate-400 text-sm">受注データの分析ダッシュボード</p>
+                    <p className="text-slate-400 text-sm">受注・収益の分析ダッシュボード</p>
+                </div>
+                <div className="flex-1 flex justify-end gap-3">
+                    <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-1 flex gap-1 shadow-lg h-fit">
+                        <button
+                            onClick={() => setFilterPeriod('current')}
+                            className={cn(
+                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                filterPeriod === 'current' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                            )}
+                        >
+                            今月
+                        </button>
+                        <button
+                            onClick={() => setFilterPeriod('3months')}
+                            className={cn(
+                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                filterPeriod === '3months' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                            )}
+                        >
+                            過去3ヶ月
+                        </button>
+                        <button
+                            onClick={() => setFilterPeriod('6months')}
+                            className={cn(
+                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                filterPeriod === '6months' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                            )}
+                        >
+                            過去6ヶ月
+                        </button>
+                        <button
+                            onClick={() => setFilterPeriod('1year')}
+                            className={cn(
+                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                filterPeriod === '1year' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                            )}
+                        >
+                            過去1年
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => { setLoading(true); }} // This will trigger fetch via effect if we use a trigger state, but for now simple refresh is fine
+                        className="p-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all"
+                    >
+                        <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+                    </button>
                 </div>
             </div>
+
+            {/* Basic Dashboard Metrics - Visible to all admins */}
+            <DashboardMetrics stats={stats} filterMonth={filterPeriod} showCharts={!isPro} />
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -126,7 +176,7 @@ export default function AnalysisPage() {
                     </Link>
                 </div>
             ) : (
-                <AnalysisView quotations={allQuotations} hourlyRate={tenant?.hourly_rate || 8000} />
+                <AnalysisView quotations={allQuotations} period={filterPeriod} hourlyRate={tenant?.hourly_rate || 8000} />
             )}
         </div>
     );

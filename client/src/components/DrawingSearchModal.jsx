@@ -366,7 +366,7 @@ export default function DrawingSearchModal({ isOpen, onClose, file, pdfFile, fil
                             )}
 
                             {results.map((res, i) => (
-                                <SearchResultItem key={i} res={res} index={i} onApplyResult={onApplyResult} />
+                                <SearchResultItem key={i} res={res} index={i} onApplyResult={onApplyResult} queryPreview={queryPreview} />
                             ))}
                         </div>
                     </div>
@@ -377,8 +377,8 @@ export default function DrawingSearchModal({ isOpen, onClose, file, pdfFile, fil
     );
 }
 
-// 検索結果の各項目を表示するサブコンポーネント（フックの規則を守るため分離）
-function SearchResultItem({ res, index, onApplyResult }) {
+// 検索結果の各項目を表示するサブコンポーネント
+function SearchResultItem({ res, index, onApplyResult, queryPreview }) {
     const [thumbBlobUrl, setThumbBlobUrl] = useState(null);
 
     useEffect(() => {
@@ -400,8 +400,6 @@ function SearchResultItem({ res, index, onApplyResult }) {
         fetchThumb();
         return () => {
             active = false;
-            // Note: In a real app, you might want a more sophisticated way to manage these URLs
-            // but for a modal it's generally fine to revoke on unmount.
             if (thumbBlobUrl) URL.revokeObjectURL(thumbBlobUrl);
         };
     }, [res.thumbnailUrl]);
@@ -428,45 +426,56 @@ function SearchResultItem({ res, index, onApplyResult }) {
 
     return (
         <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-colors group">
-            {/* Thumbnail comparison (Simplified: Highlight removed as requested) */}
-            {thumbBlobUrl && (
-                <div className="bg-white flex items-center justify-center h-48 border-b border-slate-700">
-                    <img src={thumbBlobUrl} alt={`Candidate ${index}`} className="max-w-full max-h-full object-contain" />
+            <div className="p-3 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className={`px-2 py-0.5 rounded text-[10px] font-black ${res.ai_score >= 80 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        {res.ai_score ?? 0}% MATCH
+                    </div>
                 </div>
-            )}
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Candidate #{index + 1}</span>
+            </div>
+
+            {/* Thumbnail Area */}
+            <div className="bg-white border-b border-slate-700">
+                <div className="relative group/view">
+                    <div className="absolute top-2 left-2 z-10 bg-cyan-600/80 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter backdrop-blur-sm shadow-sm">図面プレビュー</div>
+                    <div className="h-48 flex items-center justify-center p-2">
+                        {thumbBlobUrl ? (
+                            <img src={thumbBlobUrl} alt={`Result ${index}`} className="max-w-full max-h-full object-contain" />
+                        ) : (
+                            <div className="animate-pulse bg-slate-100 w-full h-full rounded flex items-center justify-center">
+                                <FileText className="text-slate-300" size={32} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${res.ai_score >= 80 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                            {res.ai_score ?? 0}%
-                        </div>
-                        <span className="text-xs font-bold text-slate-300">一致率</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500">ID: {res.quotation_id}</span>
-                </div>
-                
                 {res.original_name && (
-                    <div className="px-1">
-                        <button 
-                            onClick={handleDownload}
-                            className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors font-medium truncate w-full"
-                            title="この図面を開く（ダウンロード）"
-                        >
-                            <FileText size={12} className="shrink-0" />
-                            <span className="truncate">{res.original_name}</span>
-                        </button>
-                    </div>
+                    <button 
+                        onClick={handleDownload}
+                        className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors font-bold truncate w-full"
+                        title="図面ファイルをプレビュー/ダウンロード"
+                    >
+                        <FileText size={12} className="shrink-0" />
+                        <span className="truncate">{res.original_name}</span>
+                    </button>
                 )}
 
-                <div className="bg-slate-900/50 p-2.5 rounded-lg">
-                    <p className="text-[11px] text-slate-300 leading-relaxed font-medium">「{res.ai_reason || '一致箇所が見つかりました'}」</p>
+                <div className="bg-slate-900/50 p-2.5 rounded-xl border border-slate-700/50">
+                    <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
+                        <span className="text-cyan-400 font-bold mr-1">AI解析:</span>
+                        {res.ai_reason || '構造的な一致が確認されました。'}
+                    </p>
                 </div>
+
                 <button
-                    className="w-full py-2.5 bg-cyan-600/10 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/20 hover:border-cyan-500 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/20 active:scale-[0.98]"
                     onClick={() => onApplyResult(res)}
                 >
-                    <Check className="w-3 h-3" />
-                    この情報を流用
+                    <Check className="w-3.5 h-3.5" />
+                    この見積情報を流用する
                 </button>
             </div>
         </div>

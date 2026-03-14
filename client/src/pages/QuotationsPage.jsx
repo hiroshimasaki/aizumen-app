@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Search, Filter, RefreshCw, Database, X, Trash2, ArchiveRestore, Trash, UploadCloud, FileText, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, Database, X, Trash2, ArchiveRestore, Trash, UploadCloud, FileText, AlertCircle, Sparkles, CheckCircle2, LayoutGrid, List } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
@@ -12,7 +12,6 @@ import QuotationForm from '../components/QuotationForm';
 import QuotationPrintView from '../components/QuotationPrintView';
 import MaterialOrderPrintView from '../components/MaterialOrderPrintView';
 import HeatTreatmentOrderPrintView from '../components/HeatTreatmentOrderPrintView';
-import DashboardMetrics from '../components/DashboardMetrics';
 import { splitPdf } from '../utils/pdfSplitter';
 import { QuotationCardSkeleton } from '../components/common/Skeleton';
 
@@ -21,7 +20,6 @@ export default function QuotationsPage() {
     const { showAlert, showConfirm } = useNotification();
 
     const [quotations, setQuotations] = useState([]);
-    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -33,7 +31,7 @@ export default function QuotationsPage() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [isVerifiedFilter, setIsVerifiedFilter] = useState('');
-    const [filterPeriod, setFilterPeriod] = useState('current'); // 'current' or 'all'
+    const [viewMode, setViewMode] = useState('card'); // 'card' or 'list'
 
     // Modal state
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -71,12 +69,7 @@ export default function QuotationsPage() {
             if (isVerifiedFilter) params.append('isVerified', isVerifiedFilter);
             if (showDeleted) params.append('showDeleted', 'true');
 
-            const promises = [api.get(`/api/quotations?${params.toString()}`)];
-            if (!showDeleted) {
-                promises.push(api.get('/api/quotations/stats'));
-            }
-
-            const results = await Promise.all(promises);
+            const results = await Promise.all([api.get(`/api/quotations?${params.toString()}`)]);
             const { data } = results[0];
 
             const mapQuote = (q) => ({
@@ -126,10 +119,6 @@ export default function QuotationsPage() {
             setQuotations(mapped);
             setTotalPages(data.totalPages);
             setTotalCount(data.total);
-
-            if (!showDeleted && results[1]) {
-                setStats(results[1].data);
-            }
         } catch (err) {
             console.error('Failed to fetch quotations:', err);
         } finally {
@@ -536,38 +525,6 @@ export default function QuotationsPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 relative">
-            {/* Dashboard Metrics (Now integrated into QuotationsPage) - Only for Admins */}
-            {isAdmin && (
-                <div className="relative">
-                    <div className="flex justify-end mb-2">
-                        <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-1 flex gap-1 shadow-lg">
-                            <button
-                                onClick={() => setFilterPeriod('current')}
-                                className={cn(
-                                    "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
-                                    filterPeriod === 'current' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
-                                )}
-                            >
-                                今月
-                            </button>
-                            <button
-                                onClick={() => setFilterPeriod('all')}
-                                className={cn(
-                                    "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
-                                    filterPeriod === 'all' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
-                                )}
-                            >
-                                全期間
-                            </button>
-                        </div>
-                    </div>
-                    <DashboardMetrics 
-                        stats={stats} 
-                        filterMonth={filterPeriod}
-                    />
-                </div>
-            )}
-
             {/* Header & Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/50 p-6 rounded-2xl border border-white/10 backdrop-blur-md">
                 <div>
@@ -599,98 +556,121 @@ export default function QuotationsPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col gap-4">
-                <form onSubmit={handleSearchSubmit} className="flex-1 relative flex items-center">
-                    <button
-                        type="submit"
-                        className="absolute left-4 p-1.5 text-slate-500 hover:text-white transition-colors rounded-full hover:bg-slate-700/50"
-                        title="検索を実行"
-                    >
-                        <Search size={20} />
-                    </button>
+            <div className="flex flex-col gap-4 bg-slate-800/20 p-4 rounded-2xl border border-white/5">
+                {/* Search Bar (First Row) */}
+                <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+                    <Search className="absolute left-4 text-slate-500" size={18} />
                     <input
                         type="text"
-                        placeholder="会社名、注文・工事番号、担当者、品名、備考 (スペースでAND検索)"
+                        placeholder="会社名、品名などでフリーワード検索..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-12 pr-12 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium"
+                        className="w-full pl-11 pr-11 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium"
                     />
                     {search && (
-                        <button
-                            type="button"
-                            onClick={handleClearSearch}
-                            className="absolute right-4 p-1.5 text-slate-500 hover:text-white transition-colors rounded-full hover:bg-slate-700/50"
-                            title="検索をクリア"
-                        >
-                            <X size={20} />
+                        <button type="button" onClick={handleClearSearch} className="absolute right-4 p-1 text-slate-500 hover:text-white transition-colors">
+                            <X size={16} />
                         </button>
                     )}
                 </form>
-                <div className="flex items-center flex-wrap gap-3">
-                    {isAdmin && (
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-1 flex text-xs">
+
+                {/* Second Row: Filters and Toggles */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+                    <div className="lg:col-span-3">
+                        <select
+                            value={isVerifiedFilter}
+                            onChange={(e) => { setIsVerifiedFilter(e.target.value); setPage(1); }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 outline-none transition-all appearance-none cursor-pointer shadow-inner"
+                        >
+                            <option value="">全ての確認状態</option>
+                            <option value="false">未確認のみ</option>
+                            <option value="true">確認済みのみ</option>
+                        </select>
+                    </div>
+
+                    <div className="lg:col-span-4 flex items-center gap-2">
+                        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-1 flex flex-1 overflow-hidden shadow-inner">
                             <button
                                 onClick={() => { setShowDeleted(false); setPage(1); }}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${!showDeleted
-                                    ? 'bg-slate-700 text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                                    }`}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all",
+                                    !showDeleted ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+                                )}
                             >
-                                <Database size={16} />
-                                案件一覧
+                                <Database size={14} /> 案件一覧
                             </button>
                             <button
                                 onClick={() => { setShowDeleted(true); setPage(1); }}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${showDeleted
-                                    ? 'bg-red-900/40 text-red-200 shadow-sm border border-red-500/30'
-                                    : 'text-slate-400 hover:text-red-400/80 hover:bg-red-900/10'
-                                    }`}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all",
+                                    showDeleted ? "bg-red-900/30 text-red-400" : "text-slate-500 hover:text-red-400/70"
+                                )}
                             >
-                                <Trash2 size={16} />
-                                ゴミ箱
+                                <Trash2 size={14} /> ゴミ箱
                             </button>
                         </div>
-                    )}
+                    </div>
 
-                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-1 flex flex-wrap gap-1">
-                        {['', 'pending', 'ordered', 'delivered', 'unentered_actuals', 'lost'].map(status => (
+                    <div className="lg:col-span-5 flex items-center gap-3 justify-end">
+                        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-1 flex shadow-inner">
                             <button
-                                key={status}
-                                disabled={showDeleted}
-                                onClick={() => { setStatusFilter(status); setPage(1); }}
-                                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${showDeleted
-                                    ? 'text-slate-500 opacity-50 cursor-not-allowed'
-                                    : statusFilter === status
-                                        ? 'bg-slate-700 text-white shadow-sm'
-                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                                    }`}
+                                onClick={() => setViewMode('card')}
+                                className={cn(
+                                    "p-1.5 rounded-lg transition-all",
+                                    viewMode === 'card' ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+                                )}
+                                title="カード表示"
                             >
-                                {status === '' ? 'すべて' :
-                                    status === 'pending' ? '検討中' :
-                                        status === 'ordered' ? '受注' :
-                                            status === 'delivered' ? '納品済' :
-                                                status === 'unentered_actuals' ? '実績未入力' :
-                                                    '失注'}
+                                <LayoutGrid size={16} />
                             </button>
-                        ))}
-                    </div>
-
-                    <div className="flex gap-3">
-                        <div className="space-y-1.5 min-w-[140px]">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">確認状態</label>
-                            <select
-                                value={isVerifiedFilter}
-                                onChange={(e) => setIsVerifiedFilter(e.target.value)}
-                                className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all appearance-none cursor-pointer"
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={cn(
+                                    "p-1.5 rounded-lg transition-all",
+                                    viewMode === 'list' ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+                                )}
+                                title="リスト表示"
                             >
-                                <option value="">すべて</option>
-                                <option value="false">未確認のみ</option>
-                                <option value="true">確認済みのみ</option>
-                            </select>
+                                <List size={16} />
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => fetchQuotations(true)}
+                            className="p-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all shadow-inner group"
+                            title="最新の情報に更新"
+                        >
+                            <RefreshCw size={16} className={cn(loading ? "animate-spin" : "group-active:rotate-180 transition-transform duration-500")} />
+                        </button>
+                    </div>
+                </div>
+
+                {!showDeleted && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide no-scrollbar">
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-1 flex gap-1 whitespace-nowrap">
+                            {[
+                                { status: '', label: '全て' },
+                                { status: 'pending', label: '検討中' },
+                                { status: 'ordered', label: '受注' },
+                                { status: 'delivered', label: '納品済' },
+                                { status: 'unentered_actuals', label: '実績未入力' },
+                                { status: 'lost', label: '失注' }
+                            ].map(btn => (
+                                <button
+                                    key={btn.status}
+                                    onClick={() => { setStatusFilter(btn.status); setPage(1); }}
+                                    className={cn(
+                                        "px-4 py-1.5 rounded-lg font-black text-[10px] uppercase transition-all tracking-wider",
+                                        statusFilter === btn.status
+                                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                                            : "text-slate-500 hover:text-slate-300 hover:bg-white/5 whitespace-nowrap"
+                                    )}
+                                >
+                                    {btn.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
-
-                </div>
+                )}
             </div>
 
             {/* Trash Retention Notice */}
@@ -719,6 +699,7 @@ export default function QuotationsPage() {
                     onPrint={handlePrint}
                     onPrintMaterialOrder={handlePrintMaterialOrder}
                     isTrashView={showDeleted}
+                    viewMode={viewMode}
                 />
             )}
 

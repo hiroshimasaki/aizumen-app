@@ -25,6 +25,7 @@ const forumRoutes = require('./routes/forum');
 const searchRoutes = require('./routes/search');
 const healthRoutes = require('./routes/health');
 const materialPriceRoutes = require('./routes/materialPrices');
+const analysisRoutes = require('./routes/analysis');
 
 
 // Middleware imports
@@ -148,6 +149,7 @@ app.use('/api/forum', forumRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/material-prices', materialPriceRoutes);
+app.use('/api/analysis', analysisRoutes);
 
 
 // --- 404 Handler ---
@@ -167,11 +169,20 @@ app.listen(PORT, '0.0.0.0', () => {
   const cron = require('node-cron');
   const { supabaseAdmin } = require('./config/supabase');
   const backupService = require('./services/backupService');
+  const aiReportService = require('./services/aiReportService');
 
   // 毎日 AM2:00 にDBのJSONバックアップを実行
   cron.schedule('0 2 * * *', async () => {
     console.log('[Cron] Starting daily backup job...');
     await backupService.runDailyBackup();
+  }, {
+    timezone: 'Asia/Tokyo'
+  });
+
+  // 毎月1日 AM1:00 にAI月次総評を生成 (Proプラン向け)
+  cron.schedule('0 1 1 * *', async () => {
+    console.log('[Cron] Starting monthly AI report generation...');
+    await aiReportService.generateAllMonthlyReports();
   }, {
     timezone: 'Asia/Tokyo'
   });

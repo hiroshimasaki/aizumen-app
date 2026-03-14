@@ -1,9 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { BarChart3, TrendingUp, Users, PieChart, ArrowUpRight, ArrowDownRight, Award, X, User, Mail, StickyNote, FileText, Calendar, Link as LinkIcon, DownloadCloud } from 'lucide-react';
 import api from '../lib/api';
+import AIMonthlyReport from './AIMonthlyReport';
 
-export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
+export default function AnalysisView({ quotations, period = 'all', hourlyRate = 8000 }) {
     const [selectedId, setSelectedId] = useState(null);
+
+    // Helper function for percentage calculation
+    function pctSafe(val, total) {
+        if (!total || total <= 0) return 0;
+        return Math.round((val / total) * 100);
+    }
 
     useEffect(() => {
         if (selectedId) {
@@ -15,24 +22,56 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
     }, [selectedId]);
 
     const analysisData = useMemo(() => {
-        const ordered = quotations.filter(q => q.status === 'ordered');
-
-        // 1. Monthly Revenue Trend (direct 6 months, based on deliveryDate)
-        const monthlyRevenue = {};
+        const validStatuses = ['ordered', 'delivered'];
         const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        // Helper to get the most relevant date for a quotation
+        const getTargetDate = (q) => {
+            const latestDelivery = (q.items || []).reduce((acc, item) => {
+                const d = item.deliveryDate ? new Date(item.deliveryDate) : null;
+                if (d && !isNaN(d.getTime())) {
+                    if (!acc || d > acc) return d;
+                }
+                return acc;
+            }, null);
+            return latestDelivery || (q.createdAt ? new Date(q.createdAt) : new Date());
+        };
+
+        // Unified period filtering
+        const filteredQuotations = quotations.filter(q => {
+            if (period === 'all') return true;
+            const targetDate = getTargetDate(q);
+            if (period === 'current') {
+                return targetDate.getMonth() === currentMonth && targetDate.getFullYear() === currentYear;
+            }
+            let months = 0;
+            if (period === '3months') months = 3;
+            else if (period === '6months') months = 6;
+            else if (period === '1year') months = 12;
+
+            const cutoff = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
+            return targetDate >= cutoff;
+        });
+
+        const ordered = filteredQuotations.filter(q => validStatuses.includes(q.status));
+
+        // 1. Monthly Revenue Trend (Last 6 months, always shows 6 months for trend)
+        const monthlyRevenue = {};
         for (let i = 0; i < 6; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const d = new Date(currentYear, currentMonth - i, 1);
             const mStr = String(d.getMonth() + 1).padStart(2, '0');
             const key = `${d.getFullYear()}/${mStr}`;
             monthlyRevenue[key] = { proc: 0, mat: 0, other: 0, total: 0 };
         }
 
-        ordered.forEach(q => {
+        quotations.filter(q => validStatuses.includes(q.status)).forEach(q => {
             (q.items || []).forEach(item => {
-                if (!item.deliveryDate) return;
-                const date = new Date(item.deliveryDate);
-                const mStr = String(date.getMonth() + 1).padStart(2, '0');
-                const key = `${date.getFullYear()}/${mStr}`;
+                const d = item.deliveryDate ? new Date(item.deliveryDate) : (q.createdAt ? new Date(q.createdAt) : null);
+                if (!d || isNaN(d.getTime())) return;
+                const mStr = String(d.getMonth() + 1).padStart(2, '0');
+                const key = `${d.getFullYear()}/${mStr}`;
                 if (monthlyRevenue.hasOwnProperty(key)) {
                     const qty = Number(item.quantity) || 1;
                     const p = (Number(item.processingCost) || 0) * qty;
@@ -63,7 +102,6 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
                 let act = Number(item.actualProcessingCost) || 0;
                 const actHours = Number(item.actualHours) || 0;
 
-                // 実績加工費が未入力で時間がある場合のみ、時間から概算する（QuotationListと同期）
                 if (act <= 0 && actHours > 0) {
                     act = Math.round(actHours * hourlyRate) / qty;
                 }
@@ -87,11 +125,11 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
 
         // 3. Company Statistics
         const companyStats = {};
-        quotations.forEach(q => {
+        filteredQuotations.forEach(q => {
             const name = q.companyName || '(不明)';
             if (!companyStats[name]) companyStats[name] = { total: 0, ordered: 0, amount: 0 };
             companyStats[name].total += 1;
-            if (q.status === 'ordered') {
+            if (validStatuses.includes(q.status)) {
                 companyStats[name].ordered += 1;
                 const amount = (q.items || []).reduce((sum, item) => {
                     const cost = (Number(item.processingCost) || 0) + (Number(item.materialCost) || 0) + (Number(item.otherCost) || 0);
@@ -107,19 +145,43 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
             .slice(0, 5);
 
         // 4. Cost Category Breakdown
-        let totalProc = 0, totalMat = 0, totalOther = 0;
+        let actualProc = 0, actualMat = 0, actualOther = 0;
         ordered.forEach(q => {
             (q.items || []).forEach(item => {
                 const qty = Number(item.quantity) || 1;
-                totalProc += (Number(item.processingCost) || 0) * qty;
-                totalMat += (Number(item.materialCost) || 0) * qty;
-                totalOther += (Number(item.otherCost) || 0) * qty;
+                
+                let ap = (item.actualProcessingCost !== undefined && item.actualProcessingCost !== null && item.actualProcessingCost !== '') 
+                    ? Number(item.actualProcessingCost) * qty 
+                    : (Number(item.actualHours) > 0 ? Number(item.actualHours) * hourlyRate : (Number(item.processingCost) || 0) * qty);
+                
+                let am = (item.actualMaterialCost !== undefined && item.actualMaterialCost !== null && item.actualMaterialCost !== '')
+                    ? Number(item.actualMaterialCost) * qty
+                    : (Number(item.materialCost) || 0) * qty;
+                
+                let ao = (item.actualOtherCost !== undefined && item.actualOtherCost !== null && item.actualOtherCost !== '')
+                    ? Number(item.actualOtherCost) * qty
+                    : (Number(item.otherCost) || 0) * qty;
+
+                actualProc += ap;
+                actualMat += am;
+                actualOther += ao;
             });
         });
-        const totalAll = totalProc + totalMat + totalOther;
 
-        return { trendData, profitability, topCompanies, costBreakdown: { totalProc, totalMat, totalOther, totalAll } };
-    }, [quotations]);
+        const totalAll = actualProc + actualMat + actualOther;
+
+        return { 
+            trendData, 
+            profitability, 
+            topCompanies, 
+            costBreakdown: { 
+                totalProc: actualProc, 
+                totalMat: actualMat, 
+                totalOther: actualOther, 
+                totalAll
+            } 
+        };
+    }, [quotations, period, hourlyRate]);
 
     const { maxRevenue, ticks } = useMemo(() => {
         const rawMax = Math.max(...analysisData.trendData.map(d => d.amount), 0);
@@ -142,10 +204,18 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
         return { maxRevenue: niceMax, ticks: t.reverse() };
     }, [analysisData.trendData]);
 
-    const pctSafe = (n, total) => total > 0 ? Math.round((n / total) * 100) : 0;
+
+    const reportMonth = useMemo(() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }, []);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* AI Analysis Section */}
+            <AIMonthlyReport defaultMonth={reportMonth} />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* Monthly Revenue Trend */}
@@ -377,11 +447,15 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
                                                 {q.files.map((f) => (
                                                     <button
                                                         key={f.id}
-                                                        onClick={async () => {
+                                                        onClick={async (e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
                                                             try {
                                                                 const { data } = await api.get(`/api/files/${f.id}`);
                                                                 if (data?.url) window.open(data.url, '_blank');
-                                                            } catch { }
+                                                            } catch (err) {
+                                                                console.error('File download failed:', err);
+                                                            }
                                                         }}
                                                         className="group flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 hover:border-blue-500 hover:shadow-md transition-all"
                                                     >
@@ -389,7 +463,7 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
                                                             <FileText size={16} />
                                                         </div>
                                                         <div className="flex flex-col text-left">
-                                                            <span className="font-bold truncate max-w-[140px]">{f.originalName}</span>
+                                                            <span className="font-bold truncate max-w-[140px]">{f.originalName || f.original_name}</span>
                                                             <span className="text-[8px] text-slate-500 flex items-center gap-0.5 uppercase tracking-tighter">
                                                                 <DownloadCloud size={8} /> Download
                                                             </span>

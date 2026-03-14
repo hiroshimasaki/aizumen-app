@@ -1047,3 +1047,81 @@ Raw: ```json
   }
 ]
 ```
+[2026-03-14T12:44:50.708Z] [DrawingSearch] Starting hybrid search for tenant: c94934bf-d5b4-4e94-8987-60d07db7c022
+[2026-03-14T12:44:50.710Z] [DrawingSearch] Input params: hasPdfFile=true, fileId=null
+[2026-03-14T12:44:51.036Z] [SearchPerformance] pHash from PDF pipeline: 325ms, hash: a0c0c0c48c9c8ccc, threshold: 15
+[2026-03-14T12:44:51.082Z] [SearchPerformance] pHash DB Match (RPC): 46ms, hits: 0
+[2026-03-14T12:44:51.083Z] [DrawingSearch] RPC returned 0 hits. Checking quotation_files table directly...
+[2026-03-14T12:44:56.355Z] [DrawingSearch] Total candidates for Gemini: 10 (pHash: 0, Vector: 10)
+[2026-03-14T12:45:28.372Z] [SearchPerformance] Gemini API: 26116ms
+[2026-03-14T12:45:28.373Z] [DrawingSearch] Gemini raw response (first 500 chars): ```json
+[
+  {
+    "id": "96443dad-4bfc-41f6-9c17-48f1ddf14f68",
+    "score": 98,
+    "reason": "幾何学的構造（プレートの外形シルエット、C10の面取り、穴の配置）が完全に一致しており、寸法テキスト（19, 2-C10, 20）もクエリ画像と同一です。クエリ画像の一部を切り出したもの、または同一の設計データに基づいた図面であると判断できます。"
+  },
+  {
+    "id": "e184a7ee-378f-498a-81c8-67e743fd74fb",
+    "score": 12,
+    "reason": "手書きの図面であり、穴の数や配置、幾何学的構造がクエリ画像と全く異なります。加工指示もPFネジの指示など別の設計内容です。"
+  },
+  {
+    "id": "25aee5e5-46f0-4a65-9b6e-6cad5c71b043",
+    "score": 5,
+    "reason": "段付き軸（円筒部品）の側面図であり、プレート形状のクエリ画像とは部品の
+[2026-03-14T12:45:28.375Z] Parse Error: Cannot access 'debugLog' before initialization
+Raw: ```json
+[
+  {
+    "id": "96443dad-4bfc-41f6-9c17-48f1ddf14f68",
+    "score": 98,
+    "reason": "幾何学的構造（プレートの外形シルエット、C10の面取り、穴の配置）が完全に一致しており、寸法テキスト（19, 2-C10, 20）もクエリ画像と同一です。クエリ画像の一部を切り出したもの、または同一の設計データに基づいた図面であると判断できます。"
+  },
+  {
+    "id": "e184a7ee-378f-498a-81c8-67e743fd74fb",
+    "score": 12,
+    "reason": "手書きの図面であり、穴の数や配置、幾何学的構造がクエリ画像と全く異なります。加工指示もPFネジの指示など別の設計内容です。"
+  },
+  {
+    "id": "25aee5e5-46f0-4a65-9b6e-6cad5c71b043",
+    "score": 5,
+    "reason": "段付き軸（円筒部品）の側面図であり、プレート形状のクエリ画像とは部品の幾何学的性質が根本的に異なります。"
+  },
+  {
+    "id": "78173a1b-d3bf-4fc9-b810-891609a48c98",
+    "score": 10,
+    "reason": "矩形の切り欠き形状を持つ図面ですが、クエリ画像のような複数の孔配置や面取り構造は見られず、別の部品図面です。"
+  },
+  {
+    "id": "a4fbd07e-9e8d-4878-b688-f722e513d7fe",
+    "score": 5,
+    "reason": "機械部品の断面図であり、クエリ画像の平面的なプレート構造や穴のパターンとの類似性は認められません。"
+  },
+  {
+    "id": "40cec5b4-72d3-4ba8-a960-4222f0436a72",
+    "score": 15,
+    "reason": "円形のフランジ状部品の図面です。中央に大径の穴、周囲に小穴がある点は構成として遠く似ていますが、外形や孔の配置規則が異なり、別の設計です。"
+  },
+  {
+    "id": "1a0c4317-fb39-463b-b4a0-97b4b5373bd3",
+    "score": 5,
+    "reason": "円形部品の部分詳細図および断面図であり、クエリ画像の幾何学的構造とは全く一致しません。"
+  },
+  {
+    "id": "b7b2f1b2-8638-458e-a0a6-4a0fdf63e411",
+    "score": 8,
+    "reason": "大型の装置または構造物の組立図の一部であり、個別のプレート部品を指示するクエリ画像とはスケール感および構造が大きく異なります。"
+  },
+  {
+    "id": "f573605b-7e4f-4369-a72d-71339e8fa5ae",
+    "score": 10,
+    "reason": "部品の端面図と断面図ですが、2-M10ねじ通しやφ230といった寸法値、および円形をベースとした構造がクエリ画像とは異なります。"
+  },
+  {
+    "id": "9a9aaa07-7bd5-42c8-95f7-b7a73ea31a0f",
+    "score": 5,
+    "reason": "図面の表題欄付近と軸形状の部品図面であり、クエリ画像のプレート形状および寸法体系との類似性は皆無です。"
+  }
+]
+```
