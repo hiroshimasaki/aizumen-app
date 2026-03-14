@@ -1244,6 +1244,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                 isOpen={calcModalState.isOpen}
                 onClose={() => setCalcModalState({ isOpen: false, targetItemId: null })}
                 onApply={handleApplyMaterialCalc}
+                initialMetadata={items.find(item => item.id === calcModalState.targetItemId)?.material_metadata}
             />
         </form >
     );

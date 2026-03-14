@@ -10,7 +10,7 @@ const SHAPES = [
     { value: 'square_pipe', label: '角パイプ', dims: ['外寸A', '外寸B', '肉厚', '長さ'] }
 ];
 
-export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
+export default function MaterialCostCalcModal({ isOpen, onClose, onApply, initialMetadata }) {
     const [prices, setPrices] = useState([]);
     const [loading, setLoading] = useState(true);
     
@@ -28,8 +28,25 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
     useEffect(() => {
         if (isOpen) {
             fetchPrices();
+            // 初期データの復元
+            if (initialMetadata) {
+                setVendor(initialMetadata.vendor || '');
+                setMaterial(initialMetadata.material || '');
+                setShape(initialMetadata.shape || 'plate');
+                setDimValues(initialMetadata.dims || {});
+                if (initialMetadata.heatTreatment) {
+                    setHeatTreatment(initialMetadata.heatTreatment);
+                }
+            } else {
+                // 新規の場合はリセット
+                setVendor('');
+                setMaterial('');
+                setShape('plate');
+                setDimValues({});
+                setHeatTreatment({ type: 'none', hardness: '', vendor: '', shipToVendor: false });
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, initialMetadata]);
 
     const fetchPrices = async () => {
         try {
@@ -51,7 +68,8 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
         try {
             const quotationsRes = await api.get('/api/quotations');
             const vendors = new Set();
-            (quotationsRes.data || []).forEach(q => {
+            const qList = Array.isArray(quotationsRes.data) ? quotationsRes.data : (quotationsRes.data?.data || []);
+            qList.forEach(q => {
                 (q.items || []).forEach(item => {
                     const htVendor = item.material_metadata?.heatTreatment?.vendor;
                     if (htVendor) vendors.add(htVendor);

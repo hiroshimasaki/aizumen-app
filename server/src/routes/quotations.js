@@ -563,6 +563,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 actual_other_cost: parsePrice(item.actualOtherCost),
                 actual_mode: item.actualMode || 'amount',
                 material_metadata: item.material_metadata || null,
+                heat_treatment: item.material_metadata?.heatTreatment || null,
                 dimensions: item.dimensions || '',
             }));
 
@@ -722,6 +723,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                     actual_other_cost: parsePrice(item.actualOtherCost),
                     actual_mode: item.actualMode || 'amount',
                     material_metadata: item.material_metadata || null,
+                    heat_treatment: item.material_metadata?.heatTreatment || null,
                     dimensions: item.dimensions || '',
                 }));
 
