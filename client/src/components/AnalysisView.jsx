@@ -1,6 +1,4 @@
-```
 import { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { BarChart3, TrendingUp, Users, PieChart, ArrowUpRight, ArrowDownRight, Award, X, User, Mail, StickyNote, FileText, Calendar, Link as LinkIcon, DownloadCloud } from 'lucide-react';
 import api from '../lib/api';
 
@@ -24,7 +22,8 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
         const now = new Date();
         for (let i = 0; i < 6; i++) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+            const mStr = String(d.getMonth() + 1).padStart(2, '0');
+            const key = `${d.getFullYear()}/${mStr}`;
             monthlyRevenue[key] = { proc: 0, mat: 0, other: 0, total: 0 };
         }
 
@@ -32,7 +31,8 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
             (q.items || []).forEach(item => {
                 if (!item.deliveryDate) return;
                 const date = new Date(item.deliveryDate);
-                const key = `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                const mStr = String(date.getMonth() + 1).padStart(2, '0');
+                const key = `${date.getFullYear()}/${mStr}`;
                 if (monthlyRevenue.hasOwnProperty(key)) {
                     const qty = Number(item.quantity) || 1;
                     const p = (Number(item.processingCost) || 0) * qty;
@@ -310,7 +310,18 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
                         </table>
                         {analysisData.profitability.length === 0 && (
                             <div className="text-center py-10 text-slate-500 italic">
-                                実績データが入力された受注案件がまだありま�                return createPortal(
+                                実績データが入力された受注案件がまだありません
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Detail Modal */}
+            {selectedId && (() => {
+                const q = quotations.find(item => item.id === selectedId);
+                if (!q) return null;
+                return (
                     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedId(null)}>
                         <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
@@ -451,18 +462,6 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
 
                             {/* Modal Footer */}
                             <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-end">
-                                <button
-                                    onClick={() => setSelectedId(null)}
-                                    className="px-8 py-2.5 bg-slate-700 text-white rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all hover:bg-slate-600"
-                                >
-                                    閉じる
-                                </button>
-                            </div>
-                        </div>
-                    </div>,
-                    document.body
-                );
- Oregoner-t border-slate-800 flex justify-end">
                                 <button
                                     onClick={() => setSelectedId(null)}
                                     className="px-8 py-2.5 bg-slate-700 text-white rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all hover:bg-slate-600"
