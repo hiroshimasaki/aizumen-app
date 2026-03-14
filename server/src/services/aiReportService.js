@@ -80,50 +80,80 @@ class AIReportService {
         const startDate = new Date(year, month - 1, 1).toISOString();
         const endDate = new Date(year, month, 1).toISOString();
 
-        // Fetch quotations and items
-        const { data: qData, error: qError } = await supabaseAdmin
+        // 1. Fetch quotations CREATED in target month (for Win Rate)
+        const { data: createdQ, error: createdError } = await supabaseAdmin
             .from('quotations')
             .select('*, items:quotation_items(*)')
             .eq('tenant_id', tenantId)
             .gte('created_at', startDate)
             .lt('created_at', endDate);
 
-        if (qError) throw qError;
+        if (createdError) throw createdError;
 
-        const quotations = qData || [];
-        const totalCount = quotations.length;
-        const ordered = quotations.filter(q => ['ordered', 'delivered'].includes(q.status));
-        const orderCount = ordered.length;
+        // 2. Fetch quotations that have items with deliveryDate in target month (for Actuals)
+        // Note: We use a join or fetch both to be safe. 
+        // For simplicity and accuracy, we'll fetch quotes that were UPDATED recently or have items in the month.
+        const { data: deliveredQ, error: deliveredError } = await supabaseAdmin
+            .from('quotations')
+            .select('*, items:quotation_items(*)')
+            .eq('tenant_id', tenantId)
+            .or(`status.eq.delivered,status.eq.ordered`)
+            .filter('quotation_items.delivery_date', 'gte', startDate)
+            .filter('quotation_items.delivery_date', 'lt', endDate);
+
+        if (deliveredError) throw deliveredError;
+
+        // Combine unique quotations
+        const quoteMap = new Map();
+        (createdQ || []).forEach(q => quoteMap.set(q.id, q));
+        (deliveredQ || []).forEach(q => quoteMap.set(q.id, q));
+        
+        const allQuotations = Array.from(quoteMap.values());
+
+        // Stats calculation
+        const totalCount = (createdQ || []).length; // Base for Win Rate
+        const orderedInMonth = (createdQ || []).filter(q => ['ordered', 'delivered'].includes(q.status));
+        const orderCount = orderedInMonth.length;
         const winRate = totalCount > 0 ? Math.round((orderCount / totalCount) * 100) : 0;
 
         let totalRevenue = 0;
         let totalEstProcCost = 0;
         let totalActProcCost = 0;
         let itemsWithActuals = 0;
-        let totalItems = 0;
+        let totalItemsInTarget = 0;
 
-        ordered.forEach(q => {
+        allQuotations.forEach(q => {
             (q.items || []).forEach(item => {
-                totalItems++;
-                const qty = Number(item.quantity) || 1;
-                const p = (Number(item.processingCost) || 0) * qty;
-                const m = (Number(item.materialCost) || 0) * qty;
-                const o = (Number(item.otherCost) || 0) * qty;
-                totalRevenue += (p + m + o);
-                totalEstProcCost += p;
+                // Check if this specific item belongs to the target month's work
+                // Either it was created this month OR it was delivered this month
+                const itemCreated = q.created_at >= startDate && q.created_at < endDate;
+                const itemDelivered = item.delivery_date >= startDate && item.delivery_date < endDate;
 
-                if (item.actualProcessingCost || item.actualHours) {
-                    let act = Number(item.actualProcessingCost) || 0;
-                    if (act <= 0 && Number(item.actualHours) > 0) {
-                        act = Number(item.actualHours) * 8000; // Default rate
+                if (itemCreated || itemDelivered) {
+                    if (['ordered', 'delivered'].includes(q.status)) {
+                        totalItemsInTarget++;
+                        const qty = Number(item.quantity) || 1;
+                        const p = (Number(item.processingCost) || 0) * qty;
+                        const m = (Number(item.materialCost) || 0) * qty;
+                        const o = (Number(item.otherCost) || 0) * qty;
+                        
+                        totalRevenue += (p + m + o);
+                        totalEstProcCost += p;
+
+                        if (Number(item.actualProcessingCost) > 0 || Number(item.actualHours) > 0) {
+                            let act = Number(item.actualProcessingCost) || 0;
+                            if (act <= 0 && Number(item.actualHours) > 0) {
+                                act = Number(item.actualHours) * 8000;
+                            }
+                            totalActProcCost += (act * qty);
+                            itemsWithActuals++;
+                        }
                     }
-                    totalActProcCost += (act * qty);
-                    itemsWithActuals++;
                 }
             });
         });
 
-        const actualInputRate = totalItems > 0 ? Math.round((itemsWithActuals / totalItems) * 100) : 0;
+        const actualInputRate = totalItemsInTarget > 0 ? Math.round((itemsWithActuals / totalItemsInTarget) * 100) : 0;
         const grossMargin = totalEstProcCost - totalActProcCost;
         const marginPct = totalEstProcCost > 0 ? Math.round((grossMargin / totalEstProcCost) * 100) : 0;
 
@@ -137,7 +167,7 @@ class AIReportService {
             totalActProcCost,
             marginPct,
             actualInputRate,
-            totalItems
+            totalItems: totalItemsInTarget
         };
     }
 
