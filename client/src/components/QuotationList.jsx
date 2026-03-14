@@ -466,11 +466,6 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                                     <FileText size={16} className={cn("text-blue-400", quotation.items?.some(i => i.material_metadata?.heatTreatment?.shipToVendor) && "text-red-400")} />
                                                 </button>
                                             )}
-                                            {isAdmin && quotation.items?.some(i => i.material_metadata?.heatTreatment?.type && i.material_metadata.heatTreatment.type !== 'none') && (
-                                                <button onClick={() => onPrintHeatTreatmentOrder(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors animate-pulse" title="熱処理注文書を印刷・PDF出力">
-                                                    <Activity size={16} className="text-red-500" />
-                                                </button>
-                                            )}
                                             <button onClick={() => onEdit(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title={isAdmin ? "編集" : "詳細表示・実績入力"}>
                                                 {isAdmin ? <Edit2 size={16} /> : <FileText size={16} />}
                                             </button>
