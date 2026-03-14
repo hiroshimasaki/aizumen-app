@@ -563,6 +563,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 actual_other_cost: parsePrice(item.actualOtherCost),
                 actual_mode: item.actualMode || 'amount',
                 material_metadata: item.material_metadata || null,
+                dimensions: item.dimensions || '',
             }));
 
             const { error: itemError } = await supabaseAdmin
@@ -721,6 +722,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                     actual_other_cost: parsePrice(item.actualOtherCost),
                     actual_mode: item.actualMode || 'amount',
                     material_metadata: item.material_metadata || null,
+                    dimensions: item.dimensions || '',
                 }));
 
                 await supabaseAdmin.from('quotation_items').insert(itemRows);
@@ -760,7 +762,8 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 response_date: (isNew ? i.responseDate : i.response_date) || null,
                 due_date: (isNew ? i.dueDate : i.due_date) || null,
                 delivery_date: (isNew ? i.deliveryDate : i.delivery_date) || null,
-                scheduled_start_date: (isNew ? i.scheduledStartDate : i.scheduled_start_date) || null
+                scheduled_start_date: (isNew ? i.scheduledStartDate : i.scheduled_start_date) || null,
+                dimensions: i.dimensions || ''
             }));
 
             const oldJson = JSON.stringify(mapForCompare(oldItems, false));
@@ -782,6 +785,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                         };
 
                         if (o.name !== n.name) changes['明細名称'] = { from: o.name || '空', to: n.name || '空' };
+                        if (o.dimensions !== n.dimensions) changes['寸法'] = { from: o.dimensions || '空', to: n.dimensions || '空' };
 
                         const oPrice = Number(o.processing_cost || 0) + Number(o.material_cost || 0) + Number(o.other_cost || 0);
                         const nPrice = Number(n.processingCost || 0) + Number(n.materialCost || 0) + Number(n.otherCost || 0);

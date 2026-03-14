@@ -10,6 +10,7 @@ import { extractPdfText, findPurchaseOrderPage } from '../utils/pdfAnalyzer';
 import QuotationList from '../components/QuotationList';
 import QuotationForm from '../components/QuotationForm';
 import QuotationPrintView from '../components/QuotationPrintView';
+import MaterialOrderPrintView from '../components/MaterialOrderPrintView';
 import DashboardMetrics from '../components/DashboardMetrics';
 import { splitPdf } from '../utils/pdfSplitter';
 
@@ -35,6 +36,7 @@ export default function QuotationsPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingData, setEditingData] = useState(null);
     const [printData, setPrintData] = useState(null);
+    const [materialOrderPrintData, setMaterialOrderPrintData] = useState(null);
 
     // Bulk Analyze Modal state
     const [isBulkOpen, setIsBulkOpen] = useState(false);
@@ -101,6 +103,8 @@ export default function QuotationsPage() {
                     actualProcessingCost: item.actual_processing_cost,
                     actualMaterialCost: item.actual_material_cost,
                     actualOtherCost: item.actual_other_cost,
+                    dimensions: item.dimensions,
+                    material_metadata: item.material_metadata,
                 })).sort((a, b) => a.sort_order - b.sort_order),
                 files: (q.quotation_files || []).map(f => ({
                     id: f.id,
@@ -298,6 +302,15 @@ export default function QuotationsPage() {
         setPrintData(quotation);
         setTimeout(() => {
             window.print();
+            setPrintData(null);
+        }, 100);
+    };
+
+    const handlePrintMaterialOrder = (quotation) => {
+        setMaterialOrderPrintData(quotation);
+        setTimeout(() => {
+            window.print();
+            setMaterialOrderPrintData(null);
         }, 100);
     };
 
@@ -671,6 +684,7 @@ export default function QuotationsPage() {
                     onEdit={handleEdit}
                     onCopy={handleCopy}
                     onPrint={handlePrint}
+                    onPrintMaterialOrder={handlePrintMaterialOrder}
                     isTrashView={showDeleted}
                 />
             )}
@@ -698,9 +712,12 @@ export default function QuotationsPage() {
                 </div>
             )}
 
-            {/* Print View (Only visible during print) */}
+            {/* Portal components will target #print-portal in index.html */}
             {printData && (
                 <QuotationPrintView quotation={printData} companyInfo={tenant} />
+            )}
+            {materialOrderPrintData && (
+                <MaterialOrderPrintView quotation={materialOrderPrintData} companyInfo={tenant} />
             )}
 
             {/* Quotation Form Modal */}
@@ -726,6 +743,7 @@ export default function QuotationsPage() {
                             initialData={editingData}
                             onSubmit={handleFormSubmit}
                             onCancel={handleFormCancel}
+                            onPrintMaterialOrder={handlePrintMaterialOrder}
                             isAdmin={isAdmin}
                         />
                     </div>

@@ -88,18 +88,18 @@ export default function HotFolderDownload() {
                 {/* Step 2 */}
                 <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6 relative z-10 transition-all hover:border-cyan-500/30 group">
                     <div className="w-12 h-12 bg-slate-900 border border-slate-700 rounded-2xl flex items-center justify-center mb-4 font-black text-cyan-400 group-hover:scale-110 transition-transform">2</div>
-                    <h3 className="text-lg font-bold text-white mb-2">検知・プール</h3>
+                    <h3 className="text-lg font-bold text-white mb-2">自動検知・同期</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                        アプリが新規ファイルを検知し、リストに一時保存します。複数の帳票をまとめて確認できます。
+                        アプリが新規ファイルを検知し、AiZumenクラウドへ順次自動転送します。手動の操作は不要です。
                     </p>
                 </div>
 
                 {/* Step 3 */}
                 <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6 relative z-10 transition-all hover:border-indigo-500/30 group">
                     <div className="w-12 h-12 bg-slate-900 border border-slate-700 rounded-2xl flex items-center justify-center mb-4 font-black text-indigo-400 group-hover:scale-110 transition-transform">3</div>
-                    <h3 className="text-lg font-bold text-white mb-2">一括解析・連携</h3>
+                    <h3 className="text-lg font-bold text-white mb-2">自動解析の開始</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                        アプリの「一括解析」ボタンを押すと、すべてのファイルがAiZumenへ転送され解析が始まります。
+                        クラウドへ転送されたファイルから順次AI解析が実行されます。解析が終わるとブラウザで確認可能です。
                     </p>
                 </div>
             </div>
@@ -167,9 +167,9 @@ export default function HotFolderDownload() {
                                     </p>
                                 </div>
                                 <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
-                                    <p className="text-xs font-bold text-blue-300">3. 一括解析ボタン</p>
+                                    <p className="text-xs font-bold text-blue-300">3. 同期開始</p>
                                     <p className="text-[10px] text-slate-500">
-                                        検知されたファイルを「一括解析」ボタンでシステムへ送信します。
+                                        監視を開始すると、フォルダ内のファイルが自動でクラウドへ送信されます。
                                     </p>
                                 </div>
                             </div>

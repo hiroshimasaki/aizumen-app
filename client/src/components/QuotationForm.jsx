@@ -10,7 +10,7 @@ import PdfEditorModal from './PdfEditorModal';
 import DrawingSearchModal from './DrawingSearchModal';
 import { splitPdf } from '../utils/pdfSplitter';
 import MaterialCostCalcModal from './MaterialCostCalcModal';
-export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin = true }) {
+export default function QuotationForm({ initialData, onSubmit, onCancel, onPrintMaterialOrder, isAdmin = true }) {
     const { credits, setCredits } = useAuth();
     const { showAlert, showConfirm } = useNotification();
     const quotationId = initialData?.id;
@@ -50,7 +50,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
     });
 
     const [items, setItems] = useState([
-        { id: Date.now(), name: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: '', scheduledEndDate: '' }
+        { id: Date.now(), name: '', dimensions: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: '', scheduledEndDate: '' }
     ]);
 
     const [files, setFiles] = useState([]); // 新規追加用ファイルオブジェクトの配列
@@ -134,7 +134,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                 scheduledStartDate: item.scheduledStartDate || '',
                 scheduledEndDate: item.scheduledEndDate || '',
                 dueDate: item.dueDate || '',
-                deliveryDate: item.deliveryDate || ''
+                deliveryDate: item.deliveryDate || '',
+                dimensions: item.dimensions || ''
             })));
             if (initialData.files && initialData.files.length > 0) {
                 setExistingFiles(initialData.files);
@@ -204,7 +205,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
 
     const addItem = () => {
         setItems(prev => [...prev, {
-            id: Date.now(), name: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: ''
+            id: Date.now(), name: '', dimensions: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: ''
         }]);
     };
 
@@ -236,7 +237,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                     name: pastItem.name,
                     processingCost: pastItem.processing_cost || '',
                     materialCost: pastItem.material_cost || '',
-                    otherCost: pastItem.other_cost || ''
+                    otherCost: pastItem.other_cost || '',
+                    dimensions: pastItem.dimensions || ''
                 };
             }
             return item;
@@ -309,6 +311,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                             otherCost: aiItem.otherCost || '',
                             responseDate: '',
                             dueDate: aiItem.dueDate || '',
+                            dimensions: aiItem.dimensions || '',
                             deliveryDate: '',
                             scheduledStartDate: ''
                         };
@@ -451,6 +454,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                     quantity: 1,
                     responseDate: '',
                     dueDate: '',
+                    dimensions: ref.dimensions || '',
+                    material_metadata: ref.material_metadata || null,
                     deliveryDate: '',
                     scheduledStartDate: ''
                 };
@@ -897,8 +902,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                     {items.map((item, index) => (
                         <div key={item.id} className="bg-slate-900 rounded-xl border border-slate-700 p-4 transition-all hover:border-slate-600 relative group">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-4">
-                                {/* Row 1: Items & Costs */}
-                                <div className="md:col-span-4 space-y-1">
+                                {/* Row 1: Item Name, Dimensions, Quantity */}
+                                <div className="md:col-span-6 space-y-1">
                                     <div className="flex items-center justify-between">
                                         <label className="text-xs font-bold text-slate-500 uppercase">品名</label>
                                         {isAdmin && (
@@ -914,24 +919,39 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                     <input type="text" value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)}
                                         readOnly={!isAdmin} placeholder="品名..." className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none" />
                                 </div>
-                                <div className="md:col-span-1 space-y-1">
+                                <div className="md:col-span-4 space-y-1">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">寸法</label>
+                                    <input type="text" value={item.dimensions || ''} onChange={e => handleItemChange(item.id, 'dimensions', e.target.value)}
+                                        readOnly={!isAdmin} placeholder="100x200..." className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none" />
+                                    {item.material_metadata && (
+                                        <div className="text-[10px] text-cyan-500/80 mt-1 font-mono flex flex-wrap gap-x-2 gap-y-0.5">
+                                            {item.material_metadata.dims && Object.entries(item.material_metadata.dims).map(([label, val]) => (
+                                                <span key={label}>{label}:{val}</span>
+                                            ))}
+                                            {item.material_metadata.weight && <span>{item.material_metadata.weight}kg</span>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="md:col-span-2 space-y-1">
                                     <label className="text-xs font-bold text-slate-500 uppercase">個数</label>
                                     <input type="number" min="1" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', e.target.value)}
                                         readOnly={!isAdmin} className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
-                                <div className="md:col-span-2 space-y-1">
+
+                                {/* Row 2: Costs */}
+                                <div className="md:col-span-4 space-y-1">
                                     <label className="text-xs font-bold text-slate-500 uppercase">加工費</label>
                                     <input type="number" value={item.processingCost} onChange={e => handleItemChange(item.id, 'processingCost', e.target.value)}
                                         readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
-                                <div className="md:col-span-2 space-y-1">
+                                <div className="md:col-span-4 space-y-1">
                                     <div className="flex items-center justify-between">
                                         <label className="text-xs font-bold text-slate-500 uppercase">材料費</label>
                                         {isAdmin && (
                                             <button
                                                 type="button"
                                                 onClick={() => setCalcModalState({ isOpen: true, targetItemId: item.id })}
-                                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+                                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
                                             >
                                                 <Calculator size={10} /> 自動計算
                                             </button>
@@ -940,42 +960,44 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                                     <input type="number" value={item.materialCost} onChange={e => handleItemChange(item.id, 'materialCost', e.target.value)}
                                         readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
-                                <div className="md:col-span-2 md:col-start-10 space-y-1">
+                                <div className="md:col-span-4 space-y-1">
                                     <label className="text-xs font-bold text-slate-500 uppercase">その他費用</label>
                                     <input type="number" value={item.otherCost} onChange={e => handleItemChange(item.id, 'otherCost', e.target.value)}
                                         readOnly={!isAdmin} placeholder="0" className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-sm focus:border-cyan-500 outline-none text-right" />
                                 </div>
 
-                                {/* Row 2: Dates */}
-                                <div className="md:col-span-3 space-y-1 text-slate-400 focus-within:text-cyan-400">
-                                    <label className="text-xs font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={12} />回答日</label>
-                                    <input type="date" value={item.responseDate || ''} onChange={e => handleItemChange(item.id, 'responseDate', e.target.value)}
-                                        readOnly={!isAdmin} className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 text-xs focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
-                                        style={{ colorScheme: 'dark' }} />
-                                </div>
-                                <div className="md:col-span-3 space-y-1 text-slate-400 focus-within:text-cyan-400">
-                                    <label className="text-xs font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={12} />着手予定日</label>
-                                    <input type="date" value={item.scheduledStartDate || ''} onChange={e => handleItemChange(item.id, 'scheduledStartDate', e.target.value)}
-                                        readOnly={!isAdmin} className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 text-xs focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
-                                        style={{ colorScheme: 'dark' }} />
-                                </div>
-                                <div className="md:col-span-3 space-y-1 text-slate-400 focus-within:text-cyan-400">
-                                    <label className="text-xs font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={12} />完了予定日</label>
-                                    <input type="date" value={item.scheduledEndDate || ''} onChange={e => handleItemChange(item.id, 'scheduledEndDate', e.target.value)}
-                                        readOnly={!isAdmin} className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 text-xs focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
-                                        style={{ colorScheme: 'dark' }} />
-                                </div>
-                                <div className="md:col-span-3 space-y-1 text-slate-400 focus-within:text-cyan-400">
-                                    <label className="text-xs font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={12} />納期</label>
-                                    <input type="date" value={item.dueDate || ''} onChange={e => handleItemChange(item.id, 'dueDate', e.target.value)}
-                                        readOnly={!isAdmin} className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 text-xs focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
-                                        style={{ colorScheme: 'dark' }} />
-                                </div>
-                                <div className="md:col-span-3 space-y-1 text-slate-400 focus-within:text-cyan-400">
-                                    <label className="text-xs font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={12} />納品日</label>
-                                    <input type="date" value={item.deliveryDate || ''} onChange={e => handleItemChange(item.id, 'deliveryDate', e.target.value)}
-                                        readOnly={!isAdmin} className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 text-xs focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
-                                        style={{ colorScheme: 'dark' }} />
+                                {/* Row 3: Dates */}
+                                <div className="md:col-span-12 flex flex-wrap md:flex-nowrap gap-4 mt-2">
+                                    <div className="flex-1 min-w-[120px] space-y-1 text-slate-400 focus-within:text-cyan-400">
+                                        <label className="text-[10px] font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={10} />回答日</label>
+                                        <input type="date" value={item.responseDate || ''} onChange={e => handleItemChange(item.id, 'responseDate', e.target.value)}
+                                            readOnly={!isAdmin} className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-400 text-[10px] focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
+                                            style={{ colorScheme: 'dark' }} />
+                                    </div>
+                                    <div className="flex-1 min-w-[120px] space-y-1 text-slate-400 focus-within:text-cyan-400">
+                                        <label className="text-[10px] font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={10} />着手予定日</label>
+                                        <input type="date" value={item.scheduledStartDate || ''} onChange={e => handleItemChange(item.id, 'scheduledStartDate', e.target.value)}
+                                            readOnly={!isAdmin} className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-400 text-[10px] focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
+                                            style={{ colorScheme: 'dark' }} />
+                                    </div>
+                                    <div className="flex-1 min-w-[120px] space-y-1 text-slate-400 focus-within:text-cyan-400">
+                                        <label className="text-[10px] font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={10} />完了予定日</label>
+                                        <input type="date" value={item.scheduledEndDate || ''} onChange={e => handleItemChange(item.id, 'scheduledEndDate', e.target.value)}
+                                            readOnly={!isAdmin} className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-400 text-[10px] focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
+                                            style={{ colorScheme: 'dark' }} />
+                                    </div>
+                                    <div className="flex-1 min-w-[120px] space-y-1 text-slate-400 focus-within:text-cyan-400">
+                                        <label className="text-[10px] font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={10} />納期</label>
+                                        <input type="date" value={item.dueDate || ''} onChange={e => handleItemChange(item.id, 'dueDate', e.target.value)}
+                                            readOnly={!isAdmin} className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-400 text-[10px] focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
+                                            style={{ colorScheme: 'dark' }} />
+                                    </div>
+                                    <div className="flex-1 min-w-[120px] space-y-1 text-slate-400 focus-within:text-cyan-400">
+                                        <label className="text-[10px] font-bold text-inherit uppercase flex items-center gap-1"><Calendar size={10} />納品日</label>
+                                        <input type="date" value={item.deliveryDate || ''} onChange={e => handleItemChange(item.id, 'deliveryDate', e.target.value)}
+                                            readOnly={!isAdmin} className="w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-400 text-[10px] focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors"
+                                            style={{ colorScheme: 'dark' }} />
+                                    </div>
                                 </div>
                             </div>
                             {isAdmin && items.length > 1 && (
@@ -998,6 +1020,20 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, isAdmin
                 <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-6 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 font-bold hover:bg-slate-700 transition-colors disabled:opacity-50 shadow-lg">
                     キャンセル
                 </button>
+                {(initialData?.id || (items && items.length > 0)) && (
+                    <button
+                        type="button"
+                        onClick={() => onPrintMaterialOrder({
+                            ...headerData,
+                            displayId: initialData?.displayId || 'NEW',
+                            items: items
+                        })}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 font-bold hover:bg-slate-700 transition-colors shadow-lg"
+                    >
+                        <FileText size={18} className="text-blue-400" />
+                        <span>材料注文書 (PDF)</span>
+                    </button>
+                )}
                 {
                     isAdmin && (
                         <button type="submit" disabled={isSubmitting} className="flex items-center gap-2 px-8 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100">

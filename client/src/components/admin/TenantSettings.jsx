@@ -19,6 +19,7 @@ export default function TenantSettings() {
         itemNameLabel: '品名',
         quantityLabel: '数量',
         deadlineLabel: '納期',
+        dimensionsLabel: '寸法',
         orderNumberLabel: '注文番号',
         constructionNumberLabel: '工事番号'
     });
@@ -199,6 +200,18 @@ export default function TenantSettings() {
                                 onChange={e => handleMappingChange('deadlineLabel', e.target.value)}
                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
                                 placeholder="例: 納期, 希望納期, 納品日"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                <FileJson size={14} className="text-rose-400" /> システム側:「寸法」
+                            </label>
+                            <input
+                                type="text"
+                                value={ocrMapping.dimensionsLabel || ''}
+                                onChange={e => handleMappingChange('dimensionsLabel', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
+                                placeholder="例: 寸法, サイズ, 規格"
                             />
                         </div>
                     </div>

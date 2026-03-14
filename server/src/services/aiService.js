@@ -181,6 +181,7 @@ class AIService {
                 itemName: mappingData.itemNameLabel || '品名, 図番, ProductName',
                 quantity: mappingData.quantityLabel || '数量, 個数, Qty',
                 deadline: mappingData.deadlineLabel || '納期, 希望納期, 納品日',
+                dimensions: mappingData.dimensionsLabel || '寸法, サイズ, 規格, Dimensions',
                 orderNumber: mappingData.orderNumberLabel || '注文番号, 発注番号, 注文NO',
                 constructionNumber: mappingData.constructionNumberLabel || '工事番号, 図番, 工事NO'
             };
@@ -210,6 +211,7 @@ class AIService {
     - **materialCost**: 材料費。
     - **otherCost**: その他費用。
     - **dueDate**: 納期。形式は **YYYY-MM-DD**。
+    - **dimensions**: 寸法（例：100x200, Φ50など）。「${map.dimensions}」に該当する項目から抽出してください。
 
 ### 出力フォーマット (JSONのみ):
 \`\`\`json
@@ -230,7 +232,8 @@ class AIService {
       "processingCost": 5000,
       "materialCost": 0,
       "otherCost": 0,
-      "dueDate": "2024-05-20"
+      "dueDate": "2024-05-20",
+      "dimensions": "100x200"
     }
   ]
 }

@@ -14,14 +14,13 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
     const [prices, setPrices] = useState([]);
     const [loading, setLoading] = useState(true);
     
-    // 入力状態
     const [vendor, setVendor] = useState('');
     const [material, setMaterial] = useState('');
     const [shape, setShape] = useState('plate');
     const [dimValues, setDimValues] = useState({});
-    
+    const [globalOverheadFactor, setGlobalOverheadFactor] = useState(1.0);
     // 計算結果
-    const [calculated, setCalculated] = useState({ weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 });
+    const [calculated, setCalculated] = useState({ weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0, overheadFactor: 1.0 });
 
     useEffect(() => {
         if (isOpen) {
@@ -31,10 +30,16 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
 
     const fetchPrices = async () => {
         try {
-            const { data } = await api.get('/api/material-prices');
-            setPrices(data);
+            const [priceRes, settingsRes] = await Promise.all([
+                api.get('/api/material-prices'),
+                api.get('/api/settings')
+            ]);
+            setPrices(priceRes.data);
+            if (settingsRes.data?.settings_json?.materialOverheadFactor) {
+                setGlobalOverheadFactor(settingsRes.data.settings_json.materialOverheadFactor);
+            }
         } catch (err) {
-            console.error('Failed to fetch prices:', err);
+            console.error('Failed to fetch data:', err);
         } finally {
             setLoading(false);
         }
@@ -50,7 +55,7 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
         const dims = Object.values(dimValues).map(v => parseFloat(v) || 0);
         const dimA = dims[0]; // 板厚/径/外径/外寸A
         if (!material || !shape || !dimA) {
-            setCalculated({ weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 });
+            setCalculated({ weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0, overheadFactor: 1.0 });
             return;
         }
 
@@ -65,13 +70,14 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
         );
 
         if (!match) {
-            setCalculated({ weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 });
+            setCalculated({ weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0, overheadFactor: 1.0 });
             return;
         }
 
         const density = Number(match.density);
         const unitPrice = Number(match.unit_price);
         const cuttingFactor = Number(match.cutting_cost_factor || 0);
+        const overheadFactor = globalOverheadFactor;
         let weight = 0;
 
         const v = dims;
@@ -97,20 +103,22 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
             weight = ((outerArea - innerArea) * l * density) / 1000000;
         }
 
-        const materialCost = Math.round(weight * unitPrice);
-        const cuttingCost = Math.round(dimA * cuttingFactor);
+        const rawMaterialCost = weight * unitPrice;
+        const rawCuttingCost = dimA * cuttingFactor;
+        const totalCost = Math.round((rawMaterialCost + rawCuttingCost) * overheadFactor);
 
         setCalculated({
             weight: weight.toFixed(3),
-            materialCost: materialCost,
-            cuttingCost: cuttingCost,
-            totalCost: materialCost + cuttingCost,
+            materialCost: Math.round(rawMaterialCost),
+            cuttingCost: Math.round(rawCuttingCost),
+            totalCost: totalCost,
             unitPrice: unitPrice,
             density: density,
-            cuttingFactor: cuttingFactor
+            cuttingFactor: cuttingFactor,
+            overheadFactor: overheadFactor
         });
 
-    }, [vendor, material, shape, dimValues, prices]);
+    }, [vendor, material, shape, dimValues, prices, globalOverheadFactor]);
 
     const handleApply = () => {
         onApply({
@@ -125,7 +133,8 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
                 cuttingCost: calculated.cuttingCost,
                 unitPrice: calculated.unitPrice,
                 density: calculated.density,
-                cuttingFactor: calculated.cuttingFactor
+                cuttingFactor: calculated.cuttingFactor,
+                overheadFactor: calculated.overheadFactor
             }
         });
         onClose();
@@ -222,6 +231,8 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply }) {
                                     {calculated.weight} <span className="text-[9px] font-normal">kg</span>
                                     <span className="mx-2 text-slate-700">|</span>
                                     <span className="text-blue-400">¥{calculated.unitPrice.toLocaleString()}</span><span className="text-[9px] font-normal">/kg</span>
+                                    <span className="mx-2 text-slate-700">|</span>
+                                    <span className="text-emerald-400">係 {calculated.overheadFactor}</span>
                                     <span className="mx-2 text-slate-700">|</span>
                                     <span className="text-amber-400">切 ¥{calculated.cuttingCost.toLocaleString()}</span>
                                 </div>

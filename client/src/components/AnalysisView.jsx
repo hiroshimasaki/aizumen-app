@@ -379,7 +379,7 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
                                                         key={f.id}
                                                         onClick={async () => {
                                                             try {
-                                                                const { data } = await api.get(`/api/files/${f.id}/download`);
+                                                                const { data } = await api.get(`/api/files/${f.id}`);
                                                                 if (data?.url) window.open(data.url, '_blank');
                                                             } catch { }
                                                         }}
@@ -416,7 +416,14 @@ export default function AnalysisView({ quotations, hourlyRate = 8000 }) {
                                                         </div>
                                                         <div className="flex flex-col items-end">
                                                             <span className="text-[10px] font-black text-slate-600 uppercase">数量</span>
-                                                            <span className="text-sm font-black text-slate-400">{qty.toLocaleString()}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-black text-slate-400">{qty.toLocaleString()}</span>
+                                                                {item.dimensions && (
+                                                                    <span className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600">
+                                                                        {item.dimensions}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

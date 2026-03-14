@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import api from '../lib/api';
 import { useNotification } from '../contexts/NotificationContext';
 
-export default function QuotationList({ quotations, onEdit, onCopy, onDelete, onRestore, onPermanentDelete, onStatusUpdate, onPrint, isAdmin = true, isTrashView = false }) {
+export default function QuotationList({ quotations, onEdit, onCopy, onDelete, onRestore, onPermanentDelete, onStatusUpdate, onPrint, onPrintMaterialOrder, isAdmin = true, isTrashView = false }) {
     const { tenant } = useAuth();
     const { showAlert } = useNotification();
     const hourlyRate = tenant?.hourly_rate || 8000;
@@ -461,6 +461,11 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                             <button onClick={() => onPrint(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title="見積書を印刷・PDF出力">
                                                 <Printer size={16} />
                                             </button>
+                                            {isAdmin && (
+                                                <button onClick={() => onPrintMaterialOrder(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title="材料注文書を印刷・PDF出力">
+                                                    <FileText size={16} className="text-blue-400" />
+                                                </button>
+                                            )}
                                             <button onClick={() => onEdit(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title={isAdmin ? "編集" : "詳細表示・実績入力"}>
                                                 {isAdmin ? <Edit2 size={16} /> : <FileText size={16} />}
                                             </button>

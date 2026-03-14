@@ -24,6 +24,7 @@ export default function MaterialPriceMaster() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
+    const [globalOverheadFactor, setGlobalOverheadFactor] = useState(1.0);
     const [newEntry, setNewEntry] = useState({
         vendorName: '',
         materialType: '',
@@ -32,7 +33,7 @@ export default function MaterialPriceMaster() {
         maxDim: 9999,
         unitPrice: '',
         density: 7.85,
-        cuttingCostFactor: 1.0
+        cuttingCostFactor: 1.0,
     });
 
     useEffect(() => {
@@ -41,12 +42,34 @@ export default function MaterialPriceMaster() {
 
     const fetchPrices = async () => {
         try {
-            const { data } = await api.get('/api/material-prices');
-            setPrices(data);
+            const [priceRes, settingsRes] = await Promise.all([
+                api.get('/api/material-prices'),
+                api.get('/api/settings')
+            ]);
+            setPrices(priceRes.data);
+            if (settingsRes.data?.settings_json?.materialOverheadFactor) {
+                setGlobalOverheadFactor(settingsRes.data.settings_json.materialOverheadFactor);
+            }
         } catch (err) {
-            console.error('Failed to fetch prices:', err);
+            console.error('Failed to fetch data:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveGlobalFactor = async () => {
+        try {
+            const { data: currentSettings } = await api.get('/api/settings');
+            await api.put('/api/settings', {
+                settingsJson: {
+                    ...(currentSettings.settings_json || {}),
+                    materialOverheadFactor: globalOverheadFactor
+                }
+            });
+            await showAlert('共通係数を保存しました', 'success');
+        } catch (err) {
+            console.error('Failed to save global factor:', err);
+            await showAlert('保存に失敗しました', 'error');
         }
     };
 
@@ -78,7 +101,7 @@ export default function MaterialPriceMaster() {
                 maxDim: 9999,
                 unitPrice: '',
                 density: 7.85,
-                cuttingCostFactor: 1.0
+                cuttingCostFactor: 1.0,
             });
             fetchPrices();
         } catch (err) {
@@ -117,13 +140,21 @@ export default function MaterialPriceMaster() {
                         <label className="text-xs font-bold text-slate-400 pl-1 flex items-center gap-1">
                             <Building size={12} /> 業者名
                         </label>
-                        <input
-                            type="text"
-                            value={newEntry.vendorName}
-                            onChange={e => setNewEntry(prev => ({ ...prev, vendorName: e.target.value }))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none"
-                            placeholder="例: ○○鋼材"
-                        />
+                        <div className="relative">
+                            <input
+                                type="text"
+                                list="vendor-list"
+                                value={newEntry.vendorName}
+                                onChange={e => setNewEntry(prev => ({ ...prev, vendorName: e.target.value }))}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+                                placeholder="選択または入力"
+                            />
+                            <datalist id="vendor-list">
+                                {[...new Set(prices.map(p => p.vendor_name))].map(v => (
+                                    <option key={v} value={v} />
+                                ))}
+                            </datalist>
+                        </div>
                     </div>
                     <div className="space-y-1.5 relative">
                         <label className="text-xs font-bold text-slate-400 pl-1">材質</label>
@@ -218,12 +249,33 @@ export default function MaterialPriceMaster() {
                             placeholder="1.0"
                         />
                     </div>
+                    <div className="md:col-span-1 space-y-1.5 p-4 bg-blue-900/10 rounded-xl border border-blue-800/20">
+                        <label className="text-xs font-bold text-blue-300 flex items-center gap-1">
+                            <Activity size={12} /> 共通材料管理費係数
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={globalOverheadFactor}
+                                onChange={e => setGlobalOverheadFactor(Number(e.target.value))}
+                                className="w-full bg-slate-900 border border-blue-500/50 rounded-lg px-3 py-1.5 text-sm text-slate-200 outline-none font-mono focus:ring-1 focus:ring-blue-500"
+                            />
+                            <button
+                                onClick={handleSaveGlobalFactor}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg font-bold transition-colors shrink-0"
+                            >
+                                <Save size={14} />
+                            </button>
+                        </div>
+                        <p className="text-[9px] text-slate-500 leading-tight">全材料に適用されます (ベンダー価格 × 係数)</p>
+                    </div>
 
-                    <div className="md:col-span-1 py-0.5">
+                    <div className="md:col-span-1 py-0.5 self-end">
                         <button
                             onClick={handleAdd}
                             disabled={saving}
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-[9px] rounded-lg font-bold transition-colors disabled:opacity-50"
+                            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-[9px] rounded-lg font-bold transition-colors disabled:opacity-50"
                         >
                             {saving ? '登録中...' : '単価を追加'}
                         </button>
@@ -233,9 +285,9 @@ export default function MaterialPriceMaster() {
                     <div className="md:col-span-4 bg-blue-900/10 border border-blue-800/20 p-3 rounded-lg flex items-start gap-3 mt-4">
                         <Activity size={16} className="text-blue-400 mt-0.5" />
                         <div className="text-[11px] text-slate-400 leading-relaxed">
-                            <span className="font-bold text-blue-300">切断費の計算について:</span><br />
+                            <span className="font-bold text-blue-300">切断費と管理費係数について:</span><br />
                             見積作成時に「切断費 = 基準寸法（板厚や径） × 切断単価係数」として自動加算されます。<br />
-                            例: 径 50mm の丸棒で 係数 1.0 の場合、1カットにつき 50円 が材料費に加算されます。
+                            材料単価は「ベンダー単価 × 材料管理費係数」が見積に反映されます。
                         </div>
                     </div>
                 </div>
@@ -247,7 +299,7 @@ export default function MaterialPriceMaster() {
                         <tr className="bg-slate-900/50 border-bottom border-slate-700">
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">業者 / 材質</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">形状 / サイズ範囲</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">キロ単価 / 切断係数</th>
+                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">単価 / 切断・管理係数</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">操作</th>
                         </tr>
                     </thead>

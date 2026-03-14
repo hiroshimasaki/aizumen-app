@@ -307,7 +307,9 @@ export default function Billing() {
                                 return (
                                     <>
                                         <div className="flex items-end justify-between mb-1">
-                                            <h4 className="text-xl font-bold text-white">{usageGB.toFixed(1)} GB</h4>
+                                            <h4 className="text-xl font-bold text-white">
+                                                {usageGB >= 0.1 ? `${usageGB.toFixed(1)} GB` : `${Math.round((subscription?.plan?.storageUsage || 0) / (1024 * 1024))} MB`}
+                                            </h4>
                                             <span className="text-xs text-slate-400">/ {maxGB} GB</span>
                                         </div>
                                         <div className="w-full h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
