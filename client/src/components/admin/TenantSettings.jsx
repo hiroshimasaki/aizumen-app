@@ -107,6 +107,54 @@ export default function TenantSettings() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                <Hash size={14} className="text-amber-400" /> システム側:「注文番号」
+                            </label>
+                            <input
+                                type="text"
+                                value={ocrMapping.orderNumberLabel || ''}
+                                onChange={e => handleMappingChange('orderNumberLabel', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
+                                placeholder="例: 注文番号, 発注番号, 注文NO"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                <ClipboardList size={14} className="text-purple-400" /> システム側:「工事番号」
+                            </label>
+                            <input
+                                type="text"
+                                value={ocrMapping.constructionNumberLabel || ''}
+                                onChange={e => handleMappingChange('constructionNumberLabel', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
+                                placeholder="例: 工事番号, 図番, 工事NO"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                <FileJson size={14} className="text-indigo-400" /> システム側:「品名/図番」
+                            </label>
+                            <input
+                                type="text"
+                                value={ocrMapping.itemNameLabel}
+                                onChange={e => handleMappingChange('itemNameLabel', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
+                                placeholder="例: 品名, 図番, ProductName"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                <FileJson size={14} className="text-rose-400" /> システム側:「寸法」
+                            </label>
+                            <input
+                                type="text"
+                                value={ocrMapping.dimensionsLabel || ''}
+                                onChange={e => handleMappingChange('dimensionsLabel', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
+                                placeholder="例: 寸法, サイズ, 規格"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
                                 <FileJson size={14} className="text-blue-400" /> システム側:「加工費」
                             </label>
                             <input
@@ -144,18 +192,6 @@ export default function TenantSettings() {
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
-                                <FileJson size={14} className="text-indigo-400" /> システム側:「品名/図番」
-                            </label>
-                            <input
-                                type="text"
-                                value={ocrMapping.itemNameLabel}
-                                onChange={e => handleMappingChange('itemNameLabel', e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
-                                placeholder="例: 品名, 図番, ProductName"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
                                 <FileJson size={14} className="text-cyan-400" /> システム側:「数量」
                             </label>
                             <input
@@ -168,30 +204,6 @@ export default function TenantSettings() {
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
-                                <Hash size={14} className="text-amber-400" /> システム側:「注文番号」
-                            </label>
-                            <input
-                                type="text"
-                                value={ocrMapping.orderNumberLabel || ''}
-                                onChange={e => handleMappingChange('orderNumberLabel', e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
-                                placeholder="例: 注文番号, 発注番号, 注文NO"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
-                                <ClipboardList size={14} className="text-purple-400" /> システム側:「工事番号」
-                            </label>
-                            <input
-                                type="text"
-                                value={ocrMapping.constructionNumberLabel || ''}
-                                onChange={e => handleMappingChange('constructionNumberLabel', e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
-                                placeholder="例: 工事番号, 図番, 工事NO"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
                                 <FileJson size={14} className="text-orange-400" /> システム側:「希望納期」
                             </label>
                             <input
@@ -200,18 +212,6 @@ export default function TenantSettings() {
                                 onChange={e => handleMappingChange('deadlineLabel', e.target.value)}
                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
                                 placeholder="例: 納期, 希望納期, 納品日"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
-                                <FileJson size={14} className="text-rose-400" /> システム側:「寸法」
-                            </label>
-                            <input
-                                type="text"
-                                value={ocrMapping.dimensionsLabel || ''}
-                                onChange={e => handleMappingChange('dimensionsLabel', e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-amber-500 outline-none placeholder:text-slate-600"
-                                placeholder="例: 寸法, サイズ, 規格"
                             />
                         </div>
                     </div>
