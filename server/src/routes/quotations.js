@@ -30,7 +30,19 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
             });
         }
 
-        const { page = 1, limit, status, search, isVerified, sortBy = 'created_at', sortDir = 'desc', showDeleted = 'false' } = req.query;
+        const { 
+            page = 1, 
+            limit, 
+            status, 
+            search, 
+            isVerified, 
+            material,
+            processingMethod,
+            surfaceTreatment,
+            sortBy = 'created_at', 
+            sortDir = 'desc', 
+            showDeleted = 'false' 
+        } = req.query;
 
         let from = 0;
         let to = PAGE_SIZE - 1;
@@ -66,7 +78,9 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
 
             if (validTerms.length > 0) {
                 // Supabase の .or() 内でカンマや括弧がある場合、二重引用符で囲む必要がある
-                const itemOrs = validTerms.map(t => `name.ilike."%${t}%"`).join(',');
+                const itemOrs = validTerms.map(t => 
+                    `name.ilike."%${t}%",material.ilike."%${t}%",processing_method.ilike."%${t}%",surface_treatment.ilike."%${t}%"`
+                ).join(',');
                 const { data: matchedItems } = await supabaseAdmin
                     .from('quotation_items')
                     .select('quotation_id, name')
@@ -95,7 +109,28 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 }
                 query = query.or(orClause);
             });
+        }
 
+        // 3. 個別フィルター (材質・加工・処理)
+        if (material || processingMethod || surfaceTreatment) {
+            let itemFilters = [];
+            if (material) itemFilters.push(`material.ilike."%${material}%"`);
+            if (processingMethod) itemFilters.push(`processing_method.ilike."%${processingMethod}%"`);
+            if (surfaceTreatment) itemFilters.push(`surface_treatment.ilike."%${surfaceTreatment}%"`);
+
+            const { data: filterMatchedItems } = await supabaseAdmin
+                .from('quotation_items')
+                .select('quotation_id')
+                .eq('tenant_id', req.tenantId)
+                .or(itemFilters.join(','));
+
+            if (filterMatchedItems && filterMatchedItems.length > 0) {
+                const uniqueIds = [...new Set(filterMatchedItems.map(i => i.quotation_id))];
+                query = query.in('id', uniqueIds);
+            } else {
+                // フィルターに合致する明細がない場合は空の結果を返すよう、存在しないIDで絞り込む
+                query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+            }
         }
 
         // 'delivered' または 'unentered_actuals' フィルタの場合は全件取得後にJS側でフィルタして手動ページネーションする
@@ -492,6 +527,33 @@ router.get('/items/search', authMiddleware, checkTrialLimit, async (req, res, ne
         }
 
         res.json(data);
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * GET /api/quotations/unique-filters
+ * フィルターに使用するユニークな値（材質、加工方法、表面処理）を取得
+ */
+router.get('/unique-filters', authMiddleware, async (req, res, next) => {
+    try {
+        const { data: items, error } = await supabaseAdmin
+            .from('quotation_items')
+            .select('material, processing_method, surface_treatment')
+            .eq('tenant_id', req.tenantId);
+
+        if (error) throw error;
+
+        const uniqueMaterials = [...new Set(items.map(i => i.material).filter(v => v))].sort();
+        const uniqueMethods = [...new Set(items.map(i => i.processing_method).filter(v => v))].sort();
+        const uniqueTreatments = [...new Set(items.map(i => i.surface_treatment).filter(v => v))].sort();
+
+        res.json({
+            materials: uniqueMaterials,
+            methods: uniqueMethods,
+            treatments: uniqueTreatments
+        });
     } catch (err) {
         next(err);
     }

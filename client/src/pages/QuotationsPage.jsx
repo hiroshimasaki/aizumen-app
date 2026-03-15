@@ -31,7 +31,11 @@ export default function QuotationsPage() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [isVerifiedFilter, setIsVerifiedFilter] = useState('');
+    const [materialFilter, setMaterialFilter] = useState('');
+    const [processingMethodFilter, setProcessingMethodFilter] = useState('');
+    const [surfaceTreatmentFilter, setSurfaceTreatmentFilter] = useState('');
     const [viewMode, setViewMode] = useState('card'); // 'card' or 'list'
+    const [filterOptions, setFilterOptions] = useState({ materials: [], methods: [], treatments: [] });
 
     // Modal state
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -58,6 +62,8 @@ export default function QuotationsPage() {
         if (isFetchingRef.current) return;
         isFetchingRef.current = true;
         
+        fetchFilterOptions(); // 最新のフィルター選択肢を常に取得
+
         if (showLoading) setLoading(true);
         try {
             const currentPage = overrides.hasOwnProperty('page') ? overrides.page : page;
@@ -67,6 +73,9 @@ export default function QuotationsPage() {
             if (currentSearch) params.append('search', currentSearch);
             if (statusFilter) params.append('status', statusFilter);
             if (isVerifiedFilter) params.append('isVerified', isVerifiedFilter);
+            if (materialFilter) params.append('material', materialFilter);
+            if (processingMethodFilter) params.append('processingMethod', processingMethodFilter);
+            if (surfaceTreatmentFilter) params.append('surfaceTreatment', surfaceTreatmentFilter);
             if (showDeleted) params.append('showDeleted', 'true');
 
             const results = await Promise.all([api.get(`/api/quotations?${params.toString()}`)]);
@@ -106,7 +115,7 @@ export default function QuotationsPage() {
                     dimensions: item.dimensions,
                     material: item.material,
                     processingMethod: item.processing_method,
-                    surfaceTreatment: item.surface_treatment,
+                    surfaceTreatment: item.surface_treatment || '',
                     material_metadata: item.material_metadata,
                 })).sort((a, b) => a.sort_order - b.sort_order),
                 files: (q.quotation_files || []).map(f => ({
@@ -130,6 +139,19 @@ export default function QuotationsPage() {
             isFetchingRef.current = false;
         }
     };
+
+    const fetchFilterOptions = async () => {
+        try {
+            const { data } = await api.get('/api/quotations/unique-filters');
+            setFilterOptions(data);
+        } catch (err) {
+            console.error('Failed to fetch filter options:', err);
+        }
+    };
+
+    useEffect(() => {
+        fetchFilterOptions();
+    }, []);
 
     useEffect(() => {
         // 一般ユーザーが何らかの方法で showDeleted を true にしようとした場合のガード
@@ -177,7 +199,7 @@ export default function QuotationsPage() {
         return () => {
             channel.unsubscribe();
         };
-    }, [page, statusFilter, isVerifiedFilter, showDeleted, isAdmin, tenant?.id]);
+    }, [page, statusFilter, isVerifiedFilter, materialFilter, processingMethodFilter, surfaceTreatmentFilter, showDeleted, isAdmin, tenant?.id]);
 
     // 背景スクロールロック
     useEffect(() => {
@@ -581,45 +603,78 @@ export default function QuotationsPage() {
                     )}
                 </form>
 
-                {/* Second Row: Filters and Toggles */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-2">
                         <select
                             value={isVerifiedFilter}
                             onChange={(e) => { setIsVerifiedFilter(e.target.value); setPage(1); }}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 outline-none transition-all appearance-none cursor-pointer shadow-inner"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-[10px] font-bold text-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 outline-none transition-all appearance-none cursor-pointer shadow-inner"
                         >
                             <option value="">全ての確認状態</option>
-                            <option value="false">未確認のみ</option>
-                            <option value="true">確認済みのみ</option>
+                            <option value="false">未確認</option>
+                            <option value="true">確認済み</option>
                         </select>
                     </div>
 
-                    <div className="lg:col-span-4 flex items-center gap-2">
+                    <div className="lg:col-span-2 flex items-center gap-2">
                         <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-1 flex flex-1 overflow-hidden shadow-inner">
                             <button
                                 onClick={() => { setShowDeleted(false); setPage(1); }}
                                 className={cn(
-                                    "flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all",
+                                    "flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg font-bold text-[9px] transition-all",
                                     !showDeleted ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
                                 )}
                             >
-                                <Database size={14} /> 案件一覧
+                                <Database size={12} /> 一覧
                             </button>
                             <button
                                 onClick={() => { setShowDeleted(true); setPage(1); }}
                                 className={cn(
-                                    "flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all",
+                                    "flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg font-bold text-[9px] transition-all",
                                     showDeleted ? "bg-red-900/30 text-red-400" : "text-slate-500 hover:text-red-400/70"
                                 )}
                             >
-                                <Trash2 size={14} /> ゴミ箱
+                                <Trash2 size={12} /> ゴミ箱
                             </button>
                         </div>
                     </div>
 
-                    <div className="lg:col-span-5 flex items-center gap-3 justify-end">
-                        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-1 flex shadow-inner">
+                    <div className="lg:col-span-2 relative flex items-center">
+                        <Filter className="absolute left-2.5 text-slate-500" size={12} />
+                        <select
+                            value={materialFilter}
+                            onChange={(e) => { setMaterialFilter(e.target.value); setPage(1); }}
+                            className="w-full pl-8 pr-2 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-[10px] text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner appearance-none cursor-pointer"
+                        >
+                            <option value="">材質: 全て</option>
+                            {filterOptions.materials.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                    </div>
+                    <div className="lg:col-span-2 relative flex items-center">
+                        <Filter className="absolute left-2.5 text-slate-500" size={12} />
+                        <select
+                            value={processingMethodFilter}
+                            onChange={(e) => { setProcessingMethodFilter(e.target.value); setPage(1); }}
+                            className="w-full pl-8 pr-2 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-[10px] text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner appearance-none cursor-pointer"
+                        >
+                            <option value="">加工: 全て</option>
+                            {filterOptions.methods.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                    </div>
+                    <div className="lg:col-span-2 relative flex items-center">
+                        <Filter className="absolute left-2.5 text-slate-500" size={12} />
+                        <select
+                            value={surfaceTreatmentFilter}
+                            onChange={(e) => { setSurfaceTreatmentFilter(e.target.value); setPage(1); }}
+                            className="w-full pl-8 pr-2 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-[10px] text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner appearance-none cursor-pointer"
+                        >
+                            <option value="">表面処理: 全て</option>
+                            {filterOptions.treatments.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="lg:col-span-2 flex items-center gap-2 justify-end">
+                        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-0.5 flex shadow-inner">
                             <button
                                 onClick={() => setViewMode('card')}
                                 className={cn(
@@ -628,7 +683,7 @@ export default function QuotationsPage() {
                                 )}
                                 title="カード表示"
                             >
-                                <LayoutGrid size={16} />
+                                <LayoutGrid size={14} />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
@@ -638,15 +693,15 @@ export default function QuotationsPage() {
                                 )}
                                 title="リスト表示"
                             >
-                                <List size={16} />
+                                <List size={14} />
                             </button>
                         </div>
                         <button
                             onClick={() => fetchQuotations(true)}
-                            className="p-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all shadow-inner group"
+                            className="p-2 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all shadow-inner group"
                             title="最新の情報に更新"
                         >
-                            <RefreshCw size={16} className={cn(loading ? "animate-spin" : "group-active:rotate-180 transition-transform duration-500")} />
+                            <RefreshCw size={14} className={cn(loading ? "animate-spin" : "group-active:rotate-180 transition-transform duration-500")} />
                         </button>
                     </div>
                 </div>
