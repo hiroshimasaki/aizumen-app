@@ -27,7 +27,7 @@ class AIService {
             const types = Array.isArray(mimeTypes) ? mimeTypes : [mimeTypes];
 
             const map = tenantSettings?.ocrMapping || {};
-            const tenantExcludeInstruction = tenantSettings?.name ? `（${tenantSettings.name}ではない、その顧客である会社名を抽出してください）` : '';
+            const tenantExcludeInstruction = tenantSettings?.name ? `（${tenantSettings.name}を除く）` : '';
 
             const mappingData = {
                 itemNameLabel: map.itemName || '品名, 図番, 品番',
@@ -37,9 +37,15 @@ class AIService {
                 constructionNumberLabel: map.constructionNumber || '工事番号, 工番, K-No',
             };
 
+            // 学習したヒントを抽出
+            const learningHints = tenantSettings?.ai_learning_hints || [];
+            const learningInstruction = learningHints.length > 0 
+                ? `\n### 【重要】以前の修正に基づく補足命令 (学習事項):\n${learningHints.map(h => `- ${h}`).join('\n')}\n`
+                : '';
+
             const prompt = `
 あなたは製造業の注文書・図面解析のエキスパートです。
-添付されたドキュメントの全ページを詳細に確認し、指定されたフォーマットで回答してください。
+添付されたドキュメントの全ページを詳細に確認し、指定されたフォーマットで回答してください。${learningInstruction}
 
 ### 【重要】ページ種別判定 (pageClassifications):
 添付されたPDFの全ページに対して、1ページ目から順に以下の種別を判定してください：

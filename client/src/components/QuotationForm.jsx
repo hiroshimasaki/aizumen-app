@@ -71,6 +71,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
     const [queryCache, setQueryCache] = useState({});   
     const [history, setHistory] = useState([]);
     const [calcModalState, setCalcModalState] = useState({ isOpen: false, targetItemId: null });
+    const [aiAnalysisResults, setAiAnalysisResults] = useState(null);
     const notesRef = useRef(null);
 
     useEffect(() => {
@@ -258,6 +259,9 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                     purchased_balance: data.creditStats.purchasedBalance !== undefined ? data.creditStats.purchasedBalance : prev.purchased_balance
                 }));
             }
+            // AI解析の生結果を保存 (学習用)
+            setAiAnalysisResults(data);
+
             setHeaderData(prev => ({
                 ...prev,
                 companyName: data.companyName || prev.companyName,
@@ -382,7 +386,12 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
         setIsSubmitting(true);
         try {
             let qId = initialData?.id;
-            const payload = { ...headerData, items: items.map((t, i) => ({ ...t, sortOrder: i })), copyFileIds: pendingCopyFiles.map(f => f.sourceFileId || f.id) };
+            const payload = { 
+                ...headerData, 
+                items: items.map((t, i) => ({ ...t, sortOrder: i })), 
+                copyFileIds: pendingCopyFiles.map(f => f.sourceFileId || f.id),
+                aiOriginalResult: aiAnalysisResults // 学習用に解析時のデータを送る
+            };
             if (qId) await api.put(`/api/quotations/${qId}`, payload);
             else {
                 const { data } = await api.post('/api/quotations', payload);

@@ -7,6 +7,7 @@ const { AppError } = require('../middleware/errorHandler');
 const { generateQuotationId, parsePrice, normalizeSearchTerm } = require('../utils/helpers');
 const { v4: uuidv4 } = require('uuid');
 const logService = require('../services/logService');
+const aiLearningService = require('../services/aiLearningService');
 
 const PAGE_SIZE = 20;
 
@@ -526,6 +527,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
             companyName, contactPerson, emailLink, notes,
             orderNumber, constructionNumber, status = 'pending',
             isVerified = true, items = [], sourceId, copyFileIds = [],
+            aiOriginalResult = null,
         } = req.body;
 
         const displayId = await generateQuotationId(supabaseAdmin, req.tenantId);
@@ -606,6 +608,17 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
 
         console.log('[Quotations] Created successfully');
         res.status(201).json(quotation);
+
+        // 学習処理 (バックグラウンド)
+        if (aiOriginalResult) {
+            aiLearningService.learnFromCorrection(req.tenantId, aiOriginalResult, {
+                companyName,
+                orderNumber,
+                constructionNumber,
+                notes,
+                items
+            }).catch(err => console.error('[Quotations] Learning error:', err));
+        }
 
         // --- 以降はレスポンス返却後のバックグラウンド処理 ---
         (async () => {
@@ -688,6 +701,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             companyName, contactPerson, emailLink, notes,
             orderNumber, constructionNumber, status,
             items, copyFileIds = [],
+            aiOriginalResult = null,
         } = req.body;
 
         // 既存データ取得
@@ -724,6 +738,17 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
             .single();
 
         if (updateError) throw new AppError('Failed to update quotation', 500, 'UPDATE_FAILED');
+
+        // 学習処理 (バックグラウンド)
+        if (aiOriginalResult) {
+            aiLearningService.learnFromCorrection(req.tenantId, aiOriginalResult, {
+                companyName,
+                orderNumber,
+                constructionNumber,
+                notes,
+                items
+            }).catch(err => console.error('[Quotations] Learning error:', err));
+        }
 
         // 明細行の更新（全削除→再挿入方式）
         if (items !== undefined) {
