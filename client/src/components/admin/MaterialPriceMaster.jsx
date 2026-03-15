@@ -64,16 +64,22 @@ export default function MaterialPriceMaster() {
         }
     };
 
-    const handleBaseChange = (field, value) => {
+    const handleBaseChange = (field, value, isFromInput = false) => {
         if (field === 'materialType') {
-            const isOther = value === 'OTHER';
-            const material = COMMON_MATERIALS.find(m => m.value === value);
-            setBaseConfig(prev => ({
-                ...prev,
-                materialType: value,
-                isCustomMaterial: isOther,
-                density: (material && !isOther) ? material.density : prev.density
-            }));
+            if (isFromInput) {
+                // テキスト入力欄からの入力時は、モードを「その他」に固定したまま値を更新
+                setBaseConfig(prev => ({ ...prev, materialType: value, isCustomMaterial: true }));
+            } else {
+                // セレクトボックスからの変更時
+                const isOther = value === 'OTHER';
+                const material = COMMON_MATERIALS.find(m => m.value === value);
+                setBaseConfig(prev => ({
+                    ...prev,
+                    materialType: value,
+                    isCustomMaterial: isOther,
+                    density: (material && !isOther) ? material.density : prev.density
+                }));
+            }
         } else {
             setBaseConfig(prev => ({ ...prev, [field]: value }));
         }
@@ -160,7 +166,6 @@ export default function MaterialPriceMaster() {
                 shape: editForm.shape,
                 minDim: Number(editForm.min_dim),
                 maxDim: Number(editForm.max_dim),
-                unitPrice: Number(edit_price = editForm.unit_price), // API側の変数名に注意（PUTはキャメルケース受け取り想定）
                 unitPrice: Number(editForm.unit_price),
                 density: Number(editForm.density),
                 cuttingCostFactor: Number(editForm.cutting_cost_factor)
@@ -260,7 +265,7 @@ export default function MaterialPriceMaster() {
                             <input
                                 type="text"
                                 value={baseConfig.materialType === 'OTHER' ? '' : baseConfig.materialType}
-                                onChange={e => handleBaseChange('materialType', e.target.value)}
+                                onChange={e => handleBaseChange('materialType', e.target.value, true)}
                                 className="absolute left-0 right-0 top-[calc(100%+4px)] z-10 bg-slate-800 border border-blue-500/50 rounded-lg px-3 py-2 text-sm text-white shadow-2xl"
                                 placeholder="材質名を入力"
                                 autoFocus
