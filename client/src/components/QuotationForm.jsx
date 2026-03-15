@@ -279,6 +279,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                             responseDate: '',
                             dueDate: aiItem.dueDate || '',
                             dimensions: aiItem.dimensions || '',
+                            requiresVerification: aiItem.requiresVerification || false,
                             deliveryDate: '',
                             scheduledStartDate: ''
                         };
@@ -562,8 +563,20 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
 
                     <div className="space-y-4">
                         {items.map((item, idx) => (
-                            <div key={item.id} className="group bg-slate-950/40 border border-slate-800 rounded-3xl p-5 hover:border-slate-700 transition-all relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-slate-800 group-hover:bg-cyan-600 transition-all" />
+                            <div key={item.id} className={cn(
+                                "group border rounded-3xl p-5 hover:border-slate-700 transition-all relative overflow-hidden",
+                                item.requiresVerification ? "bg-amber-950/20 border-amber-500/30" : "bg-slate-950/40 border-slate-800"
+                            )}>
+                                {item.requiresVerification && (
+                                    <div className="absolute top-2 right-12 flex items-center gap-1 text-amber-500 animate-pulse bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                        <AlertCircle size={10} />
+                                        <span className="text-[9px] font-black uppercase tracking-tighter">Check Required</span>
+                                    </div>
+                                )}
+                                <div className={cn(
+                                    "absolute top-0 left-0 w-1 h-full transition-all",
+                                    item.requiresVerification ? "bg-amber-500" : "bg-slate-800 group-hover:bg-cyan-600"
+                                )} />
                                 <div className="flex flex-col gap-5">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">

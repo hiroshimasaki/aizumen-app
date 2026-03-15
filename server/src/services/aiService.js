@@ -1,192 +1,41 @@
-const { VertexAI } = require('@google-cloud/vertexai');
+require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const logService = require('./logService');
 
-/**
- * AI Document Analysis Service
- * Hybrid implementation:
- * 1. Uses Vertex AI (Google Cloud) in Production (secure, no data training).
- * 2. Falls back to Google AI SDK (API Key) in Development.
- */
 class AIService {
     constructor() {
-        const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
-        const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-        const apiKey = process.env.GEMINI_API_KEY;
-
-        // Mode Detection
-        if (projectId && credentialsJson) {
-            this.initVertexAI(projectId, credentialsJson);
-        } else if (apiKey) {
-            this.initGoogleAI(apiKey);
-        } else {
-            console.error('[AIService] Critical Error: No AI credentials found (Vertex AI or Gemini API Key)');
-        }
-    }
-
-    /**
-     * Initialize Production Mode (Vertex AI)
-     * Data is NOT used for training.
-     */
-    initVertexAI(projectId, credentialsJson) {
-        try {
-            const credentials = JSON.parse(credentialsJson);
-            // Stronger normalization for private_key (handles various env var escaping)
-            if (credentials.private_key) {
-                let pk = credentials.private_key;
-                pk = pk.replace(/\n/g, ' '); 
-                pk = pk.replace(/\\n/g, '\n');
-                pk = pk.trim();
-                if (!pk.includes('\n') && pk.includes('-----BEGIN PRIVATE KEY-----')) {
-                    pk = pk.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
-                           .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
-                }
-                credentials.private_key = pk;
+        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+        this.model = this.genAI.getGenerativeModel({ 
+            model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+            generationConfig: {
+                temperature: 0.1,
+                topP: 0.8,
+                topK: 40,
+                maxOutputTokens: 8192,
+                responseMimeType: 'application/json'
             }
-            this.vertexAI = new VertexAI({
-                project: credentials.project_id || projectId,
-                location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-                googleAuthOptions: { credentials }
-            });
-            // モデル名は gemini-1.5-flash (stable) をデフォルトにする
-            const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-            this.model = this.vertexAI.getGenerativeModel({ model: modelName });
-            this.mode = 'PRODUCTION (Vertex AI)';
-            this.isInitialized = true;
-            
-            const finalProjectId = credentials.project_id || projectId;
-            const maskedProject = finalProjectId ? `${finalProjectId.substring(0, 3)}***${finalProjectId.substring(finalProjectId.length - 2)}` : '???';
-            console.log(`[AIService] Success: Initialized in ${this.mode} mode. Project: ${maskedProject}, Model: ${modelName}`);
-            
-            if (credentials.project_id && projectId && credentials.project_id !== projectId) {
-                console.warn(`[AIService] Warning: Project ID mismatch! Env=${projectId}, JSON=${credentials.project_id}. Using JSON ID.`);
-            }
-        } catch (error) {
-            this.isInitialized = false;
-            this.initError = error.message;
-            console.error('[AIService] Production initialization failed:', error);
-        }
+        });
     }
 
     /**
-     * Initialize Development Mode (Google AI SDK)
+     * Analyze document content using Vertex AI / Gemini
      */
-    initGoogleAI(apiKey) {
+    async analyzeDocument(fileBuffers, mimeTypes, tenantSettings = null) {
         try {
-            this.genAI = new GoogleGenerativeAI(apiKey);
-            // 現在のAPIキーで利用可能な 2.5系 を使用
-            this.model = this.genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
-            this.mode = 'DEVELOPMENT (Google AI SDK)';
-            console.log(`[AIService] Success: Initialized in ${this.mode} mode.`);
-        } catch (error) {
-            console.error('[AIService] Development initialization failed:', error);
-        }
-    }
+            // 配列でない場合は配列に変換 (Hotfix for single file OCR)
+            const buffers = Array.isArray(fileBuffers) ? fileBuffers : [fileBuffers];
+            const types = Array.isArray(mimeTypes) ? mimeTypes : [mimeTypes];
 
-    /**
-     * Generate content (Unified method for both SDKs)
-     * @param {string} prompt 
-     * @param {Buffer} fileBuffer 
-     * @param {string} mimeType 
-     * @param {Array} additionalImages Array of { buffer, mimeType }
-     * @returns {Promise<string>} Generated text content
-     */
-    async generateText(prompt, fileBuffer, mimeType, additionalImages = []) {
-        if (!this.model) throw new Error('AI Service not initialized');
-        const MAX_RETRIES = 3;
-        let retryCount = 0;
+            const map = tenantSettings?.ocrMapping || {};
+            const tenantExcludeInstruction = tenantSettings?.name ? `（${tenantSettings.name}ではない、その顧客である会社名を抽出してください）` : '';
 
-        const executeRequest = async () => {
-            const timestamp = new Date().toISOString();
-            logService.debug(`[AIService][${timestamp}] Request to ${this.mode} (Retry: ${retryCount})`);
-
-            try {
-                if (this.mode.includes('Vertex')) {
-                    const parts = [{ text: prompt }];
-                    
-                    if (fileBuffer && mimeType) {
-                        parts.push({
-                            inlineData: {
-                                data: fileBuffer.toString('base64'),
-                                mimeType: mimeType
-                            }
-                        });
-                    }
-
-                    for (const img of additionalImages) {
-                        parts.push({
-                            inlineData: {
-                                data: img.buffer.toString('base64'),
-                                mimeType: img.mimeType
-                            }
-                        });
-                    }
-
-                    const response = await this.model.generateContent({
-                        contents: [{ role: 'user', parts }]
-                    });
-                    
-                    if (!response || !response.response) throw new Error('AI response is empty');
-                    const candidates = response.response.candidates;
-                    if (!candidates || candidates.length === 0) {
-                        throw new Error('AI returned no response candidates (possibly blocked by safety filters)');
-                    }
-                    const text = candidates[0].content?.parts?.[0]?.text;
-                    if (!text) throw new Error('AI response candidate has no text parts');
-                    return text;
-                } else {
-                    const parts = [prompt];
-                    if (fileBuffer && mimeType) {
-                        parts.push({ inlineData: { data: fileBuffer.toString('base64'), mimeType } });
-                    }
-                    for (const img of additionalImages) {
-                        parts.push({ inlineData: { data: img.buffer.toString('base64'), mimeType: img.mimeType } });
-                    }
-                    const response = await this.model.generateContent(parts);
-                    return response.response.text();
-                }
-            } catch (error) {
-                // 429 (Rate Limit / Resource Exhausted) の判定
-                const isRateLimit = error.message?.includes('429') || 
-                                   error.message?.includes('RESOURCE_EXHAUSTED') ||
-                                   error.status === 429;
-
-                if (isRateLimit && retryCount < MAX_RETRIES) {
-                    retryCount++;
-                    const waitTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
-                    console.warn(`[AIService] Rate limit hit. Retrying in ${waitTime}ms... (Attempt ${retryCount}/${MAX_RETRIES})`);
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                    return executeRequest();
-                }
-
-                logService.error(`[AIService] Error after ${retryCount} retries: ${error.message}`);
-                throw error;
-            }
-        };
-
-        return executeRequest();
-    }
-
-    /**
-     * Analyze a document (PDF or Image)
-     */
-    async analyzeDocument(fileBuffer, mimeType, mappingData = {}, tenantName = '') {
-        const analyzeStart = Date.now();
-        console.log(`[AIService] Starting analysis...`);
-        try {
-            const map = {
-                processingCost: mappingData.processingCostLabel || '加工費, 工賃, 作業代',
-                materialCost: mappingData.materialCostLabel || '材料費, 部品代, 資材費',
-                otherCost: mappingData.otherCostLabel || 'その他費用, 諸経費, 運賃',
-                itemName: mappingData.itemNameLabel || '品名, 図番, ProductName',
-                quantity: mappingData.quantityLabel || '数量, 個数, Qty',
-                deadline: mappingData.deadlineLabel || '納期, 希望納期, 納品日',
-                dimensions: mappingData.dimensionsLabel || '寸法, サイズ, 規格, Dimensions',
-                orderNumber: mappingData.orderNumberLabel || '注文番号, 発注番号, 注文NO',
-                constructionNumber: mappingData.constructionNumberLabel || '工事番号, 図番, 工事NO'
+            const mappingData = {
+                itemNameLabel: map.itemName || '品名, 図番, 品番',
+                deadlineLabel: map.deadline || '納期, 希望納期, 納品日',
+                dimensionsLabel: map.dimensions || '寸法, サイズ, 規格, Dimensions',
+                orderNumberLabel: map.orderNumber || '注文番号, 発注番号, 注文NO',
+                constructionNumberLabel: map.constructionNumber || '工事番号, 工番, K-No',
             };
-
-            const tenantExcludeInstruction = tenantName ? `ただし、自社名（${tenantName}）は抽出対象から除外し、必ず「発注元の会社名」のみを抽出してください。` : '';
 
             const prompt = `
 あなたは製造業の注文書・図面解析のエキスパートです。
@@ -200,18 +49,28 @@ class AIService {
 
 ### 抽出ルール (項目抽出):
 1. **会社名 (companyName)**: 発注元（顧客）の会社名。${tenantExcludeInstruction}
-2. **注文番号 (orderNumber)**: 「${map.orderNumber}」に該当する項目。
-3. **工事番号 (constructionNumber)**: 「${map.constructionNumber}」に該当する項目。
+2. **注文番号 (orderNumber)**: 「${mappingData.orderNumberLabel}」に該当する項目。
+3. **工事番号 (constructionNumber)**: 「${mappingData.constructionNumberLabel}」に該当する項目。
 4. **特記事項 (notes)**: 注意事項、納期・支払条件など。
 5. **明細 (items)**: 以下の項目をリストで抽出してください：
     - **name**: 品名や品番。
     - **quantity**: 数量（数値のみ）。
     - **unit**: 単位。
-    - **processingCost**: 加工費。
-    - **materialCost**: 材料費。
-    - **otherCost**: その他費用。
+    - **processingCost**: 加工費。必ず「1個あたりの単価」を抽出してください。
+    - **materialCost**: 材料費。必ず「1個あたりの単価」を抽出してください。
+    - **otherCost**: その他費用。必ず「1個あたりの単価」を抽出してください。
     - **dueDate**: 納期。形式は **YYYY-MM-DD**。
-    - **dimensions**: 寸法（例：100x200, Φ50など）。「${map.dimensions}」に該当する項目から抽出してください。
+    - **dimensions**: 寸法（例：100x200, Φ50など）。「${mappingData.dimensionsLabel}」に該当する項目から抽出してください。
+    - **requiresVerification**: 検算フラグ（boolean）。後述のルールに基づき設定。
+
+### 検算・判別ルール:
+- **単価と小計の区別**: 書類に「単価」と「金額/発注金額（小計）」の両方が記載されている場合、必ず「単価」行の数値を抽出してください。
+- **検算**: 「(processingCost + materialCost + otherCost) × quantity = 書類上の明細合計金額」が成り立つか確認してください。
+- **フラグ (requiresVerification)**: 以下のいずれかに該当する場合、true に設定してください。
+    1. 計算が一致しない場合。
+    2. 書類に単価の記載がなく、合計金額（小計）を数量で割って単価を算出した場合。
+    3. 「単価」として抽出した数値が、実は「合計金額」である疑いが高い場合。
+- 疑義がある場合は、その理由を全体の **notes** 欄に追記してください。
 
 ### 出力フォーマット (JSONのみ):
 \`\`\`json
@@ -221,8 +80,7 @@ class AIService {
   "constructionNumber": "...",
   "notes": "...",
   "pageClassifications": [
-    { "page": 1, "type": "order_form", "label": "注文書" },
-    { "page": 2, "type": "drawing", "label": "図面" }
+    ...
   ],
   "items": [
     {
@@ -233,7 +91,8 @@ class AIService {
       "materialCost": 0,
       "otherCost": 0,
       "dueDate": "2024-05-20",
-      "dimensions": "100x200"
+      "dimensions": "100x200",
+      "requiresVerification": false
     }
   ]
 }
@@ -242,9 +101,16 @@ class AIService {
 日本語で回答してください。JSON以外の説明テキストは一切含めないでください。日付は可能な限り現在の年（2026年）を補完して回答してください。
 `;
 
-            const responseText = await this.generateText(prompt, fileBuffer, mimeType);
-            const duration = Date.now() - analyzeStart;
-            console.log(`[AIService] Analysis complete in ${duration}ms. Raw Response:`, responseText);
+            const images = buffers.map((buffer, i) => ({
+                inlineData: {
+                    data: buffer.toString('base64'),
+                    mimeType: types[i] || 'application/pdf'
+                }
+            }));
+
+            const result = await this.model.generateContent([prompt, ...images]);
+            const responseText = result.response.text();
+            
             return this.parseJsonResponse(responseText);
         } catch (error) {
             console.error('[AIService] Analysis failed:', error);
@@ -257,7 +123,7 @@ class AIService {
      */
     parseJsonResponse(text) {
         try {
-            const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            const jsonMatch = text.match(/\`\`\`(?:json)?\s*([\s\S]*?)\s*\`\`\`/);
             const jsonString = jsonMatch ? jsonMatch[1] : text;
             return JSON.parse(jsonString);
         } catch (error) {
@@ -275,61 +141,12 @@ class AIService {
      */
     getStatus() {
         return {
-            initialized: !!this.model && this.isInitialized !== false,
-            mode: this.mode || 'UNINITIALIZED',
-            model: this.model?.model || null,
-            hasVertexAI: !!this.vertexAI,
-            hasGoogleAI: !!this.genAI,
-            initError: this.initError || null,
+            initialized: !!this.model,
             config: {
-                hasProjectId: !!process.env.GOOGLE_CLOUD_PROJECT_ID,
-                hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
-                hasApiKey: !!process.env.GEMINI_API_KEY,
-                envProjectId: process.env.GOOGLE_CLOUD_PROJECT_ID ? `${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(0, 3)}...${process.env.GOOGLE_CLOUD_PROJECT_ID.substring(process.env.GOOGLE_CLOUD_PROJECT_ID.length - 2)}` : null,
-                jsonProjectId: this._getJsonProjectId(),
+                model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
                 location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1'
             }
         };
-    }
-
-    _getJsonProjectId() {
-        try {
-            const json = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-            if (!json) return null;
-            const creds = JSON.parse(json);
-            const id = creds.project_id;
-            return id ? `${id.substring(0, 3)}...${id.substring(id.length - 2)}` : 'not-found-in-json';
-        } catch (e) {
-            return 'invalid-json';
-        }
-    }
-
-    /**
-     * Test AI connectivity with a simple prompt
-     */
-    async testAI() {
-        if (!this.model) return { status: 'error', message: 'Model not initialized' };
-        try {
-            const start = Date.now();
-            const text = await this.generateText('Hello, respond with "OK" only.', null, null);
-            const duration = Date.now() - start;
-            return {
-                status: 'ok',
-                response: text.trim(),
-                durationMs: duration
-            };
-        } catch (error) {
-            let message = error.message;
-            // 404 (NOT_FOUND) は API が無効化されているか、プロジェクトID/リージョンが間違っている場合に発生
-            if (message.includes('404') || message.includes('NOT_FOUND')) {
-                const configLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
-                message = `[VertexAI.APIError] 404 Not Found. 設定されたリージョン '${configLocation}' にモデルが存在しないか、API がそのリージョンで有効になっていません。GCP コンソールの Vertex AI 画面等で、正しいリージョンであることを確認してください。東京リージョンの場合は 'asia-northeast1' を環境変数 GOOGLE_CLOUD_LOCATION に設定してください。(Original: ${error.message})`;
-            }
-            return {
-                status: 'error',
-                message: message
-            };
-        }
     }
 }
 

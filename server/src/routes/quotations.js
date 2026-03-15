@@ -591,6 +591,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 material_metadata: item.material_metadata || null,
                 heat_treatment: item.material_metadata?.heatTreatment || null,
                 dimensions: item.dimensions || '',
+                requires_verification: item.requiresVerification || false,
             }));
 
             const { error: itemError } = await supabaseAdmin
@@ -754,6 +755,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                     material_metadata: item.material_metadata || null,
                     heat_treatment: item.material_metadata?.heatTreatment || null,
                     dimensions: item.dimensions || '',
+                    requires_verification: item.requiresVerification || false,
                 }));
 
                 const { error: insertError } = await supabaseAdmin.from('quotation_items').insert(itemRows);

@@ -55,7 +55,7 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
 
         // Gemini APIによる解析 (マッピング設定と自社名を渡す)
         console.log(`[OCR] Analyzing file: ${originalName} (${req.file.mimetype}) with mapping:`, ocrMapping);
-        const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, ocrMapping, tenantName);
+        const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, { ocrMapping, name: tenantName });
 
         // クレジット消費処理
         const creditResult = await creditService.consumeCredits(
@@ -183,7 +183,7 @@ router.post('/bulk-register', authMiddleware, checkTrialLimit, async (req, res, 
                 const buffer = Buffer.from(arrayBuffer);
 
                 // AI解析 (マッピング設定と自社名を渡す)
-                const analysis = await aiService.analyzeDocument(buffer, fileMeta.mime_type, ocrMapping, tenantName);
+                const analysis = await aiService.analyzeDocument(buffer, fileMeta.mime_type, { ocrMapping, name: tenantName });
                 results.push({
                     id: fileId,
                     originalName: fileMeta.original_name,
