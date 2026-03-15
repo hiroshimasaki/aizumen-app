@@ -26,9 +26,24 @@ export default function MaterialPriceMaster() {
     const [saving, setSaving] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState(null);
+    const [filters, setFilters] = useState({
+        vendorName: '',
+        materialType: '',
+        shape: ''
+    });
 
     const [globalOverheadFactor, setGlobalOverheadFactor] = useState(1.0);
     
+    // フィルタリングされた価格リスト
+    const filteredPrices = useMemo(() => {
+        return prices.filter(p => {
+            const matchVendor = !filters.vendorName || p.vendor_name.toLowerCase().includes(filters.vendorName.toLowerCase());
+            const matchMaterial = !filters.materialType || p.material_type.toLowerCase().includes(filters.materialType.toLowerCase());
+            const matchShape = !filters.shape || p.shape === filters.shape;
+            return matchVendor && matchMaterial && matchShape;
+        });
+    }, [prices, filters]);
+
     // 基本設定
     const [baseConfig, setBaseConfig] = useState({
         vendorName: '',
@@ -374,9 +389,53 @@ export default function MaterialPriceMaster() {
 
             {/* 一覧テーブル */}
             <div className="bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between bg-slate-900/30">
-                    <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">登録済み単価リスト</h4>
-                    <span className="text-[10px] text-slate-500 font-mono">{prices.length} Records</span>
+                <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/30">
+                    <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">登録済み単価リスト</h4>
+                        <div className="flex items-center gap-4">
+                            <span className="text-[10px] text-slate-500 font-mono">
+                                {filteredPrices.length === prices.length ? prices.length : `${filteredPrices.length} / ${prices.length}`} Records
+                            </span>
+                            {(filters.vendorName || filters.materialType || filters.shape) && (
+                                <button 
+                                    onClick={() => setFilters({ vendorName: '', materialType: '', shape: '' })}
+                                    className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                                >
+                                    <X size={10} /> フィルタ解除
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="業者名で絞り込み..."
+                                value={filters.vendorName}
+                                onChange={e => setFilters(prev => ({ ...prev, vendorName: e.target.value }))}
+                                className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500/50"
+                            />
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="材質名で絞り込み..."
+                                value={filters.materialType}
+                                onChange={e => setFilters(prev => ({ ...prev, materialType: e.target.value }))}
+                                className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500/50"
+                            />
+                        </div>
+                        <div className="relative">
+                            <select
+                                value={filters.shape}
+                                onChange={e => setFilters(prev => ({ ...prev, shape: e.target.value }))}
+                                className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-slate-300 outline-none focus:border-blue-500/50"
+                            >
+                                <option value="">すべての形状</option>
+                                {SHAPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -390,8 +449,23 @@ export default function MaterialPriceMaster() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50">
-                            {prices.map((p) => {
-                                const isEditing = editingId === p.id;
+                            {filteredPrices.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-12 text-center">
+                                        <div className="text-slate-500 text-sm">該当するデータが見つかりません</div>
+                                        {(filters.vendorName || filters.materialType || filters.shape) && (
+                                            <button 
+                                                onClick={() => setFilters({ vendorName: '', materialType: '', shape: '' })}
+                                                className="mt-2 text-xs text-blue-400 hover:underline"
+                                            >
+                                                すべてのフィルタをクリア
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredPrices.map((p) => {
+                                    const isEditing = editingId === p.id;
                                 return (
                                     <tr key={p.id} className={cn(
                                         "transition-colors",
@@ -503,7 +577,8 @@ export default function MaterialPriceMaster() {
                                         </td>
                                     </tr>
                                 );
-                            })}
+                            })
+                        )}
                         </tbody>
                     </table>
                 </div>
