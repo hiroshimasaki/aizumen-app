@@ -53,8 +53,12 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
         const ocrMapping = settings?.settings_json?.ocrMapping || {};
         const tenantName = tenant?.name || '';
 
-        // Gemini APIによる解析 (マッピング設定と自社名を渡す)
-        console.log(`[OCR] Analyzing file: ${originalName} (${req.file.mimetype}) with mapping:`, ocrMapping);
+        // Gemini APIによる解析
+        logService.debug('OCR: Starting analysis', { 
+            fileName: originalName, 
+            mimeType: req.file.mimetype,
+            mapping: ocrMapping 
+        });
         const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, { ocrMapping, name: tenantName });
 
         // クレジット消費処理

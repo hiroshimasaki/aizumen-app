@@ -18,7 +18,8 @@ router.get('/', (req, res) => {
  * ※ express.raw() を使用するため、index.jsでjsonパース前に登録
  */
 router.post('/', (req, res, next) => {
-    console.log(`[Webhook] Raw request hit: ${req.method} ${req.url}`);
+    // Webhookの初期ログはノイズになるため debug レベル
+    logService.debug('Webhook hit', { method: req.method, url: req.url });
     next();
 }, express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
@@ -34,8 +35,7 @@ router.post('/', (req, res, next) => {
         console.error('[Webhook] Signature verification failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
-
-    console.log(`[Webhook] Received event: ${event.type} (${event.id})`);
+    logService.debug('Webhook event received', { type: event.type, id: event.id });
 
     try {
         switch (event.type) {
@@ -56,7 +56,7 @@ router.post('/', (req, res, next) => {
                 break;
 
             default:
-                console.log(`[Webhook] Unhandled event type: ${event.type}`);
+                logService.debug('Unhandled webhook event', { type: event.type });
         }
     } catch (err) {
         console.error(`[Webhook] Error handling ${event.type}:`, err);
@@ -72,7 +72,10 @@ const { grantCredits, updateCreditsOnPlanChange } = require('../services/creditS
  * チェックアウト完了時の処理
  */
 async function handleCheckoutCompleted(session) {
-    console.log(`[Webhook/Checkout] Processing session: ${session.id}, Metadata:`, session.metadata);
+    logService.info('Processing checkout completed', { 
+        sessionId: session.id, 
+        metadata: session.metadata 
+    });
     const { type, tenant_id, plan, credits } = session.metadata || {};
     
     if (!tenant_id) {

@@ -12,7 +12,7 @@ const logService = require('../services/logService');
  */
 router.get('/', authMiddleware, async (req, res, next) => {
     try {
-        console.log(`[Subscription GET] tenantId: ${req.tenantId}`);
+        logService.debug('Subscription: Fetching info', { tenantId: req.tenantId });
         let { data: sub, error: subError } = await supabaseAdmin
             .from('subscriptions')
             .select('*')
@@ -33,7 +33,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
         // 自己修復ロジックの追加
         if (sub && (sub.status === 'active' || sub.status === 'past_due')) {
             if (sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
-                console.log(`[Subscription/GET] Self-healing: Subscription for tenant ${req.tenantId} has expired.`);
+                logService.info('Self-healing: Subscription expired', { tenantId: req.tenantId });
 
                 await supabaseAdmin
                     .from('subscriptions')
@@ -141,7 +141,11 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
 
                             // 3. 修復ロジック（ステータスが canceled/expired の場合にフリープランへ強制移行）
                             if ((stripeSub.status === 'canceled' || stripeSub.status === 'incomplete_expired') && sub.status === 'active') {
-                                console.log(`[StripeDetails] Self-healing: Subscription ${stripeSub.id} is ${stripeSub.status}. Reverting DB and Tenant to free.`);
+                                logService.info('Self-healing: Stripe sub canceled/expired', { 
+                                    tenantId: req.tenantId, 
+                                    stripeSubId: stripeSub.id,
+                                    status: stripeSub.status
+                                });
                                 updates.status = 'canceled';
                                 updated = true;
 
@@ -153,7 +157,7 @@ router.get('/stripe-details', authMiddleware, async (req, res, next) => {
                             }
 
                             if (updated) {
-                                console.log(`[StripeDetails] Syncing subscriptions table for ${stripeSub.id}:`, updates);
+                                logService.debug('Syncing subscription from Stripe', { stripeSubId: stripeSub.id, updates });
                                 await supabaseAdmin
                                     .from('subscriptions')
                                     .update({ ...updates, updated_at: new Date().toISOString() })

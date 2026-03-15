@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../config/supabase');
+const logService = require('../services/logService');
 
 /**
  * JWT認証ミドルウェア
@@ -6,19 +7,21 @@ const { supabaseAdmin } = require('../config/supabase');
  * req.user, req.tenantId, req.userRole, req.accessToken を設定。
  */
 const authMiddleware = async (req, res, next) => {
-    console.log(`\n[Auth Middleware DEBUG] --- New Request ---`);
-    console.log(`[Auth Middleware DEBUG] Method: ${req.method}, URL: ${req.originalUrl}`);
-    console.log(`[Auth Middleware DEBUG] Authorization Header: ${req.headers.authorization ? 'Present' : 'Missing'}`);
+    logService.debug('Auth Middleware checking request', {
+        method: req.method,
+        url: req.originalUrl,
+        hasAuthHeader: !!req.headers.authorization
+    });
     
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            console.log('[Auth Middleware] Missing or invalid Authorization header');
+            logService.warn('Missing or invalid Authorization header', { path: req.originalUrl });
             return res.status(401).json({ error: 'Authorization token required' });
         }
 
         const token = authHeader.replace('Bearer ', '');
-        console.log(`[Auth Middleware] Token received (first 10 chars): ${token.substring(0, 10)}...`);
+        logService.debug('Auth: Token received');
 
         // トークン検証用に一時的なクライアントを作成
         const { createUserClient } = require('../config/supabase');
@@ -26,23 +29,23 @@ const authMiddleware = async (req, res, next) => {
         const { data: { user }, error } = await userClient.auth.getUser();
 
         if (error || !user) {
-            console.log('[Auth Middleware] Supabase getUser failed:', error?.message || 'No user found');
+            logService.warn('Supabase auth.getUser failed', { 
+                error: error?.message, 
+                token: token.substring(0, 10) + '...' // 失敗時のみ限定的に記録
+            });
             
-            // デバッグ用：トークンのペイロードをデコードして内容を確認
-            try {
-                const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));
-                console.log(`[Auth Middleware] Failed token payload:`, {
-                    sub: payload.sub,
-                    email: payload.email,
-                    role: payload.app_metadata?.role,
-                    aal: payload.aal
-                });
-            } catch (e) { /* ignore */ }
+            // デバッグ用：トークンのペイロードをデコードして内容を確認 (開発時のみ)
+            if (process.env.NODE_ENV === 'development') {
+                try {
+                    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));
+                    logService.debug('Failed token payload', payload);
+                } catch (e) { /* ignore */ }
+            }
 
             return res.status(401).json({ error: 'Invalid or expired token', code: 'INVALID_TOKEN' });
         }
 
-        console.log(`[Auth Middleware] User verified from Supabase: ${user.email} (${user.id})`);
+        logService.debug('User verified from Supabase', { userId: user.id, email: user.email });
 
         // ユーザーの有効状態とロールをDBで強制チェック
         // まず platform_admins (SU) をチェック
@@ -66,9 +69,7 @@ const authMiddleware = async (req, res, next) => {
                 .single();
 
             if (dbError || !userProfile) {
-                // プロフィールがない場合は Auth の app_metadata からフォールバックを試みる
-                // これにより、users.js での自動プロフィール作成ロジックが機能するようになる
-                console.log(`[Auth Middleware] Profile missing in public.users for user: ${user.id}. Falling back to metadata.`);
+                logService.info('Profile missing in DB, falling back to metadata', { userId: user.id });
                 role = user.app_metadata?.role || 'user';
                 profile = {
                     tenant_id: user.app_metadata?.tenant_id || null,
@@ -76,7 +77,7 @@ const authMiddleware = async (req, res, next) => {
                 };
             } else {
                 if (userProfile.is_active === false) {
-                    console.log(`[Auth Middleware] Access denied for deactivated user: ${user.id}`);
+                    logService.warn('Access denied for deactivated user', { userId: user.id });
                     return res.status(401).json({ error: 'Account is deactivated', code: 'USER_DEACTIVATED' });
                 }
 
@@ -103,17 +104,14 @@ const authMiddleware = async (req, res, next) => {
         const activeSessionField = clientType === 'hotfolder' ? 'active_hotfolder_session_id' : 'active_session_id';
         let activeSessionId = user.app_metadata?.[activeSessionField];
 
-        console.log(`[Auth Middleware] Session check: current=${currentSessionId}, active=${activeSessionId}`);
-
         if (activeSessionId && currentSessionId && activeSessionId !== currentSessionId) {
-            console.log(`[Auth Middleware] Session mismatch. Refreshing from DB...`);
+            logService.info('Session mismatch, refreshing from Supabase Auth admin', { userId: user.id });
             const { data: latestUserData } = await supabaseAdmin.auth.admin.getUserById(user.id);
             activeSessionId = latestUserData?.user?.app_metadata?.[activeSessionField];
-            console.log(`[Auth Middleware] DB Session: ${activeSessionId}`);
         }
 
         if (activeSessionId && currentSessionId && activeSessionId !== currentSessionId) {
-            console.log(`[Auth Middleware] MULTI_LOGIN DETECTED - User: ${user.id}, Device: ${clientType}`);
+            logService.warn('Multi-login detected', { userId: user.id, clientType });
             return res.status(401).json({ 
                 error: 'Logged in from another device', 
                 code: 'MULTI_LOGIN',

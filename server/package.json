@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "jest --verbose"
+    "test": "jest --verbose src/tests"
   },
   "dependencies": {
     "@google-cloud/vertexai": "^1.10.0",

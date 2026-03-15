@@ -126,9 +126,14 @@ class AIService {
             const result = await this.model.generateContent([prompt, ...images]);
             const responseText = result.response.text();
             
+            logService.debug('AI: Raw response received', { textPreview: responseText.substring(0, 100) });
             return this.parseJsonResponse(responseText);
         } catch (error) {
-            console.error('[AIService] Analysis failed:', error);
+            logService.error({
+                message: `AI Analysis failed: ${error.message}`,
+                stack: error.stack,
+                source: 'server_ai_service'
+            });
             throw error;
         }
     }
