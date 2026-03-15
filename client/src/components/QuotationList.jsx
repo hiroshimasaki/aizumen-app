@@ -1,6 +1,6 @@
 import { useState, Fragment } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, User, Mail, StickyNote, Check, Trash2, Edit2, Printer, CheckCircle, XCircle, Clock, Link as LinkIcon, Activity, Save as SafeIcon, Copy, Sparkles, Download, ArchiveRestore, Trash, ChevronDown } from 'lucide-react';
+import { FileText, User, Mail, StickyNote, Check, Trash2, Edit2, Printer, CheckCircle, XCircle, Clock, Link as LinkIcon, Activity, Save as SafeIcon, Copy, Sparkles, Download, ArchiveRestore, Trash, ChevronDown, AlertTriangle } from 'lucide-react';
 import PdfThumbnail from './PdfThumbnail';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
@@ -369,8 +369,10 @@ function QuotationCard({
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="text-[11px] font-bold text-slate-300 truncate leading-tight">{file.originalName}</div>
-                                                            <div className="text-[9px] text-slate-500 flex items-center gap-1 mt-0.5">
-                                                                <Download size={8} /> クリックでダウンロード
+                                                            <div className="text-[9px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                                <Download size={8} /> 
+                                                                {file.drawing_number && <span className="text-slate-400 font-mono">{file.drawing_number} (v{file.version || 1})</span>}
+                                                                {!file.drawing_number && <span>クリックでダウンロード</span>}
                                                             </div>
                                                         </div>
                                                     </button>
@@ -424,6 +426,13 @@ function QuotationCard({
                         </div>
                     )}
 
+                    {(quotation.systemNotes || quotation.system_notes) && (
+                        <div className="flex items-start gap-2 text-[11px] text-amber-400/80 mt-2 bg-amber-950/20 p-2.5 rounded-lg border border-amber-500/20">
+                            <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                            <span className="whitespace-pre-wrap">{quotation.systemNotes || quotation.system_notes}</span>
+                        </div>
+                    )}
+
                     {/* Items Summary if available */}
                     {quotation.items && quotation.items.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-slate-800/50">
@@ -434,12 +443,18 @@ function QuotationCard({
                                         <span className="truncate mr-2 flex-grow">
                                             {item.name}
                                             {isAdmin && (
-                                                <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
-                                                    <span className="text-[10px] bg-blue-900/40 text-blue-300 px-1.5 py-0.5 rounded font-medium border border-blue-800/50">加工: ¥{(Number(item.processingCost) || 0).toLocaleString()}</span>
-                                                    <span className="text-[10px] bg-emerald-900/40 text-emerald-300 px-1.5 py-0.5 rounded font-medium border border-emerald-800/50">材料: ¥{(Number(item.materialCost) || 0).toLocaleString()}</span>
-                                                    {(Number(item.otherCost) > 0) && <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-medium border border-slate-700">他: ¥{(Number(item.otherCost) || 0).toLocaleString()}</span>}
-                                                    <span className="text-[10px] text-slate-500 font-medium flex items-center">× {item.quantity || 1}</span>
-                                                </div>
+                                                <>
+                                                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1 items-center">
+                                                        <span className="text-[10px] bg-blue-900/40 text-blue-300 px-1.5 py-0.5 rounded font-medium border border-blue-800/50">加工: ¥{(Number(item.processingCost) || 0).toLocaleString()}</span>
+                                                        <span className="text-[10px] bg-emerald-900/40 text-emerald-300 px-1.5 py-0.5 rounded font-medium border border-emerald-800/50">材料: ¥{(Number(item.materialCost) || 0).toLocaleString()}</span>
+                                                        <span className="text-[10px] text-slate-500 font-medium flex items-center">× {item.quantity || 1}</span>
+                                                        {(item.material || item.processingMethod || item.surfaceTreatment) && (
+                                                            <span className="text-[10px] text-slate-400 font-medium ml-1">
+                                                                {[item.material, item.processingMethod, item.surfaceTreatment].filter(Boolean).join(' / ')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </>
                                             )}
                                         </span>
                                         <span className="text-slate-400 text-xs flex flex-col items-end shrink-0 pl-4 border-l border-slate-800/50">

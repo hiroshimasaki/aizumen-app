@@ -79,6 +79,7 @@ export default function QuotationsPage() {
                 contactPerson: q.contact_person,
                 emailLink: q.email_link,
                 notes: q.notes,
+                systemNotes: q.system_notes,
                 orderNumber: q.order_number,
                 constructionNumber: q.construction_number,
                 status: q.status,
@@ -103,6 +104,9 @@ export default function QuotationsPage() {
                     actualMaterialCost: item.actual_material_cost,
                     actualOtherCost: item.actual_other_cost,
                     dimensions: item.dimensions,
+                    material: item.material,
+                    processingMethod: item.processing_method,
+                    surfaceTreatment: item.surface_treatment,
                     material_metadata: item.material_metadata,
                 })).sort((a, b) => a.sort_order - b.sort_order),
                 files: (q.quotation_files || []).map(f => ({
@@ -414,7 +418,10 @@ export default function QuotationsPage() {
                         processingCost: aiItem.processingCost || aiItem.price || 0,
                         materialCost: aiItem.materialCost || 0,
                         otherCost: aiItem.otherCost || 0,
-                        dueDate: aiItem.dueDate || ''
+                        dueDate: aiItem.dueDate || '',
+                        material: aiItem.material || '',
+                        processingMethod: aiItem.processingMethod || '',
+                        surfaceTreatment: aiItem.surfaceTreatment || aiItem.surface_treatment || ''
                     }))
                     : [{
                         name: file.name.split('.')[0],

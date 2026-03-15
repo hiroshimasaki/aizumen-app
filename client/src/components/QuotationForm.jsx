@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, FileText, X, Save, DollarSign, User, Plus, Trash2, Calendar, Link as LinkIcon, StickyNote, Sparkles, AlertCircle, Download, Search, RefreshCw, Activity, Calculator } from 'lucide-react';
+import { UploadCloud, FileText, X, Save, DollarSign, User, Plus, Trash2, Calendar, Link as LinkIcon, StickyNote, Sparkles, AlertCircle, AlertTriangle, Download, Search, RefreshCw, Activity, Calculator } from 'lucide-react';
 import { cn } from '../lib/utils';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,7 +48,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
         orderNumber: '',
         constructionNumber: '',
         notes: '',
-        status: 'pending',
+        systemNotes: '',
+        status: initialData?.status || 'pending',
     });
 
     const [items, setItems] = useState([
@@ -118,11 +119,12 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                 orderNumber: initialData.orderNumber || '',
                 constructionNumber: initialData.constructionNumber || '',
                 notes: initialData.notes || '',
+                systemNotes: initialData.systemNotes ?? initialData.system_notes ?? '',
                 status: initialData.status || 'pending',
             });
             setItems(initialData.items.map(item => ({
                 ...item,
-                id: item.id || Date.now() + Math.random(),
+                id: item.id || crypto.randomUUID(),
                 processingCost: item.processingCost ?? item.processing_cost ?? '',
                 materialCost: item.materialCost ?? item.material_cost ?? '',
                 otherCost: item.otherCost ?? item.other_cost ?? '',
@@ -135,7 +137,11 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                 scheduledEndDate: item.scheduledEndDate ?? item.scheduled_end_date ?? '',
                 dueDate: item.dueDate ?? item.due_date ?? '',
                 deliveryDate: item.deliveryDate ?? item.delivery_date ?? '',
-                dimensions: item.dimensions || ''
+                dimensions: item.dimensions || '',
+                requiresVerification: item.requiresVerification || item.requires_verification || false,
+                material: item.material || '',
+                processingMethod: item.processingMethod ?? item.processing_method ?? '',
+                surfaceTreatment: item.surfaceTreatment ?? item.surface_treatment ?? '',
             })));
             if (initialData.files) setExistingFiles(initialData.files);
             if (initialData.sourceFiles) setPendingCopyFiles(initialData.sourceFiles);
@@ -193,7 +199,7 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
 
     const addItem = () => {
         setItems(prev => [...prev, {
-            id: Date.now(), name: '', dimensions: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: ''
+            id: crypto.randomUUID(), name: '', dimensions: '', processingCost: '', materialCost: '', otherCost: '', quantity: 1, responseDate: '', dueDate: '', deliveryDate: '', scheduledStartDate: '', material: '', processingMethod: '', surfaceTreatment: ''
         }]);
     };
 
@@ -219,17 +225,25 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
         setItems(prev => prev.map(item => item.id === targetId ? {
             ...item,
             name: pastItem.name,
-            processingCost: pastItem.processing_cost || '',
-            materialCost: pastItem.material_cost || '',
-            otherCost: pastItem.other_cost || '',
-            dimensions: pastItem.dimensions || ''
+            processingCost: pastItem.processingCost ?? pastItem.processing_cost ?? '',
+            materialCost: pastItem.materialCost ?? pastItem.material_cost ?? '',
+            otherCost: pastItem.otherCost ?? pastItem.other_cost ?? '',
+            dimensions: pastItem.dimensions || '',
+            material: pastItem.material || '',
+            processingMethod: pastItem.processingMethod ?? pastItem.processing_method ?? '',
+            surfaceTreatment: pastItem.surfaceTreatment ?? pastItem.surface_treatment ?? '',
         } : item));
         if (pastItem.quotations?.quotation_files) {
             setPendingCopyFiles(prev => {
                 const newFiles = [...prev];
                 pastItem.quotations.quotation_files.forEach(f => {
                     if (!newFiles.some(existing => existing.sourceFileId === f.id)) {
-                        newFiles.push({ sourceFileId: f.id, originalName: f.original_name });
+                        newFiles.push({
+                            sourceFileId: f.id,
+                            originalName: f.original_name,
+                            drawingNumber: f.drawing_number,
+                            version: f.version,
+                        });
                     }
                 });
                 return newFiles;
@@ -267,7 +281,8 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                 companyName: data.companyName || prev.companyName,
                 orderNumber: data.orderNumber || prev.orderNumber,
                 constructionNumber: data.constructionNumber || prev.constructionNumber,
-                notes: data.notes ? (prev.notes ? `${prev.notes}\n${data.notes}` : data.notes) : prev.notes
+                notes: data.notes ? (prev.notes ? `${prev.notes}\n${data.notes}` : data.notes) : prev.notes,
+                systemNotes: data.systemNotes ? (prev.systemNotes ? `${prev.systemNotes}\n${data.systemNotes}` : data.systemNotes) : prev.systemNotes
             }));
             if (data.items) {
                 setItems(prev => {
@@ -285,7 +300,10 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                             dimensions: aiItem.dimensions || '',
                             requiresVerification: aiItem.requiresVerification || false,
                             deliveryDate: '',
-                            scheduledStartDate: ''
+                            scheduledStartDate: '',
+                            material: aiItem.material || '',
+                            processingMethod: aiItem.processingMethod || '',
+                            surfaceTreatment: aiItem.surfaceTreatment || aiItem.surface_treatment || '',
                         };
                         const emptyIdx = newItems.findIndex(item => !item.name && !item.processingCost);
                         if (emptyIdx !== -1) newItems[emptyIdx] = mappedItem;
@@ -359,10 +377,21 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                 const targetIdx = (newItems[0] && !newItems[0].name && !newItems[0].processingCost) ? 0 : -1;
                 const ref = q.quotation_items?.[0] || {};
                 const mapped = {
-                    id: Date.now(), name: ref.name || '', processingCost: ref.processing_cost || '',
-                    materialCost: ref.material_cost || '', otherCost: ref.other_cost || '', quantity: 1,
-                    responseDate: '', dueDate: '', dimensions: ref.dimensions || '', material_metadata: ref.material_metadata || null,
-                    deliveryDate: '', scheduledStartDate: ''
+                    id: Date.now(), 
+                    name: ref.name || '', 
+                    processingCost: ref.processing_cost || '',
+                    materialCost: ref.material_cost || '', 
+                    otherCost: ref.other_cost || '', 
+                    quantity: 1,
+                    responseDate: '', 
+                    dueDate: '', 
+                    dimensions: ref.dimensions || '', 
+                    material: ref.material || '',
+                    processingMethod: ref.processing_method || '',
+                    surfaceTreatment: ref.surface_treatment || '',
+                    material_metadata: ref.material_metadata || null,
+                    deliveryDate: '', 
+                    scheduledStartDate: ''
                 };
                 if (targetIdx !== -1) newItems[targetIdx] = mapped;
                 else newItems.unshift(mapped);
@@ -480,6 +509,17 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                                 className="w-full px-4 py-3 bg-slate-900 border border-slate-700/50 rounded-2xl text-slate-100 min-h-[80px] focus:outline-none focus:border-cyan-500 transition-all resize-none"
                             />
                         </div>
+                        <div className="md:col-span-2 space-y-1.5 text-left">
+                            <label className="text-[11px] font-black text-amber-500/80 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                                <AlertTriangle size={12} />
+                                システム備考 (AI警告・解析メモ)
+                            </label>
+                            <textarea
+                                name="systemNotes" value={headerData.systemNotes} onChange={handleHeaderChange}
+                                placeholder="AIによる検算結果やシステムからの注意書きがここに表示されます..."
+                                className="w-full px-4 py-3 bg-slate-900 border border-amber-500/20 rounded-2xl text-amber-100/80 min-h-[60px] focus:outline-none focus:border-amber-500 transition-all resize-none text-xs"
+                            />
+                        </div>
                     </div>
                 </div>
             </Accordion>
@@ -516,7 +556,15 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3 truncate">
                                         <FileText size={18} className="text-blue-400 shrink-0" />
-                                        <button type="button" onClick={(e) => handleFileDownload(e, f.id, f.originalName || f.original_name)} className="text-xs font-bold text-slate-200 hover:text-blue-400 truncate underline decoration-slate-700">{f.originalName || f.original_name}</button>
+                                        <div className="flex flex-col truncate">
+                                            <button type="button" onClick={(e) => handleFileDownload(e, f.id, f.originalName || f.original_name)} className="text-xs font-bold text-slate-200 hover:text-blue-400 truncate underline decoration-slate-700">{f.originalName || f.original_name}</button>
+                                            {f.drawing_number && (
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[10px] text-slate-500 font-mono">{f.drawing_number}</span>
+                                                    <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-700 font-bold">ver.{f.version || 1}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <button type="button" onClick={() => removeExistingFile(f.id)} className="text-slate-600 hover:text-red-400"><X size={18} /></button>
                                 </div>
@@ -587,34 +635,63 @@ export default function QuotationForm({ initialData, onSubmit, onCancel, onPrint
                                     item.requiresVerification ? "bg-amber-500" : "bg-slate-800 group-hover:bg-cyan-600"
                                 )} />
                                 <div className="flex flex-col gap-5">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="md:col-span-2 space-y-1">
-                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">品名 / 型式</label>
-                                                <div className="flex gap-2">
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="flex-1 flex flex-col gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="md:col-span-2 space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">品名 / 型式</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text" value={item.name} onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
+                                                            className="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:border-cyan-500 transition-all"
+                                                            placeholder="部品名・型式を入力"
+                                                        />
+                                                        <button
+                                                            type="button" onClick={() => setPastItemSearch({ isOpen: true, query: item.name, results: [], targetItemId: item.id, isLoading: false })}
+                                                            className="p-2.5 bg-slate-800 text-cyan-400 rounded-xl hover:bg-cyan-500 hover:text-white transition-all border border-white/5 shadow-lg"
+                                                            title="過去案件から転用"
+                                                        ><Search size={18} /></button>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">寸法 / 備考</label>
                                                     <input
-                                                        type="text" value={item.name} onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
-                                                        className="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:border-cyan-500 transition-all"
-                                                        placeholder="部品名・型式を入力"
+                                                        type="text" value={item.dimensions} onChange={(e) => handleItemChange(item.id, 'dimensions', e.target.value)}
+                                                        className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:border-cyan-500 transition-all"
+                                                        placeholder="L=100 W=50 等"
                                                     />
-                                                    <button
-                                                        type="button" onClick={() => setPastItemSearch({ isOpen: true, query: item.name, results: [], targetItemId: item.id, isLoading: false })}
-                                                        className="p-2.5 bg-slate-800 text-cyan-400 rounded-xl hover:bg-cyan-500 hover:text-white transition-all border border-white/5 shadow-lg"
-                                                        title="過去案件から転用"
-                                                    ><Search size={18} /></button>
                                                 </div>
                                             </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">寸法 / 備考</label>
-                                                <input
-                                                    type="text" value={item.dimensions} onChange={(e) => handleItemChange(item.id, 'dimensions', e.target.value)}
-                                                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:border-cyan-500 transition-all"
-                                                    placeholder="L=100 W=50 等"
-                                                />
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">材質</label>
+                                                    <input
+                                                        type="text" value={item.material || ''} onChange={(e) => handleItemChange(item.id, 'material', e.target.value)}
+                                                        className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:border-cyan-500"
+                                                        placeholder="SS400, SUS304 等"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">加工方法</label>
+                                                    <input
+                                                        type="text" value={item.processingMethod || ''} onChange={(e) => handleItemChange(item.id, 'processingMethod', e.target.value)}
+                                                        className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:border-cyan-500"
+                                                        placeholder="旋盤, フライス 等"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">表面処理</label>
+                                                    <input
+                                                        type="text" value={item.surfaceTreatment || ''} onChange={(e) => handleItemChange(item.id, 'surfaceTreatment', e.target.value)}
+                                                        className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:border-cyan-500"
+                                                        placeholder="メッキ, 焼入 等"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                         {items.length > 1 && (
-                                            <button type="button" onClick={() => removeItem(item.id)} className="p-2.5 text-slate-600 hover:text-red-400 transition-colors ml-4"><Trash2 size={20} /></button>
+                                            <button type="button" onClick={() => removeItem(item.id)} className="p-2.5 text-slate-600 hover:text-red-400 transition-colors ml-4 shrink-0"><Trash2 size={20} /></button>
                                         )}
                                     </div>
 

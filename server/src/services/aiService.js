@@ -57,9 +57,14 @@ class AIService {
 1. **会社名 (companyName)**: 発注元（顧客）の会社名。${tenantExcludeInstruction}
 2. **注文番号 (orderNumber)**: 「${mappingData.orderNumberLabel}」に該当する項目。
 3. **工事番号 (constructionNumber)**: 「${mappingData.constructionNumberLabel}」に該当する項目。
-4. **特記事項 (notes)**: 注意事項、納期・支払条件など。
-5. **明細 (items)**: 以下の項目をリストで抽出してください：
+4. **特記事項 (notes)**: 書類に記載されている注意事項、納期・支払条件など。
+5. **システム備考 (systemNotes)**: 検算の結果判明した疑義、AIによる補足説明、注意喚起など（書類に直接記載されていない内容）。
+6. **図番 (drawingNumber)**: 図面に記載されている図面番号。
+6. **明細 (items)**: 以下の項目をリストで抽出してください：
     - **name**: 品名や品番。
+    - **material**: 材質（例: SS400, SUS304, AL, 樹脂等）。
+    - **processingMethod**: 主要な加工方法（例: 旋盤, フライス, レーザー, ベンダー等）。
+    - **surface_treatment**: 表面処理（例: メッキ, 焼入, 塗装, 黒染等）。
     - **quantity**: 数量（数値のみ）。
     - **unit**: 単位。
     - **processingCost**: 加工費。必ず「1個あたりの単価」を抽出してください。
@@ -76,7 +81,7 @@ class AIService {
     1. 計算が一致しない場合。
     2. 書類に単価の記載がなく、合計金額（小計）を数量で割って単価を算出した場合。
     3. 「単価」として抽出した数値が、実は「合計金額」である疑いが高い場合。
-- 疑義がある場合は、その理由を全体の **notes** 欄に追記してください。
+- 疑義がある場合は、その理由を全体の **systemNotes** 欄に記載してください。特記事項 (notes) には書類から読み取った内容のみを記載してください。
 
 ### 出力フォーマット (JSONのみ):
 \`\`\`json
@@ -85,12 +90,16 @@ class AIService {
   "orderNumber": "...",
   "constructionNumber": "...",
   "notes": "...",
+  "systemNotes": "...",
   "pageClassifications": [
     ...
   ],
   "items": [
     {
       "name": "...",
+      "material": "...",
+      "processingMethod": "...",
+      "surface_treatment": "...",
       "quantity": 1,
       "unit": "...",
       "processingCost": 5000,

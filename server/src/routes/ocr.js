@@ -184,6 +184,32 @@ router.post('/bulk-register', authMiddleware, checkTrialLimit, async (req, res, 
 
                 // AI解析 (マッピング設定と自社名を渡す)
                 const analysis = await aiService.analyzeDocument(buffer, fileMeta.mime_type, { ocrMapping, name: tenantName });
+                
+                // 図面番号の更新とバージョン管理
+                if (analysis.drawingNumber) {
+                    // 同一テナント内で同じ図番の既存ファイルを検索
+                    const { data: existingFiles } = await supabaseAdmin
+                        .from('quotation_files')
+                        .select('version')
+                        .eq('tenant_id', req.tenantId)
+                        .eq('drawing_number', analysis.drawingNumber)
+                        .order('version', { ascending: false })
+                        .limit(1);
+
+                    const nextVersion = existingFiles && existingFiles.length > 0 ? existingFiles[0].version + 1 : 1;
+
+                    // メタデータを更新
+                    await supabaseAdmin
+                        .from('quotation_files')
+                        .update({
+                            drawing_number: analysis.drawingNumber,
+                            version: nextVersion
+                        })
+                        .eq('id', fileId);
+                    
+                    analysis.version = nextVersion;
+                }
+
                 results.push({
                     id: fileId,
                     originalName: fileMeta.original_name,

@@ -524,7 +524,7 @@ router.get('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
 router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const {
-            companyName, contactPerson, emailLink, notes,
+            companyName, contactPerson, emailLink, notes, systemNotes,
             orderNumber, constructionNumber, status = 'pending',
             isVerified = true, items = [], sourceId, copyFileIds = [],
             aiOriginalResult = null,
@@ -550,6 +550,7 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 contact_person: contactPerson || '',
                 email_link: emailLink || '',
                 notes: notes || '',
+                system_notes: systemNotes || '',
                 order_number: orderNumber || '',
                 construction_number: constructionNumber || '',
                 status,
@@ -593,7 +594,10 @@ router.post('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 material_metadata: item.material_metadata || null,
                 heat_treatment: item.material_metadata?.heatTreatment || null,
                 dimensions: item.dimensions || '',
-                requires_verification: item.requiresVerification || false,
+                requires_verification: item.requiresVerification ?? item.requires_verification ?? false,
+                material: item.material || null,
+                processing_method: item.processingMethod ?? item.processing_method ?? null,
+                surface_treatment: item.surfaceTreatment ?? item.surface_treatment ?? null,
             }));
 
             const { error: itemError } = await supabaseAdmin
@@ -698,7 +702,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
         const { id } = req.params;
         const {
-            companyName, contactPerson, emailLink, notes,
+            companyName, contactPerson, emailLink, notes, systemNotes,
             orderNumber, constructionNumber, status,
             items, copyFileIds = [],
             aiOriginalResult = null,
@@ -722,6 +726,7 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
         if (contactPerson !== undefined) updates.contact_person = contactPerson;
         if (emailLink !== undefined) updates.email_link = emailLink;
         if (notes !== undefined) updates.notes = notes;
+        if (systemNotes !== undefined) updates.system_notes = systemNotes;
         if (orderNumber !== undefined) updates.order_number = orderNumber;
         if (constructionNumber !== undefined) updates.construction_number = constructionNumber;
         if (status !== undefined) updates.status = status;
@@ -780,7 +785,10 @@ router.put('/:id', authMiddleware, checkTrialLimit, async (req, res, next) => {
                     material_metadata: item.material_metadata || null,
                     heat_treatment: item.material_metadata?.heatTreatment || null,
                     dimensions: item.dimensions || '',
-                    requires_verification: item.requiresVerification || false,
+                    requires_verification: item.requiresVerification ?? item.requires_verification ?? false,
+                    material: item.material || null,
+                    processing_method: item.processingMethod ?? item.processing_method ?? null,
+                    surface_treatment: item.surfaceTreatment ?? item.surface_treatment ?? null,
                 }));
 
                 const { error: insertError } = await supabaseAdmin.from('quotation_items').insert(itemRows);
