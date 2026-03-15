@@ -164,7 +164,7 @@ export default function SignUpPage() {
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <Zap className="w-6 h-6 text-cyan-400" />
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+                            <h1 className="text-3xl font-bold text-white">
                                 AiZumen
                             </h1>
                         </div>
@@ -188,7 +188,7 @@ export default function SignUpPage() {
                                         }`}
                                 >
                                     {plan.popular && (
-                                        <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
+                                        <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
                                             おすすめ
                                         </div>
                                     )}
@@ -228,8 +228,7 @@ export default function SignUpPage() {
                 <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6 sm:p-8 shadow-2xl relative">
                     <div className="mb-6">
                         {/* Bonus Banner */}
-                        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border border-amber-500/30 relative overflow-hidden group">
-                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                        <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 relative overflow-hidden group">
                             <div className="flex items-center gap-3 relative z-10">
                                 <div className="p-2 bg-amber-500 rounded-lg shadow-lg shadow-amber-500/20 animate-pulse">
                                     <Sparkles className="w-5 h-5 text-white" />
@@ -346,7 +345,7 @@ export default function SignUpPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold hover:from-blue-500 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
+                            className="w-full mt-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <>

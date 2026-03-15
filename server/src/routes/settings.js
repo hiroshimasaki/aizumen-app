@@ -103,8 +103,21 @@ router.get('/company', authMiddleware, async (req, res, next) => {
  */
 router.put('/company', authMiddleware, requireRole('admin'), async (req, res, next) => {
     try {
-        const { name, address, phone, website, hourlyRate, zip, fax, email } = req.body;
+        const { name, address, phone, website, hourlyRate, zip, fax, email, themeType } = req.body;
         if (!name) throw new AppError('Company name is required', 400, 'VALIDATION_ERROR');
+
+        // カラムが存在しない可能性に備え、まず既存のデータを取得して settings JSON を更新する
+        const { data: currentTenant } = await supabaseAdmin
+            .from('tenants')
+            .select('settings')
+            .eq('id', req.tenantId)
+            .single();
+
+        const currentSettings = currentTenant?.settings || {};
+        const updatedSettings = {
+            ...currentSettings,
+            theme_type: themeType || 'industrial'
+        };
 
         const updates = {
             name,
@@ -114,6 +127,7 @@ router.put('/company', authMiddleware, requireRole('admin'), async (req, res, ne
             zip,
             fax,
             email,
+            settings: updatedSettings,
             hourly_rate: hourlyRate !== undefined ? hourlyRate : 8000,
             updated_at: new Date().toISOString()
         };

@@ -48,10 +48,15 @@ export default function AdminPage() {
         }
     }, [location.search, userRole, tabs.length]); // tabs.lengthが変わった時だけ再チェック
 
+    // タブ切り替え時にページ最上部へスクロール
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }, [activeTab]);
+
     return (
         <div className="flex flex-col md:flex-row gap-6">
-            {/* Sidebar */}
-            <aside className="w-full md:w-64 shrink-0 space-y-6">
+            {/* Sidebar - Sticky on desktop */}
+            <aside className="w-full md:w-64 shrink-0 md:sticky md:top-20 md:max-h-[calc(100vh-5rem)] md:overflow-y-auto space-y-6 scrollbar-hide">
                 <div className="bg-slate-800/50 p-5 rounded-xl border border-slate-700 backdrop-blur-sm">
                     <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 mb-1">
                         <Settings className="text-blue-400" />

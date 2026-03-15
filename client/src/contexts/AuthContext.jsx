@@ -260,6 +260,12 @@ export function AuthProvider({ children }) {
         }
         prevIsExpiredRef.current = isExpired;
     }, [isExpired, isProfileLoaded]);
+    
+    // テーマの即時反映
+    useEffect(() => {
+        const currentTheme = tenant?.theme_type || tenant?.settings?.theme_type || 'industrial';
+        document.documentElement.dataset.theme = currentTheme;
+    }, [tenant?.theme_type, tenant?.settings?.theme_type]);
 
     // プロフィール情報が読み込まれるまでは、JWT（app_metadata）の情報も利用することで
     // リフレッシュ時のロールのチラつきとリダイレクトループ（白画面）を防止する

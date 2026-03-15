@@ -137,7 +137,7 @@ function AppLayout() {
                             )}
                         </div>
                         <div className="flex items-baseline gap-1.5">
-                            <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                            <span className="text-lg font-bold text-blue-400">
                                 AiZumen
                             </span>
                             {import.meta.env.DEV && (
@@ -188,13 +188,13 @@ function AppLayout() {
                         {userRole !== 'super_admin' && (
                             <Link
                                 to="/admin?tab=billing"
-                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-900/30 border border-indigo-500/30 rounded-full text-indigo-300 hover:bg-indigo-800/40 transition-all active:scale-95"
+                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 hover:bg-blue-500/20 transition-all active:scale-95"
                             >
                                 <Zap className="w-4 h-4 text-amber-400" />
                                 <span className="text-xs font-bold">
                                     残り: {credits?.balance || 0}
                                     {credits?.purchased_balance > 0 && (
-                                        <span className="text-[10px] text-indigo-400 font-normal ml-1 border pl-1 border-indigo-500/30 rounded">
+                                        <span className="text-[10px] text-blue-400 font-normal ml-1 border pl-1 border-blue-500/20 rounded">
                                             うち追加分: {credits.purchased_balance}
                                         </span>
                                     )}
@@ -309,7 +309,7 @@ function AppLayout() {
                         </div>
                         <Link
                             to="/admin?tab=billing"
-                            className="px-4 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs font-bold rounded-full hover:from-blue-400 hover:to-cyan-400 transition-all"
+                            className="px-4 py-1 bg-blue-600 text-white text-xs font-bold rounded-full hover:bg-blue-500 transition-all"
                         >
                             プランを選択
                         </Link>
@@ -354,7 +354,7 @@ function AppLayout() {
                         <div className="flex flex-col gap-3">
                             <Link
                                 to="/admin?tab=billing"
-                                className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-cyan-500 transition-all shadow-lg shadow-blue-500/20"
+                                className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
                             >
                                 プランを選択する
                             </Link>

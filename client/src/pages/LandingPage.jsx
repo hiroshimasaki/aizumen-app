@@ -14,7 +14,7 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Zap className="w-6 h-6 text-cyan-400" />
-                        <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent tracking-tight">
+                        <span className="text-xl font-bold text-blue-400 tracking-tight">
                             AiZumen
                         </span>
                     </div>
@@ -44,7 +44,7 @@ export default function LandingPage() {
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight tracking-tight opacity-0 animate-[fade-in-up_0.8s_ease-out_0.1s_forwards]">
                         製造業・町工場のDXを、<br />
-                        <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">AIとクラウドで一元化。</span>
+                        <span className="text-blue-400">AIとクラウドで一元化。</span>
                     </h1>
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 mb-10 opacity-0 animate-[fade-in-up_0.8s_ease-out_0.2s_forwards]">
                         製造現場を刷新するDXクラウドサービス。AIが注文書から項目を自動抽出し、高度な図面検索で過去の知見を瞬時に活用。町工場のペーパーレス化と見積精度の向上を強力に支援します。
@@ -52,7 +52,7 @@ export default function LandingPage() {
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 opacity-0 animate-[fade-in-up_0.8s_ease-out_0.3s_forwards]">
                         <Link
                             to="/signup"
-                            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold text-lg hover:from-blue-500 hover:to-cyan-500 transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group"
+                            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 text-white font-bold text-lg hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group"
                         >
                             無料で始める
                             <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -70,7 +70,7 @@ export default function LandingPage() {
                 <div className="max-w-6xl mx-auto px-4 mt-12 mb-20 opacity-0 animate-[fade-in-up_1s_ease-out_0.5s_forwards]">
                     <div className="relative group">
                         {/* Decorative background glow */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-[2.5rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                        <div className="absolute -inset-1 bg-blue-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200"></div>
 
                         <div className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-slate-900 shadow-2xl">
                             {/* Real Screenshot with its own header */}
@@ -142,7 +142,7 @@ export default function LandingPage() {
                     </div>
 
                     <div className="mt-16 text-center">
-                        <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
+                        <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
                             <Zap className="w-5 h-5 text-blue-400" />
                             <p className="text-sm font-bold text-white">AiZumenなら、これらのお困りごとをまるごと解決できます。</p>
                         </div>
@@ -409,7 +409,7 @@ export default function LandingPage() {
 
                         {/* Plus */}
                         <div className="p-10 rounded-[2.5rem] bg-indigo-900/30 border border-indigo-500/50 shadow-2xl shadow-indigo-500/20 flex flex-col relative transform md:-translate-y-4 md:min-h-[580px] z-20 backdrop-blur-xl">
-                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-500/30">
+                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-blue-500/30">
                                 圧倒的人気
                             </div>
                             <div className="mb-6">
@@ -427,7 +427,7 @@ export default function LandingPage() {
                                 <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> ストレージ 20GB (約4万枚)</li>
                                 <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> バックアップ 7日間保持</li>
                             </ul>
-                            <Link to="/signup" className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-center transition-all shadow-xl shadow-blue-500/30 text-lg">
+                            <Link to="/signup" className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-center transition-all shadow-xl shadow-blue-500/30 text-lg">
                                 30日間の無料体験を始める
                             </Link>
                         </div>
@@ -585,7 +585,7 @@ export default function LandingPage() {
                             </div>
                         </div>
                         <div className="flex-1 w-full max-w-lg">
-                            <div className="p-1 rounded-3xl bg-gradient-to-br from-indigo-500/30 to-blue-500/30">
+                            <div className="p-1 rounded-3xl border border-indigo-500/30 bg-indigo-500/5">
                                 <div className="p-6 md:p-8 rounded-[1.4rem] bg-slate-900 shadow-2xl">
                                     <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 border-b border-white/5 pb-4">権限マトリクス</h4>
                                     <ul className="space-y-4">
@@ -619,7 +619,7 @@ export default function LandingPage() {
 
                 {/* CTA */}
                 <section className="max-w-4xl mx-auto px-4 md:px-8 py-20">
-                    <div className="p-12 rounded-[2.5rem] bg-gradient-to-br from-blue-900/40 via-indigo-900/40 to-cyan-900/40 border border-white/10 text-center relative overflow-hidden">
+                    <div className="p-12 rounded-[2.5rem] bg-indigo-900/40 border border-white/10 text-center relative overflow-hidden">
                         {/* Noise overlay could be added here if desired */}
                         <h2 className="text-3xl md:text-5xl font-black text-white mb-6 relative z-10">今すぐ業務を効率化しよう</h2>
                         <p className="text-lg text-slate-300 mb-10 relative z-10">30日間の無料トライアルで、AiZumenの一部機能をお試しいただけます。</p>

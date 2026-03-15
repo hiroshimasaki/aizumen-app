@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Building, Save as SafeIcon, Globe, Mail, Phone, MapPin } from 'lucide-react';
-import { Save } from 'lucide-react';
+import { Building, Save as SafeIcon, Globe, Mail, Phone, MapPin, LayoutGrid, Check, Palette, Sparkles } from 'lucide-react';
+import { Save, RefreshCw } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -15,7 +15,17 @@ export default function CompanyInfo() {
     const [zip, setZip] = useState(tenant?.zip || '');
     const [fax, setFax] = useState(tenant?.fax || '');
     const [email, setEmail] = useState(tenant?.email || '');
+    const savedTheme = tenant?.theme_type || tenant?.settings?.theme_type || 'industrial';
+    const [themeType, setThemeType] = useState(savedTheme);
     const [saving, setSaving] = useState(false);
+
+    const THEMES = [
+        { id: 'industrial', label: 'Industrial', primary: '#3b82f6', accent: '#0891b2', bg: '#0c0e14', desc: '標準デザイン (CUD 調整済み)' },
+        { id: 'midnight', label: 'CUD Deep Blue', primary: '#2d6ae5', accent: '#f59e0b', bg: '#0a0c10', desc: '青とオレンジの識別しやすい組み合わせ' },
+        { id: 'forest', label: 'CUD Earth', primary: '#1aaf8b', accent: '#a855f7', bg: '#060908', desc: '自然な色合いで赤緑混同に配慮' },
+        { id: 'purple', label: 'High Contrast', primary: '#fbbf24', accent: '#3b82f6', bg: '#000000', desc: '黄と青の最大明度差を確保' },
+        { id: 'crimson', label: 'CUD Vivid', primary: '#ff4b00', accent: '#0ea5e9', bg: '#0d0505', desc: '朱色とスカイブルーの推奨ペア' },
+    ];
 
     useEffect(() => {
         if (tenant) {
@@ -26,6 +36,8 @@ export default function CompanyInfo() {
             setZip(tenant.zip || '');
             setFax(tenant.fax || '');
             setEmail(tenant.email || '');
+            const currentTheme = tenant.theme_type || tenant.settings?.theme_type || 'industrial';
+            setThemeType(currentTheme);
         }
     }, [tenant]);
 
@@ -35,12 +47,16 @@ export default function CompanyInfo() {
         try {
             await api.put('/api/settings/company', {
                 name, address, phone, website,
-                zip, fax, email
+                zip, fax, email, themeType
             });
             setTenant({
                 ...tenant,
                 name, address, phone, website,
-                zip, fax, email
+                zip, fax, email,
+                settings: {
+                    ...(tenant.settings || {}),
+                    theme_type: themeType
+                }
             });
             await showAlert('企業情報を更新しました。', 'success');
         } catch (err) {
@@ -58,7 +74,8 @@ export default function CompanyInfo() {
         website !== (tenant?.website || '') ||
         zip !== (tenant?.zip || '') ||
         fax !== (tenant?.fax || '') ||
-        email !== (tenant?.email || '');
+        email !== (tenant?.email || '') ||
+        themeType !== savedTheme;
 
 
 
@@ -196,12 +213,73 @@ export default function CompanyInfo() {
                         </div>
                     </div>
 
+                    {/* Theme Selection */}
+                    <div className="space-y-4 pt-4">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">
+                                画面カラーテーマ
+                            </label>
+                            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
+                                Accessibility
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed flex items-start gap-2 max-w-2xl pl-1">
+                            <Sparkles size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                            <span>
+                                多様な色覚（P型・D型等）を持つユーザーが情報を識別しやすいよう、カラーユニバーサルデザイン（CUD）に配慮した配色を採用しています。
+                            </span>
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {THEMES.map((theme) => (
+                                <button
+                                    key={theme.id}
+                                    type="button"
+                                    onClick={() => setThemeType(theme.id)}
+                                    className={`relative flex flex-col items-start p-4 rounded-2xl border transition-all text-left group ${themeType === theme.id
+                                        ? 'bg-white/5 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)]'
+                                        : 'bg-slate-900/50 border-slate-700 hover:border-slate-500'
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between w-full mb-3">
+                                        <div className="flex gap-1.5">
+                                            <div 
+                                                className="w-4 h-4 rounded-full shadow-sm" 
+                                                style={{ backgroundColor: theme.primary }} 
+                                            />
+                                            <div 
+                                                className="w-4 h-4 rounded-full shadow-sm" 
+                                                style={{ backgroundColor: theme.accent }} 
+                                            />
+                                        </div>
+                                        {themeType === theme.id && (
+                                            <div className="bg-blue-500 rounded-full p-1 scale-110">
+                                                <Check size={10} className="text-white" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="font-bold text-sm text-white mb-1">{theme.label}</div>
+                                    <div className="text-[10px] text-slate-500 leading-tight">{theme.desc}</div>
+                                    
+                                    {/* Preview Box */}
+                                    <div 
+                                        className="mt-3 w-full h-12 rounded-lg border border-white/5 relative overflow-hidden"
+                                        style={{ backgroundColor: theme.bg }}
+                                    >
+                                        <div className="absolute top-2 left-2 w-8 h-1 rounded-full opacity-40" style={{ backgroundColor: theme.primary }} />
+                                        <div className="absolute top-4 left-2 w-12 h-1 rounded-full opacity-20" style={{ backgroundColor: theme.primary }} />
+                                        <div className="absolute bottom-2 right-2 w-4 h-4 rounded shadow-inner" style={{ backgroundColor: theme.accent }} />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
 
                     <div className="pt-4">
                         <button
                             type="submit"
                             disabled={saving || !isChanged}
-                            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-900/40 disabled:opacity-50 transition-all active:scale-95"
+                            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 transition-all active:scale-95"
                         >
                             <Save size={20} />
                             {saving ? '保存中...' : '変更を保存する'}

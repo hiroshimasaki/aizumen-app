@@ -567,7 +567,7 @@ export default function QuotationsPage() {
                     <div className="flex gap-3">
                         <button
                             onClick={() => setIsBulkOpen(true)}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all hover:scale-105 active:scale-95 border border-amber-400/30"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-bold shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 border border-amber-400/30"
                             title="複数の図面を一括で解析して自動登録します"
                         >
                             <Sparkles size={20} className="text-white" />
@@ -575,7 +575,7 @@ export default function QuotationsPage() {
                         </button>
                         <button
                             onClick={() => handleEdit({})}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
                         >
                             <Plus size={20} />
                             新規作成
