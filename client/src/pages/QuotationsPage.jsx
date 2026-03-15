@@ -661,20 +661,19 @@ export default function QuotationsPage() {
                             {filterOptions.methods.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                     </div>
-                    <div className="lg:col-span-2 relative flex items-center">
-                        <Filter className="absolute left-2.5 text-slate-500" size={12} />
-                        <select
-                            value={surfaceTreatmentFilter}
-                            onChange={(e) => { setSurfaceTreatmentFilter(e.target.value); setPage(1); }}
-                            className="w-full pl-8 pr-2 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-[10px] text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner appearance-none cursor-pointer"
-                        >
-                            <option value="">表面処理: 全て</option>
-                            {filterOptions.treatments.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="lg:col-span-2 flex items-center gap-2 justify-end">
-                        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-0.5 flex shadow-inner">
+                    <div className="lg:col-span-4 flex items-center gap-2 min-w-0">
+                        <div className="relative flex items-center flex-1 min-w-0">
+                            <Filter className="absolute left-2.5 text-slate-500 shrink-0" size={12} />
+                            <select
+                                value={surfaceTreatmentFilter}
+                                onChange={(e) => { setSurfaceTreatmentFilter(e.target.value); setPage(1); }}
+                                className="w-full min-w-0 pl-8 pr-2 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-[10px] text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner appearance-none cursor-pointer"
+                            >
+                                <option value="">表面処理: 全て</option>
+                                {filterOptions.treatments.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+                        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-0.5 flex shadow-inner shrink-0">
                             <button
                                 onClick={() => setViewMode('card')}
                                 className={cn(
@@ -698,7 +697,7 @@ export default function QuotationsPage() {
                         </div>
                         <button
                             onClick={() => fetchQuotations(true)}
-                            className="p-2 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all shadow-inner group"
+                            className="p-2 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all shadow-inner group shrink-0"
                             title="最新の情報に更新"
                         >
                             <RefreshCw size={14} className={cn(loading ? "animate-spin" : "group-active:rotate-180 transition-transform duration-500")} />
@@ -707,8 +706,8 @@ export default function QuotationsPage() {
                 </div>
 
                 {!showDeleted && (
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide no-scrollbar">
-                        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-1 flex gap-1 whitespace-nowrap">
+                    <div className="w-full overflow-x-auto pb-1 scrollbar-hide no-scrollbar">
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-1 flex gap-1 min-w-0 w-full">
                             {[
                                 { status: '', label: '全て' },
                                 { status: 'pending', label: '検討中' },
@@ -721,10 +720,10 @@ export default function QuotationsPage() {
                                     key={btn.status}
                                     onClick={() => { setStatusFilter(btn.status); setPage(1); }}
                                     className={cn(
-                                        "px-4 py-1.5 rounded-lg font-black text-[10px] uppercase transition-all tracking-wider",
+                                        "flex-1 min-w-0 py-1.5 px-2 rounded-lg font-black text-[10px] uppercase transition-all tracking-wider text-center truncate",
                                         statusFilter === btn.status
                                             ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                                            : "text-slate-500 hover:text-slate-300 hover:bg-white/5 whitespace-nowrap"
+                                            : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
                                     )}
                                 >
                                     {btn.label}

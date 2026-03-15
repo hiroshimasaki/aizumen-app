@@ -17,43 +17,54 @@ export default function ImportGuide({ isOpen, onClose }) {
 
     if (!isOpen) return null;
 
+    // サーバー mapRecordToQuotation / DB 挿入仕様に準拠（案件レベル → 明細レベル）
     const fields = [
-        { name: '会社名', key: 'company_name', type: '文字列', desc: '取引先企業名', default: 'インポート案件' },
-        { name: '担当者', key: 'contact_person', type: '文字列', desc: '先方の担当者名', default: '-' },
-        { name: '注文番号', key: 'order_number', type: '文字列', desc: '重複チェックの基準になります', default: '-' },
-        { name: '工事番号', key: 'construction_number', type: '文字列', desc: '社内管理用の番号', default: '-' },
-        { name: 'ステータス', key: 'status', type: '文字列', desc: 'pending, ordered, delivered 等', default: 'pending' },
-        { name: '備考', key: 'notes', type: '文字列', desc: '案件全体のメモ', default: '-' },
-        { name: '品名', key: 'name', type: '文字列', desc: '明細の品名', default: '品名なし' },
-        { name: '数量', key: 'quantity', type: '数値', desc: '受注数量', default: '1' },
-        { name: '加工費', key: 'processing_cost', type: '数値', desc: '単価としての金額', default: '0' },
-        { name: '材料費', key: 'material_cost', type: '数値', desc: '単価としての金額', default: '0' },
-        { name: 'その他', key: 'other_cost', type: '数値', desc: '単価としての金額', default: '0' },
+        { name: '会社名', key: 'company_name', type: '文字列', scope: '案件', desc: '取引先企業名。未指定時は「インポート案件」' },
+        { name: '担当者', key: 'contact_person', type: '文字列', scope: '案件', desc: '先方の担当者名' },
+        { name: '注文番号', key: 'order_number', type: '文字列', scope: '案件', desc: '重複チェックの基準。既存と一致するとスキップ' },
+        { name: '工事番号', key: 'construction_number', type: '文字列', scope: '案件', desc: '社内管理用番号' },
+        { name: '見積ID', key: 'display_id', type: '文字列', scope: '案件', desc: '表示用ID（任意）。未指定時は自動採番。JSON向け' },
+        { name: 'ステータス', key: 'status', type: '文字列', scope: '案件', desc: 'pending / ordered / delivered / lost 等。未指定時は pending' },
+        { name: '備考', key: 'notes', type: '文字列', scope: '案件', desc: '案件全体のメモ' },
+        { name: '品名', key: 'name', type: '文字列', scope: '明細', desc: '明細の品名。未指定時は「品名なし」' },
+        { name: '数量', key: 'quantity', type: '数値', scope: '明細', desc: '受注数量。未指定時は 1' },
+        { name: '加工費', key: 'processing_cost', type: '数値', scope: '明細', desc: '単価（円）。未指定時は 0' },
+        { name: '材料費', key: 'material_cost', type: '数値', scope: '明細', desc: '単価（円）。未指定時は 0' },
+        { name: 'その他', key: 'other_cost', type: '数値', scope: '明細', desc: '単価（円）。未指定時は 0' },
     ];
 
     const jsonExample = `[
   {
     "company_name": "株式会社マルイチ",
+    "contact_person": "山田",
     "order_number": "PO-2024-001",
+    "construction_number": "C-001",
     "status": "ordered",
+    "notes": "初回納品分",
+    "display_id": "EST-2024-001",
     "items": [
       {
         "name": "ブラケット A",
         "quantity": 10,
-        "processing_cost": 1500
+        "processing_cost": 1500,
+        "material_cost": 200,
+        "other_cost": 0
       },
       {
         "name": "ボルトセット",
         "quantity": 100,
-        "processing_cost": 50
+        "processing_cost": 50,
+        "material_cost": 10,
+        "other_cost": 5
       }
     ]
   }
 ]`;
 
-    const csvExample = `会社名,注文番号,ステータス,品名,数量,加工費
-株式会社マルイチ,PO-2024-001,ordered,ブラケット A,10,1500
-株式会社マルイチ,PO-2024-002,pending,プレート B,5,3000`;
+    const csvExample = `会社名,担当者,注文番号,工事番号,ステータス,備考,品名,数量,加工費,材料費,その他
+株式会社マルイチ,山田,PO-2024-001,C-001,ordered,初回分,ブラケット A,10,1500,200,0
+株式会社マルイチ,,PO-2024-002,C-001,pending,,プレート B,5,3000,500,
+株式会社サンプル,佐藤,PO-2024-003,,delivered,,ボルト M6,100,50,10,5`;
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
@@ -86,8 +97,8 @@ export default function ImportGuide({ isOpen, onClose }) {
                             対応フォーマット
                         </h3>
                         <p className="text-sm text-slate-400 leading-relaxed">
-                            AiZumenでは、**CSV**および**JSON**形式でのインポートをサポートしています。
-                            ヘッダー名（キー名）は日本語と英語（スネークケース/キャメルケース）の両方に対応しています。
+                            AiZumenでは、<strong>CSV</strong>および<strong>JSON</strong>形式でのインポートをサポートしています。
+                            ヘッダー名（キー名）は日本語・英語スネークケース（order_number）・キャメルケース（orderNumber）のいずれでも認識されます。
                         </p>
                     </section>
 
@@ -103,6 +114,7 @@ export default function ImportGuide({ isOpen, onClose }) {
                                     <tr className="bg-slate-800/50 text-slate-300">
                                         <th className="p-3 border-b border-slate-800 font-bold">項目名</th>
                                         <th className="p-3 border-b border-slate-800 font-bold">推奨キー (英語)</th>
+                                        <th className="p-3 border-b border-slate-800 font-bold text-center w-16">適用</th>
                                         <th className="p-3 border-b border-slate-800 font-bold text-center">型</th>
                                         <th className="p-3 border-b border-slate-800 font-bold">説明</th>
                                     </tr>
@@ -113,6 +125,11 @@ export default function ImportGuide({ isOpen, onClose }) {
                                             <td className="p-3 font-medium text-slate-200">{f.name}</td>
                                             <td className="p-3">
                                                 <code className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-indigo-300">{f.key}</code>
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${f.scope === '案件' ? 'bg-slate-600/50 text-slate-300' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                                                    {f.scope}
+                                                </span>
                                             </td>
                                             <td className="p-3 text-center">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${f.type === '数値' ? 'bg-amber-500/10 text-amber-400' : 'bg-blue-500/10 text-blue-400'}`}>
@@ -136,7 +153,7 @@ export default function ImportGuide({ isOpen, onClose }) {
                                 CSV形式（フラット）
                             </h3>
                             <p className="text-xs text-slate-500">
-                                1行につき1案件・1明細としてインポートされます。
+                                1行＝1案件＋1明細。案件項目と明細項目を同じ行に並べます。同一注文番号の行は重複としてスキップされます。
                             </p>
                             <pre className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-300 overflow-x-auto font-mono leading-relaxed">
                                 {csvExample}
@@ -150,7 +167,7 @@ export default function ImportGuide({ isOpen, onClose }) {
                                 JSON形式（ネスト可能）
                             </h3>
                             <p className="text-xs text-slate-500">
-                                1案件に複数の明細（items）を含めることができます。
+                                配列の1要素が1案件。items 配列で複数明細を指定できます。display_id は任意（未指定時は自動採番）。
                             </p>
                             <pre className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-300 overflow-x-auto font-mono leading-relaxed">
                                 {jsonExample}
