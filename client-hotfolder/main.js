@@ -364,11 +364,15 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
         fs.mkdirSync(processedDir);
     }
 
+    logToRenderer(`Starting watcher for: ${watchFolder}`);
+    
     let isReady = false;
     watcher = chokidar.watch(watchFolder, {
         ignored: [/(^|[\/\\])\../, processedDir], // . で始まるファイルと processed フォルダを無視
         persistent: true,
         depth: 0, // 直下のファイルのみ
+        usePolling: true, // ネットワークドライブ対応
+        interval: 1000, // ポーリング間隔
     });
 
     watcher.on('add', (filePath) => {
