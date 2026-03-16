@@ -1158,4 +1158,33 @@ router.post('/batch-delivery', authMiddleware, async (req, res, next) => {
     }
 });
 
+/**
+ * POST /api/quotations/signed-url
+ * 指定されたパスの署名付きURLを生成して返す
+ */
+router.post('/signed-url', authMiddleware, async (req, res, next) => {
+    try {
+        const { filePath } = req.body;
+        if (!filePath) throw new AppError('File path is required', 400, 'VALIDATION_ERROR');
+
+        // セキュリティチェック: 権限のあるテナントのファイルか確認
+        if (!filePath.startsWith(`${req.tenantId}/`)) {
+            throw new AppError('Access denied', 403, 'FORBIDDEN');
+        }
+
+        const { data, error } = await supabaseAdmin.storage
+            .from('quotation-files')
+            .createSignedUrl(filePath, 3600); // 1時間有効
+
+        if (error || !data) {
+            console.error('[Quotations] Signed URL error:', error);
+            throw new AppError('Failed to generate preview URL', 500, 'SIGNED_URL_FAILED');
+        }
+
+        res.json({ url: data.signedUrl });
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;
