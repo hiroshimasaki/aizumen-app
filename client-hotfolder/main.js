@@ -350,7 +350,8 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
             const fileName = path.basename(filePath);
             // すでにリストにないかチェック
             if (!pendingFiles.some(f => f.path === filePath)) {
-                pendingFiles.push({ name: fileName, path: filePath, status: 'detected' });
+                const newFile = { name: fileName, path: filePath, status: 'detected' };
+                pendingFiles.push(newFile);
 
                 // ログイン中 かつ 初期スキャン完了後のみ通知を出す
                 if (isLoggedIn && isReady) {
