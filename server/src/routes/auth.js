@@ -577,7 +577,8 @@ router.get('/me', authMiddleware, async (req, res, next) => {
             subscription: {
                 ...subscription,
                 storageUsage,
-                maxStorageGB
+                maxStorageGB,
+                maxUsers: PLAN_CONFIG[tenant?.plan]?.maxUsers || 1
             },
         });
     } catch (err) {

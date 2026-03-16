@@ -14,7 +14,6 @@ export default function UserManagement() {
     const [inviteName, setInviteName] = useState('');
     const [inviteRole, setInviteRole] = useState('user');
     const [inviting, setInviting] = useState(false);
-    const [maxUsers, setMaxUsers] = useState(1);
     const [createdCredentials, setCreatedCredentials] = useState(null); // { employeeId, name, tempPassword }
     const [showPassword, setShowPassword] = useState(false);
 
@@ -36,11 +35,11 @@ export default function UserManagement() {
 
     useEffect(() => {
         fetchUsers();
-        fetchLicenseInfo();
     }, []);
 
     const fetchUsers = async () => {
         try {
+            setLoading(true);
             const { data } = await api.get('/api/users');
             setUsers(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -50,26 +49,7 @@ export default function UserManagement() {
         }
     };
 
-    const fetchLicenseInfo = async () => {
-        try {
-            const { data } = await api.get('/api/subscription');
-            console.log('[UserManagement DEBUG] subscription data:', data);
-            if (data?.subscription?.max_users) {
-                console.log('[UserManagement DEBUG] using max_users from sub:', data.subscription.max_users);
-                setMaxUsers(data.subscription.max_users);
-            } else {
-                // Determine max users from tenant plan if subscription data is missing
-                const { data: tenant } = await api.get('/api/settings/company');
-                console.log('[UserManagement DEBUG] using fallback from tenant plan:', tenant?.plan);
-                if (tenant?.plan === 'plus') setMaxUsers(10);
-                else if (tenant?.plan === 'pro') setMaxUsers(20);
-                else if (tenant?.plan === 'lite') setMaxUsers(2);
-                else setMaxUsers(1);
-            }
-        } catch (err) {
-            console.error('Failed to fetch license info:', err);
-        }
-    };
+    const maxUsers = subscription?.maxUsers || (tenant?.plan === 'plus' ? 10 : tenant?.plan === 'pro' ? 50 : tenant?.plan === 'lite' ? 2 : 1);
 
     const handleInvite = async (e) => {
         e.preventDefault();
