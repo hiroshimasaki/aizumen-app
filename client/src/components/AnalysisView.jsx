@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 import AIMonthlyReport from './AIMonthlyReport';
 
 const AnalysisLockOverlay = ({ title = "Proプラン限定機能" }) => (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-[2px] rounded-2xl border border-white/5 animate-in fade-in duration-500">
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/85 backdrop-blur-[4px] rounded-2xl border border-white/5 animate-in fade-in duration-500">
         <div className="p-3 bg-slate-950/80 border border-slate-700 rounded-full mb-3 shadow-xl">
             <Lock size={20} className="text-amber-400" />
         </div>
@@ -196,11 +196,10 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
         });
 
         const history = stats?.history || [];
-        const currentStats = period === 'current' ? stats?.currentMonth : stats?.allTime;
         const pieData = [
-            { name: '納品/受注', value: (currentStats?.delivered || 0) + (currentStats?.ordered || 0), color: '#10b981' },
-            { name: '検討中', value: currentStats?.pending || 0, color: '#f59e0b' },
-            { name: '失注', value: currentStats?.lost || 0, color: '#64748b' },
+            { name: '納品/受注', value: filteredQuotations.filter(q => validStatuses.includes(q.status)).length, color: '#10b981' },
+            { name: '検討中', value: filteredQuotations.filter(q => q.status === 'pending').length, color: '#f59e0b' },
+            { name: '失注', value: filteredQuotations.filter(q => q.status === 'lost').length, color: '#64748b' },
         ];
 
         return { 
@@ -219,25 +218,16 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
         };
     }, [quotations, period, hourlyRate]);
 
-    const { maxRevenue, ticks } = useMemo(() => {
-        const rawMax = Math.max(...analysisData.trendData.map(d => d.amount), 0);
-        if (rawMax === 0) return { maxRevenue: 100000, ticks: [0, 50000, 100000] };
+    const { maxRevenue, maxCount } = useMemo(() => {
+        const data = analysisData.trendData;
+        const rawMaxRev = Math.max(...data.map(d => d.total || 0), 0);
+        const rawMaxCount = Math.max(...data.map(d => d.count || 0), 0);
 
-        const power = Math.floor(Math.log10(rawMax));
-        const magnitude = Math.pow(10, power);
-        const factor = rawMax / magnitude;
-        let niceFactor;
-        if (factor <= 1) niceFactor = 1;
-        else if (factor <= 2) niceFactor = 2;
-        else if (factor <= 5) niceFactor = 5;
-        else niceFactor = 10;
+        // バッファ（10%）を持たせて、データが0でも最小限のレンジを確保
+        const finalMaxRev = rawMaxRev === 0 ? 100000 : rawMaxRev * 1.1;
+        const finalMaxCount = rawMaxCount === 0 ? 10 : rawMaxCount * 1.1;
 
-        const niceMax = niceFactor * magnitude;
-        const tickCount = niceFactor === 1 ? 5 : niceFactor === 2 ? 4 : 5;
-        const interval = niceMax / tickCount;
-        const t = [];
-        for (let i = 0; i <= tickCount; i++) t.push(interval * i);
-        return { maxRevenue: niceMax, ticks: t.reverse() };
+        return { maxRevenue: finalMaxRev, maxCount: finalMaxCount };
     }, [analysisData.trendData]);
 
 
@@ -276,7 +266,7 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
                     </div>
                     <div className="flex-1 min-h-0 relative">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={analysisData.history}>
+                            <AreaChart data={analysisData.trendData}>
                                 <defs>
                                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
@@ -296,14 +286,39 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
                                     axisLine={false}
                                     tickFormatter={(val) => val.split('-').slice(1).join('/')}
                                 />
-                                <YAxis hide />
+                                <YAxis 
+                                    yAxisId="left"
+                                    orientation="left"
+                                    stroke="#64748b"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    domain={[0, maxRevenue]}
+                                    tickFormatter={(val) => val >= 10000 ? `¥${(val / 10000).toFixed(0)}万` : `¥${Math.round(val).toLocaleString()}`}
+                                />
+                                <YAxis 
+                                    yAxisId="right"
+                                    orientation="right"
+                                    stroke="#3b82f6"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    domain={[0, maxCount]}
+                                    allowDecimals={false}
+                                    hide={false}
+                                />
                                 <RechartsTooltip
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
                                     itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
                                     labelStyle={{ fontSize: '12px', fontWeight: 'black', marginBottom: '4px', color: '#fff' }}
+                                    formatter={(value, name) => {
+                                        if (name === "sales") return [`¥${value.toLocaleString()}`, "売上高"];
+                                        if (name === "count") return [`${value.toLocaleString()} 件`, "案件数"];
+                                        return [value, name];
+                                    }}
                                 />
-                                <Area type="monotone" dataKey="sales" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-                                <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                                <Area yAxisId="left" type="monotone" dataKey="sales" name="sales" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+                                <Area yAxisId="right" type="monotone" dataKey="count" name="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>

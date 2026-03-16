@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sparkles, Lock, ChevronRight, AlertCircle, LayoutDashboard, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
@@ -82,9 +83,12 @@ export default function AIMonthlyReport({ defaultMonth, isPro: isProProp = true 
                     <p className="text-slate-400 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
                         Proプラン限定の機能です。AIが毎月の実績を分析し、経営改善のヒントや現場へのアドバイスを自動生成します。
                     </p>
-                    <button className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all hover:scale-105 active:scale-95 border border-amber-400/30">
+                    <Link 
+                        to="/admin?tab=billing" 
+                        className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95 border border-white/10"
+                    >
                         Proプランの詳細を見る
-                    </button>
+                    </Link>
                 </div>
             </div>
         );

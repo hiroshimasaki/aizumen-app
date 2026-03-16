@@ -163,6 +163,7 @@ export default function AnalysisPage() {
                 <AnalysisView 
                     quotations={allQuotations} 
                     stats={stats}
+                    period={filterPeriod}
                     isPro={isPro}
                 />
             )}
