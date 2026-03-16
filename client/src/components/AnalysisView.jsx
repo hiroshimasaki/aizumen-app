@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { BarChart3, TrendingUp, Users, PieChart, ArrowUpRight, ArrowDownRight, Award, X, User, Mail, StickyNote, FileText, Calendar, Link as LinkIcon, DownloadCloud, Lock } from 'lucide-react';
+import { TrendingUp, Users, PieChart, ArrowUpRight, ArrowDownRight, Award, X, User, Mail, StickyNote, FileText, Calendar, DownloadCloud, Lock, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 import AIMonthlyReport from './AIMonthlyReport';
@@ -25,7 +26,7 @@ const AnalysisLockOverlay = ({ title = "Proプラン限定機能" }) => (
     </div>
 );
 
-export default function AnalysisView({ quotations, period = 'all', hourlyRate = 8000, isPro = false }) {
+export default function AnalysisView({ quotations, stats, period = 'all', hourlyRate = 8000, isPro = false }) {
     const [selectedId, setSelectedId] = useState(null);
 
     // Helper function for percentage calculation
@@ -194,10 +195,20 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
             });
         });
 
+        const history = stats?.history || [];
+        const currentStats = period === 'current' ? stats?.currentMonth : stats?.allTime;
+        const pieData = [
+            { name: '納品/受注', value: (currentStats?.delivered || 0) + (currentStats?.ordered || 0), color: '#10b981' },
+            { name: '検討中', value: currentStats?.pending || 0, color: '#f59e0b' },
+            { name: '失注', value: currentStats?.lost || 0, color: '#64748b' },
+        ];
+
         return { 
             trendData, 
             profitability, 
             topCompanies, 
+            history,
+            pieData,
             procPerformance: { 
                 totalPlan, 
                 totalActual, 
@@ -238,66 +249,121 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* AI Analysis Section */}
+            {/* 1. AI Analysis Section */}
             <AIMonthlyReport defaultMonth={reportMonth} isPro={isPro} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                {/* Monthly Revenue Trend */}
-                <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
-                    <div className="flex items-center gap-2 mb-6">
-                        <div className="p-2 bg-blue-900/30 text-blue-400 rounded-lg">
-                            <TrendingUp size={20} />
-                        </div>
-                        <h3 className="font-bold text-slate-200">月別売上推移 (直近6ヶ月)</h3>
-                    </div>
-                    <div className="h-48 flex items-end gap-3 px-2 relative">
-                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pr-8">
-                            {ticks.map((tick, i) => (
-                                <div key={i} className="w-full flex items-center gap-2">
-                                    <div className="flex-1 border-t border-slate-700 border-dashed" />
-                                    <span className="text-[9px] font-bold text-slate-600 min-w-[32px] text-right">
-                                        {tick >= 10000 ? `${(tick / 10000).toFixed(0)}万` : tick.toLocaleString()}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                        {analysisData.trendData.map((d) => (
-                            <div key={d.month} className="flex-1 flex flex-col items-center gap-2 group z-10 relative">
-                                <div className="w-full relative flex flex-col justify-end h-40">
-                                    <div className="w-full flex flex-col justify-end h-full">
-                                        <div className="w-full bg-amber-500 group-hover:bg-amber-400 transition-all cursor-help" style={{ height: `${(d.other / maxRevenue) * 100}%` }} />
-                                        <div className="w-full bg-emerald-500 group-hover:bg-emerald-400 transition-all cursor-help" style={{ height: `${(d.mat / maxRevenue) * 100}%` }} />
-                                        <div className="w-full bg-blue-500 group-hover:bg-blue-400 rounded-t-sm transition-all cursor-help" style={{ height: `${(d.proc / maxRevenue) * 100}%` }} />
-                                    </div>
-                                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-slate-950 text-white text-[10px] py-2 px-3 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none border border-slate-700">
-                                        <div className="font-bold border-b border-slate-700 mb-1 pb-1">{d.month}</div>
-                                        <div className="flex justify-between gap-4"><span>加工:</span> <span>¥{d.proc.toLocaleString()}</span></div>
-                                        <div className="flex justify-between gap-4 text-emerald-400"><span>材料:</span> <span>¥{d.mat.toLocaleString()}</span></div>
-                                        <div className="flex justify-between gap-4 text-slate-400"><span>合計:</span> <span className="font-bold">¥{d.amount.toLocaleString()}</span></div>
-                                    </div>
-                                </div>
-                                <span className="text-[10px] text-slate-500 font-medium mt-1">{d.month.split('/')[1]}月</span>
+            {/* 2. Trends and Distribution Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Revenue Trend - 2/3 width */}
+                <div className="lg:col-span-2 bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md flex flex-col h-[380px]">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-blue-900/30 text-blue-400 rounded-lg">
+                                <TrendingUp size={20} />
                             </div>
-                        ))}
+                            <h3 className="font-bold text-slate-200">売上推移 / 案件数</h3>
+                        </div>
+                        <div className="flex gap-4 text-xs font-bold text-slate-500">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                <span>案件数</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                <span>売上高</span>
+                            </div>
+                        </div>
                     </div>
-                    {/* Legend */}
-                    <div className="flex justify-center gap-6 mt-4 text-[10px] font-bold text-slate-500">
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />加工費</span>
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />材料費</span>
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />その他</span>
+                    <div className="flex-1 min-h-0 relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={analysisData.history}>
+                                <defs>
+                                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="#64748b"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(val) => val.split('-').slice(1).join('/')}
+                                />
+                                <YAxis hide />
+                                <RechartsTooltip
+                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
+                                    itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                                    labelStyle={{ fontSize: '12px', fontWeight: 'black', marginBottom: '4px', color: '#fff' }}
+                                />
+                                <Area type="monotone" dataKey="sales" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+                                <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
 
-                <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md relative overflow-hidden group">
+                {/* Status Distribution - 1/3 width */}
+                <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md flex flex-col h-[380px]">
+                    <div className="flex items-center gap-2 mb-6">
+                        <div className="p-2 bg-amber-900/30 text-amber-400 rounded-lg">
+                            <PieChart size={20} />
+                        </div>
+                        <h3 className="font-bold text-slate-200">案件ステータス分布</h3>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+                        <div className="w-full h-[200px] relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RechartsPieChart>
+                                    <Pie
+                                        data={analysisData.pieData}
+                                        innerRadius={60}
+                                        outerRadius={85}
+                                        paddingAngle={8}
+                                        dataKey="value"
+                                        stroke="none"
+                                    >
+                                        {analysisData.pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <RechartsTooltip
+                                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
+                                        itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                                    />
+                                </RechartsPieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 w-full mt-6 border-t border-slate-700/50 pt-6 text-center">
+                            {analysisData.pieData.map((d, i) => (
+                                <div key={i}>
+                                    <div className="text-base font-black text-white">{d.value}</div>
+                                    <div className="text-[8px] text-slate-500 uppercase font-bold tracking-wider">{d.name}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. Detailed Analysis Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Processing Cost Performance */}
+                <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md relative overflow-hidden group min-h-[340px] flex flex-col">
                     {!isPro && <AnalysisLockOverlay title="予実管理分析" />}
                     <div className="flex items-center gap-2 mb-6">
                         <div className="p-2 bg-purple-900/30 text-purple-400 rounded-lg">
-                            <PieChart size={20} />
+                            <BarChart3 size={20} />
                         </div>
                         <h3 className="font-bold text-slate-200">加工費 予実管理分析</h3>
                     </div>
-                    <div className="flex flex-col h-48 justify-center gap-4">
+                    <div className="flex-1 flex flex-col justify-center gap-6">
                         {analysisData.procPerformance.itemsWithActuals > 0 ? (() => {
                             const p = analysisData.procPerformance;
                             const pWidth = p.totalActual > p.totalPlan ? (p.totalPlan / p.totalActual * 100) : 100;
@@ -320,7 +386,7 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                             <span>実績加工費 (合計)</span>
                                             <span>¥{p.totalActual.toLocaleString()}</span>
                                         </div>
-                                        <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden">
+                                        <div className="w-full h-4 bg-slate-900 rounded-full border border-slate-700 overflow-hidden text-right">
                                             <div 
                                                 className={`${p.diff >= 0 ? 'bg-emerald-500' : 'bg-red-500'} h-full transition-all`} 
                                                 style={{ width: `${aWidth}%` }} 
@@ -328,10 +394,10 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
+                                    <div className="flex items-center justify-between mt-2 pt-4 border-t border-slate-700/50">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-bold text-slate-500">改善効率 (工賃利益率)</span>
-                                            <span className={`text-xl font-black ${p.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            <span className={`text-2xl font-black ${p.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                                 {p.diff >= 0 ? '+' : ''}{p.efficiency}%
                                             </span>
                                         </div>
@@ -351,30 +417,28 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                         )}
                     </div>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Top Companies */}
-                <div className="lg:col-span-1 bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
+                <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md flex flex-col min-h-[340px]">
                     <div className="flex items-center gap-2 mb-6">
-                        <div className="p-2 bg-amber-900/30 text-amber-400 rounded-lg">
+                        <div className="p-2 bg-blue-900/30 text-blue-400 rounded-lg">
                             <Users size={20} />
                         </div>
                         <h3 className="font-bold text-slate-200">主要取引先分析</h3>
                     </div>
-                    <div className="space-y-3">
+                    <div className="flex-1 space-y-3">
                         {analysisData.topCompanies.length > 0 ? analysisData.topCompanies.map((c, i) => (
                             <div key={c.name} className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-600 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-500 border border-slate-700">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="w-6 h-6 shrink-0 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-500 border border-slate-700">
                                         {i + 1}
                                     </div>
-                                    <div>
-                                        <div className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{c.name}</div>
-                                        <div className="text-[10px] text-slate-500">受注率: {c.winRate}% ({c.ordered}/{c.total}件)</div>
+                                    <div className="overflow-hidden">
+                                        <div className="text-xs font-bold text-slate-200 truncate">{c.name}</div>
+                                        <div className="text-[10px] text-slate-500">受注率: {c.winRate}% ({c.ordered}/{stats?.companyStats?.[c.name]?.total || c.total}件)</div>
                                     </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right shrink-0">
                                     <div className="text-xs font-black text-slate-100">¥{(c.amount / 10000).toFixed(1)}万</div>
                                     <div className="text-[10px] text-slate-500 font-medium">{c.ordered}件受注</div>
                                 </div>
@@ -384,58 +448,58 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                         )}
                     </div>
                 </div>
+            </div>
 
-                {/* Profitability Ranking */}
-                <div className="lg:col-span-2 bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md relative overflow-hidden">
-                    {!isPro && <AnalysisLockOverlay title="収益性・ランキング詳細" />}
-                    <div className="flex items-center gap-2 mb-6">
-                        <div className="p-2 bg-emerald-900/30 text-emerald-400 rounded-lg">
-                            <Award size={20} />
-                        </div>
-                        <h3 className="font-bold text-slate-200">収益性ランキング (利益率順)</h3>
+            {/* 4. Profitability Ranking */}
+            <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md relative overflow-hidden">
+                {!isPro && <AnalysisLockOverlay title="収益性・ランキング詳細" />}
+                <div className="flex items-center gap-2 mb-6">
+                    <div className="p-2 bg-emerald-900/30 text-emerald-400 rounded-lg">
+                        <Award size={20} />
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-slate-500 border-b border-slate-700">
-                                    <th className="text-left font-bold py-3 pl-2 text-[10px] uppercase tracking-wider">案件 / 顧客</th>
-                                    <th className="text-right font-bold py-3 text-[10px] uppercase tracking-wider">加工費額</th>
-                                    <th className="text-right font-bold py-3 text-[10px] uppercase tracking-wider">実績加工費</th>
-                                    <th className="text-right font-bold py-3 pr-2 text-[10px] uppercase tracking-wider">利益率(工賃)</th>
+                    <h3 className="font-bold text-slate-200">収益性ランキング (利益率順)</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-slate-500 border-b border-slate-700">
+                                <th className="text-left font-bold py-3 pl-2 text-[10px] uppercase tracking-wider">案件 / 顧客</th>
+                                <th className="text-right font-bold py-3 text-[10px] uppercase tracking-wider">加工費額</th>
+                                <th className="text-right font-bold py-3 text-[10px] uppercase tracking-wider">実績加工費</th>
+                                <th className="text-right font-bold py-3 pr-2 text-[10px] uppercase tracking-wider">利益率(工賃)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/50">
+                            {analysisData.profitability.slice(0, 10).map((p) => (
+                                <tr
+                                    key={p.id}
+                                    className={cn(
+                                        "transition-colors group",
+                                        isPro ? "hover:bg-slate-700/50 cursor-pointer" : "cursor-default opacity-50 grayscale"
+                                    )}
+                                    onClick={() => isPro && setSelectedId(p.id)}
+                                >
+                                    <td className="py-3 pl-2">
+                                        <div className="font-bold text-slate-200 truncate max-w-[200px] group-hover:text-blue-400 transition-colors">{p.subject || '無題'}</div>
+                                        <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{p.company}</div>
+                                    </td>
+                                    <td className="text-right py-3 font-medium text-slate-400 italic">¥{p.estProcTotal.toLocaleString()}</td>
+                                    <td className="text-right py-3 font-medium text-slate-400">¥{p.actProcTotal.toLocaleString()}</td>
+                                    <td className="text-right py-3 pr-2">
+                                        <div className={`inline-flex items-center gap-0.5 font-black ${p.marginPct >= 30 ? 'text-emerald-400' : p.marginPct >= 10 ? 'text-blue-400' : p.marginPct >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                                            {p.marginPct > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                                            {p.marginPct.toFixed(1)}%
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/50">
-                                {analysisData.profitability.slice(0, 10).map((p) => (
-                                    <tr
-                                        key={p.id}
-                                        className={cn(
-                                            "transition-colors group",
-                                            isPro ? "hover:bg-slate-700/50 cursor-pointer" : "cursor-default opacity-50 grayscale"
-                                        )}
-                                        onClick={() => isPro && setSelectedId(p.id)}
-                                    >
-                                        <td className="py-3 pl-2">
-                                            <div className="font-bold text-slate-200 truncate max-w-[200px] group-hover:text-blue-400 transition-colors">{p.subject || '無題'}</div>
-                                            <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{p.company}</div>
-                                        </td>
-                                        <td className="text-right py-3 font-medium text-slate-400 italic">¥{p.estProcTotal.toLocaleString()}</td>
-                                        <td className="text-right py-3 font-medium text-slate-400">¥{p.actProcTotal.toLocaleString()}</td>
-                                        <td className="text-right py-3 pr-2">
-                                            <div className={`inline-flex items-center gap-0.5 font-black ${p.marginPct >= 30 ? 'text-emerald-400' : p.marginPct >= 10 ? 'text-blue-400' : p.marginPct >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                                                {p.marginPct > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                                                {p.marginPct.toFixed(1)}%
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {analysisData.profitability.length === 0 && (
-                            <div className="text-center py-10 text-slate-500 italic">
-                                実績データが入力された受注案件がまだありません
-                            </div>
-                        )}
-                    </div>
+                            ))}
+                        </tbody>
+                    </table>
+                    {analysisData.profitability.length === 0 && (
+                        <div className="text-center py-10 text-slate-500 italic">
+                            実績データが入力された受注案件がまだありません
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -470,61 +534,14 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                             </div>
                                             <div className="flex items-center gap-2 text-slate-300">
                                                 <Mail size={16} className="text-slate-500 shrink-0" />
-                                                {q.emailLink ? (
-                                                    <a href={q.emailLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline truncate">メールを確認する</a>
-                                                ) : <span className="text-slate-500">-</span>}
+                                                <span className="text-slate-500">-</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-slate-500 pt-1">
                                                 <Calendar size={14} className="shrink-0" />
                                                 <span className="text-xs font-medium">登録日: {new Date(q.createdAt).toLocaleDateString()}</span>
                                             </div>
                                         </div>
-                                        {q.notes && (
-                                            <div className="p-3 bg-amber-900/10 rounded-lg border border-amber-900/20 text-slate-400 text-xs">
-                                                <div className="flex items-center gap-1.5 mb-1.5 text-amber-400 font-black">
-                                                    <StickyNote size={14} /><span>備考メモ</span>
-                                                </div>
-                                                <p className="whitespace-pre-wrap leading-relaxed">{q.notes}</p>
-                                            </div>
-                                        )}
                                     </div>
-
-                                    {/* Files */}
-                                    {q.files?.length > 0 && (
-                                        <div className="space-y-3">
-                                            <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center gap-2">
-                                                <FileText size={12} /> 関連ファイル
-                                            </h5>
-                                            <div className="flex flex-wrap gap-2">
-                                                {q.files.map((f) => (
-                                                    <button
-                                                        key={f.id}
-                                                        onClick={async (e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            try {
-                                                                const { data } = await api.get(`/api/files/${f.id}`);
-                                                                if (data?.url) window.open(data.url, '_blank');
-                                                            } catch (err) {
-                                                                console.error('File download failed:', err);
-                                                            }
-                                                        }}
-                                                        className="group flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 hover:border-blue-500 hover:shadow-md transition-all"
-                                                    >
-                                                        <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center text-slate-500 group-hover:bg-blue-900/30 group-hover:text-blue-400 transition-colors">
-                                                            <FileText size={16} />
-                                                        </div>
-                                                        <div className="flex flex-col text-left">
-                                                            <span className="font-bold truncate max-w-[140px]">{f.originalName || f.original_name}</span>
-                                                            <span className="text-[8px] text-slate-500 flex items-center gap-0.5 uppercase tracking-tighter">
-                                                                <DownloadCloud size={8} /> Download
-                                                            </span>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* Items List */}
                                     <div className="space-y-4">
@@ -544,11 +561,6 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                                             <span className="text-[10px] font-black text-slate-600 uppercase">数量</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-sm font-black text-slate-400">{qty.toLocaleString()}</span>
-                                                                {item.dimensions && (
-                                                                    <span className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600">
-                                                                        {item.dimensions}
-                                                                    </span>
-                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -570,35 +582,14 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                                             <div className="text-xs font-black text-emerald-200">{item.actualMaterialCost ? `¥${(Number(item.actualMaterialCost) * qty).toLocaleString()}` : '未'}</div>
                                                         </div>
                                                     </div>
-
-                                                    {item.actualProcessingCost > 0 && (
-                                                        <div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
-                                                            <span className="text-xs font-black text-slate-500 flex items-center gap-1.5">
-                                                                <Award size={14} className={((Number(item.processingCost) - Number(item.actualProcessingCost)) >= 0) ? 'text-emerald-500' : 'text-red-400'} />
-                                                                加工利益 (ロット合計)
-                                                            </span>
-                                                            <div className="text-right">
-                                                                <span className={`text-lg font-black ${(Number(item.processingCost) - Number(item.actualProcessingCost)) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                                    {(Number(item.processingCost) - Number(item.actualProcessingCost)) >= 0 ? '+' : ''}
-                                                                    {((Number(item.processingCost) - Number(item.actualProcessingCost)) * qty).toLocaleString()} <span className="text-xs ml-0.5">円</span>
-                                                                </span>
-                                                                <div className="text-[9px] font-bold text-slate-500">材料費除く純利益</div>
-                                                            </div>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Modal Footer */}
                             <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-end">
-                                <button
-                                    onClick={() => setSelectedId(null)}
-                                    className="px-8 py-2.5 bg-slate-700 text-white rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all hover:bg-slate-600"
-                                >
+                                <button onClick={() => setSelectedId(null)} className="px-8 py-2.5 bg-slate-700 text-white rounded-xl font-black text-sm transition-all hover:bg-slate-600">
                                     閉じる
                                 </button>
                             </div>

@@ -151,8 +151,8 @@ export default function AnalysisPage() {
                 </div>
             </div>
 
-            {/* Basic Dashboard Metrics - Visible to all admins */}
-            <DashboardMetrics stats={stats} filterMonth={filterPeriod} showCharts={!isPro} />
+            {/* Stats Summary Cards */}
+            <DashboardMetrics stats={stats} filterMonth={filterPeriod} />
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -162,8 +162,7 @@ export default function AnalysisPage() {
             ) : (
                 <AnalysisView 
                     quotations={allQuotations} 
-                    period={filterPeriod} 
-                    hourlyRate={tenant?.hourly_rate || 8000} 
+                    stats={stats}
                     isPro={isPro}
                 />
             )}
