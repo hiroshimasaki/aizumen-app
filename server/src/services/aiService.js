@@ -30,11 +30,15 @@ class AIService {
             const tenantExcludeInstruction = tenantSettings?.name ? `（${tenantSettings.name}を除く）` : '';
 
             const mappingData = {
-                itemNameLabel: map.itemName || '品名, 図番, 品番',
-                deadlineLabel: map.deadline || '納期, 希望納期, 納品日',
-                dimensionsLabel: map.dimensions || '寸法, サイズ, 規格, Dimensions',
-                orderNumberLabel: map.orderNumber || '注文番号, 発注番号, 注文NO',
-                constructionNumberLabel: map.constructionNumber || '工事番号, 工番, K-No',
+                itemNameLabel: map.itemNameLabel || '品名, 図番, 品番',
+                deadlineLabel: map.deadlineLabel || '納期, 希望納期, 納品日',
+                dimensionsLabel: map.dimensionsLabel || '寸法, サイズ, 規格, Dimensions',
+                orderNumberLabel: map.orderNumberLabel || '注文番号, 発注番号, 注文NO',
+                constructionNumberLabel: map.constructionNumberLabel || '工事番号, 工番, K-No',
+                processingCostLabel: map.processingCostLabel || '加工費',
+                materialCostLabel: map.materialCostLabel || '材料費',
+                otherCostLabel: map.otherCostLabel || 'その他費用',
+                quantityLabel: map.quantityLabel || '数量',
             };
 
             // 学習したヒントを抽出
@@ -54,23 +58,23 @@ class AIService {
 - **label**: 日本語のラベル（「注文書」、「図面」など）。
 
 ### 抽出ルール (項目抽出):
-1. **会社名 (companyName)**: 発注元（顧客）の会社名。${tenantExcludeInstruction}
+1. **会社名 (companyName)**: 発注元（顧客）の会社名。自社名${tenantExcludeInstruction}は除外し、発注者（お客様）の社名のみを抽出してください。
 2. **注文番号 (orderNumber)**: 「${mappingData.orderNumberLabel}」に該当する項目。
 3. **工事番号 (constructionNumber)**: 「${mappingData.constructionNumberLabel}」に該当する項目。
 4. **特記事項 (notes)**: 書類に記載されている注意事項、納期・支払条件など。
 5. **システム備考 (systemNotes)**: 検算の結果判明した疑義、AIによる補足説明、注意喚起など（書類に直接記載されていない内容）。
-6. **図番 (drawingNumber)**: 図面に記載されている図面番号。
+6. **図番 (drawingNumber)**: 図面に記載されている図面番号。「${mappingData.itemNameLabel}」に該当する項目も参考にしてください。
 6. **明細 (items)**: 以下の項目をリストで抽出してください：
-    - **name**: 品名や品番。
+    - **name**: 品名や品番。「${mappingData.itemNameLabel}」に該当する項目から抽出してください。
     - **material**: 材質（例: SS400, SUS304, AL, 樹脂等）。
     - **processingMethod**: 主要な加工方法（例: 旋盤, フライス, レーザー, ベンダー等）。
     - **surface_treatment**: 表面処理（例: メッキ, 焼入, 塗装, 黒染等）。
-    - **quantity**: 数量（数値のみ）。
+    - **quantity**: 数量（数値のみ）。「${mappingData.quantityLabel}」に該当する項目から抽出してください。
     - **unit**: 単位。
-    - **processingCost**: 加工費。必ず「1個あたりの単価」を抽出してください。
-    - **materialCost**: 材料費。必ず「1個あたりの単価」を抽出してください。
-    - **otherCost**: その他費用。必ず「1個あたりの単価」を抽出してください。
-    - **dueDate**: 納期。形式は **YYYY-MM-DD**。
+    - **processingCost**: 加工費。「${mappingData.processingCostLabel}」に該当する項目から、必ず「1個あたりの単価」を抽出してください。
+    - **materialCost**: 材料費。「${mappingData.materialCostLabel}」に該当する項目から、必ず「1個あたりの単価」を抽出してください。
+    - **otherCost**: その他費用。「${mappingData.otherCostLabel}」に該当する項目から、必ず「1個あたりの単価」を抽出してください。
+    - **dueDate**: 納期。形式は **YYYY-MM-DD**。「${mappingData.deadlineLabel}」に該当する項目から抽出してください。
     - **dimensions**: 寸法（例：100x200, Φ50など）。「${mappingData.dimensionsLabel}」に該当する項目から抽出してください。
     - **requiresVerification**: 検算フラグ（boolean）。後述のルールに基づき設定。
 
