@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const sharp = require('sharp');
 const logService = require('./logService');
 
 class AIService {
@@ -120,11 +121,34 @@ class AIService {
 日本語で回答してください。JSON以外の説明テキストは一切含めないでください。日付は可能な限り現在の年（2026年）を補完して回答してください。
 `;
 
-            const images = buffers.map((buffer, i) => ({
-                inlineData: {
-                    data: buffer.toString('base64'),
-                    mimeType: types[i] || 'application/pdf'
+            const images = await Promise.all(buffers.map(async (buffer, i) => {
+                const mimeType = types[i] || 'application/pdf';
+                let processedBuffer = buffer;
+
+                // 画像ファイルの場合、長辺を2000pxにリサイズしてトークン節約と速度向上を図る
+                if (mimeType.startsWith('image/')) {
+                    try {
+                        const image = sharp(buffer);
+                        const metadata = await image.metadata();
+                        
+                        // 長辺が2000pxを超えている場合のみリサイズ
+                        if (metadata.width > 2000 || metadata.height > 2000) {
+                            processedBuffer = await image
+                                .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+                                .toBuffer();
+                            logService.debug(`AI Image Optimized: ${metadata.width}x${metadata.height} -> Resized to 2000px max`);
+                        }
+                    } catch (sharpError) {
+                        logService.warn(`AI Image Optimization failed, sending original`, { error: sharpError.message });
+                    }
                 }
+
+                return {
+                    inlineData: {
+                        data: processedBuffer.toString('base64'),
+                        mimeType: mimeType
+                    }
+                };
             }));
 
             const result = await this.model.generateContent([prompt, ...images]);

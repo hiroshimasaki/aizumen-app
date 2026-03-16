@@ -44,55 +44,25 @@ const getCreditBalance = async (tenantId) => {
  * AIクレジットを消費する
  */
 const consumeCredits = async (tenantId, userId, amount, description = 'OCR Analysis') => {
-    const current = await getCreditBalance(tenantId);
-    if (current.balance < amount) {
-        throw new AppError(`クレジットが不足しています。必要: ${amount}, 残高: ${current.balance}`, 402, 'INSUFFICIENT_CREDITS');
+    // RPC (ストアドプロシージャ) を呼び出してアトミックに消費
+    // 内部で残高チェック、ロック、更新、履歴挿入が完結します
+    const { data, error } = await supabaseAdmin.rpc('consume_ai_credits_atomic', {
+        p_tenant_id: tenantId,
+        p_amount: amount,
+        p_user_id: userId,
+        p_description: description
+    });
+
+    if (error) {
+        // 残高不足などの例外を適切に処理
+        if (error.message.includes('不足')) {
+            throw new AppError(error.message, 402, 'INSUFFICIENT_CREDITS');
+        }
+        console.error('[CreditService] RPC Error:', error);
+        throw new AppError(error.message || 'クレジット消費に失敗しました', 500);
     }
 
-    // 追加購入分(purchased_balance) と 通常枠の 계산
-    let currentPurchased = current.purchased_balance || 0;
-    let currentRegular = current.balance - currentPurchased;
-    if (currentRegular < 0) currentRegular = 0; // 念のため
-
-    let newPurchased = currentPurchased;
-    let newRegular = currentRegular;
-
-    // まず通常枠から減算
-    if (newRegular >= amount) {
-        newRegular -= amount;
-    } else {
-        // 通常枠が足りない場合は、足りない分を追加購入枠から減算
-        const remainder = amount - newRegular;
-        newRegular = 0;
-        newPurchased -= remainder;
-    }
-
-    const newBalance = newRegular + newPurchased;
-
-    const { data: updated, error: updateError } = await supabaseAdmin
-        .from('ai_credits')
-        .update({
-            balance: newBalance,
-            purchased_balance: newPurchased,
-            updated_at: new Date().toISOString()
-        })
-        .eq('tenant_id', tenantId)
-        .select()
-        .single();
-
-    if (updateError) throw new AppError('Failed to update credit balance', 500);
-
-    const { error: txError } = await supabaseAdmin
-        .from('ai_credit_transactions')
-        .insert({
-            tenant_id: tenantId,
-            user_id: userId,
-            amount: -amount,
-            type: 'usage',
-            description,
-        });
-
-    return updated;
+    return data;
 };
 
 /**
