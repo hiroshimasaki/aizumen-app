@@ -36,6 +36,10 @@ const maintenanceMiddleware = require('./middleware/maintenance');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const path = require('path');
+
+// --- Static Files ---
+app.use('/apps', express.static(path.join(__dirname, '../public/apps')));
 
 // --- Proxy Trust (Railway/Load Balancers) ---
 app.set('trust proxy', 1);
