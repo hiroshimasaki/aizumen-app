@@ -1181,7 +1181,7 @@ router.post('/signed-url', authMiddleware, async (req, res, next) => {
             throw new AppError('Failed to generate preview URL', 500, 'SIGNED_URL_FAILED');
         }
 
-        res.json({ url: data.signedUrl });
+        res.json({ signedUrl: data.signedUrl });
     } catch (err) {
         next(err);
     }
