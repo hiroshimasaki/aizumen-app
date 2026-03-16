@@ -4,12 +4,12 @@ import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 
-export default function AIMonthlyReport({ defaultMonth }) {
+export default function AIMonthlyReport({ defaultMonth, isPro: isProProp = true }) {
     const [targetMonth, setTargetMonth] = useState(defaultMonth);
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isPro, setIsPro] = useState(true);
+    const [isPro, setIsPro] = useState(isProProp);
     const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {

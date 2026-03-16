@@ -1,9 +1,31 @@
 import { useState, useMemo, useEffect } from 'react';
-import { BarChart3, TrendingUp, Users, PieChart, ArrowUpRight, ArrowDownRight, Award, X, User, Mail, StickyNote, FileText, Calendar, Link as LinkIcon, DownloadCloud } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, PieChart, ArrowUpRight, ArrowDownRight, Award, X, User, Mail, StickyNote, FileText, Calendar, Link as LinkIcon, DownloadCloud, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../lib/api';
+import { cn } from '../lib/utils';
 import AIMonthlyReport from './AIMonthlyReport';
 
-export default function AnalysisView({ quotations, period = 'all', hourlyRate = 8000 }) {
+const AnalysisLockOverlay = ({ title = "Proプラン限定機能" }) => (
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-[2px] rounded-2xl border border-white/5 animate-in fade-in duration-500">
+        <div className="p-3 bg-slate-950/80 border border-slate-700 rounded-full mb-3 shadow-xl">
+            <Lock size={20} className="text-amber-400" />
+        </div>
+        <div className="text-center px-4">
+            <h4 className="text-sm font-bold text-white mb-1">{title}</h4>
+            <p className="text-[10px] text-slate-300 mb-4 max-w-[180px] mx-auto leading-relaxed">
+                収益の可視化や利益率の順位など、高度な分析を利用するにはProプランへのアップグレードが必要です。
+            </p>
+            <Link 
+                to="/admin?tab=billing" 
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-[10px] font-black rounded-lg shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
+            >
+                プランを確認する
+            </Link>
+        </div>
+    </div>
+);
+
+export default function AnalysisView({ quotations, period = 'all', hourlyRate = 8000, isPro = false }) {
     const [selectedId, setSelectedId] = useState(null);
 
     // Helper function for percentage calculation
@@ -217,7 +239,7 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* AI Analysis Section */}
-            <AIMonthlyReport defaultMonth={reportMonth} />
+            <AIMonthlyReport defaultMonth={reportMonth} isPro={isPro} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -267,7 +289,8 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                     </div>
                 </div>
 
-                <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
+                <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md relative overflow-hidden group">
+                    {!isPro && <AnalysisLockOverlay title="予実管理分析" />}
                     <div className="flex items-center gap-2 mb-6">
                         <div className="p-2 bg-purple-900/30 text-purple-400 rounded-lg">
                             <PieChart size={20} />
@@ -363,7 +386,8 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                 </div>
 
                 {/* Profitability Ranking */}
-                <div className="lg:col-span-2 bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
+                <div className="lg:col-span-2 bg-slate-800/80 p-6 rounded-2xl border border-slate-700 backdrop-blur-md relative overflow-hidden">
+                    {!isPro && <AnalysisLockOverlay title="収益性・ランキング詳細" />}
                     <div className="flex items-center gap-2 mb-6">
                         <div className="p-2 bg-emerald-900/30 text-emerald-400 rounded-lg">
                             <Award size={20} />
@@ -384,8 +408,11 @@ export default function AnalysisView({ quotations, period = 'all', hourlyRate = 
                                 {analysisData.profitability.slice(0, 10).map((p) => (
                                     <tr
                                         key={p.id}
-                                        className="hover:bg-slate-700/50 transition-colors cursor-pointer group"
-                                        onClick={() => setSelectedId(p.id)}
+                                        className={cn(
+                                            "transition-colors group",
+                                            isPro ? "hover:bg-slate-700/50 cursor-pointer" : "cursor-default opacity-50 grayscale"
+                                        )}
+                                        onClick={() => isPro && setSelectedId(p.id)}
                                     >
                                         <td className="py-3 pl-2">
                                             <div className="font-bold text-slate-200 truncate max-w-[200px] group-hover:text-blue-400 transition-colors">{p.subject || '無題'}</div>
