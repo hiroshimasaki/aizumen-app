@@ -130,7 +130,7 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                             "hover:bg-slate-800/30 transition-colors group cursor-pointer",
                                             isExpanded && "bg-slate-800/50"
                                         )}
-                                        onClick={toggleExpand}
+                                        onClick={() => onEdit(quotation)}
                                     >
                                         <td className="px-5 py-4 text-center">
                                             <div className={cn("transition-transform duration-200", isExpanded ? "rotate-180" : "")}>
@@ -182,13 +182,6 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                                     title="実績クイック入力"
                                                 >
                                                     <Activity size={16}/>
-                                                </button>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); onEdit(quotation); }} 
-                                                    className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
-                                                    title="編集"
-                                                >
-                                                    <Edit2 size={16}/>
                                                 </button>
                                             </div>
                                         </td>
@@ -628,9 +621,6 @@ function QuotationCard({
                                         <FileText size={16} className={cn(quotation.items?.some(i => i.material_metadata?.heatTreatment?.shipToVendor) && "text-red-400")} />
                                     </button>
                                 )}
-                                <button onClick={() => onEdit(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title={isAdmin ? "編集" : "詳細表示・実績入力"}>
-                                    {isAdmin ? <Edit2 size={16} /> : <FileText size={16} />}
-                                </button>
                                 {isAdmin && (
                                     <button onClick={() => onCopy(quotation)} className="p-2 text-slate-400 hover:bg-blue-900/50 hover:text-blue-400 rounded-full transition-colors" title="この案件を転用して作成 (コピー)">
                                         <Copy size={16} />
