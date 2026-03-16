@@ -130,7 +130,7 @@ export default function QuotationList({ quotations, onEdit, onCopy, onDelete, on
                                             "hover:bg-slate-800/30 transition-colors group cursor-pointer",
                                             isExpanded && "bg-slate-800/50"
                                         )}
-                                        onClick={() => onEdit(quotation)}
+                                        onClick={toggleExpand}
                                     >
                                         <td className="px-5 py-4 text-center">
                                             <div className={cn("transition-transform duration-200", isExpanded ? "rotate-180" : "")}>
