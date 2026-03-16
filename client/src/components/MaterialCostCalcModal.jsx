@@ -18,7 +18,7 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply, initia
     
     // 材種エントリの配列
     const [entries, setEntries] = useState([
-        { id: Date.now(), vendor: '', material: '', shape: 'plate', dims: {}, heatTreatment: { type: 'none', hardness: '', vendor: '', shipToVendor: false }, calculated: { weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 } }
+        { id: Date.now(), vendor: '', material: '', shape: 'plate', dims: {}, heatTreatment: { type: 'none', hardness: '', vendor: '', shipToVendor: false, record: false }, needCuttingCert: false, needMillSheet: false, calculated: { weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 } }
     ]);
 
     const [expandedEntryId, setExpandedEntryId] = useState(null);
@@ -102,14 +102,16 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply, initia
                     ...e,
                     id: e.id || Date.now() + idx,
                     dims: e.dims || {},
-                    heatTreatment: e.heatTreatment || { type: 'none', hardness: '', vendor: '', shipToVendor: false },
+                    heatTreatment: e.heatTreatment || { type: 'none', hardness: '', vendor: '', shipToVendor: false, record: false },
+                    needCuttingCert: e.needCuttingCert || false,
+                    needMillSheet: e.needMillSheet || false,
                     calculated: e.calculated || { weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 }
                 })));
                 setExpandedEntryId(normalizedEntries[0]?.id || Date.now());
             } else {
                 const firstId = Date.now();
                 setEntries([
-                    { id: firstId, vendor: '', material: '', shape: 'plate', dims: {}, heatTreatment: { type: 'none', hardness: '', vendor: '', shipToVendor: false }, calculated: { weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 } }
+                    { id: firstId, vendor: '', material: '', shape: 'plate', dims: {}, heatTreatment: { type: 'none', hardness: '', vendor: '', shipToVendor: false, record: false }, needCuttingCert: false, needMillSheet: false, calculated: { weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 } }
                 ]);
                 setExpandedEntryId(firstId);
             }
@@ -167,7 +169,7 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply, initia
     const addEntry = () => {
         const newId = Date.now();
         setEntries(prev => [...prev, {
-            id: newId, vendor: '', material: '', shape: 'plate', dims: {}, heatTreatment: { type: 'none', hardness: '', vendor: '', shipToVendor: false }, calculated: { weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 }
+            id: newId, vendor: '', material: '', shape: 'plate', dims: {}, heatTreatment: { type: 'none', hardness: '', vendor: '', shipToVendor: false, record: false }, needCuttingCert: false, needMillSheet: false, calculated: { weight: 0, materialCost: 0, cuttingCost: 0, totalCost: 0, unitPrice: 0, density: 0, cuttingFactor: 0 }
         }]);
         setExpandedEntryId(newId);
     };
@@ -226,7 +228,9 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply, initia
                     unitPrice: e.calculated.unitPrice,
                     density: e.calculated.density,
                     cuttingFactor: e.calculated.cuttingFactor,
-                    heatTreatment: e.heatTreatment
+                    heatTreatment: e.heatTreatment,
+                    needCuttingCert: e.needCuttingCert,
+                    needMillSheet: e.needMillSheet
                 })),
                 totalWeight,
                 overheadFactor: globalOverheadFactor
@@ -414,6 +418,32 @@ export default function MaterialCostCalcModal({ isOpen, onClose, onApply, initia
                                                     <label htmlFor={`record-${entry.id}`} className="text-[10px] text-red-400 font-bold cursor-pointer">
                                                         熱処理記録（成績書）が必要
                                                     </label>
+                                                </div>
+                                                <div className="flex items-center gap-4 border-t border-slate-700/50 pt-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`cert-${entry.id}`}
+                                                            checked={entry.needCuttingCert}
+                                                            onChange={e => updateEntry(entry.id, 'needCuttingCert', e.target.checked)}
+                                                            className="w-3 h-3 rounded"
+                                                        />
+                                                        <label htmlFor={`cert-${entry.id}`} className="text-[10px] text-orange-400 font-bold cursor-pointer">
+                                                            切断証明書
+                                                        </label>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`mill-${entry.id}`}
+                                                            checked={entry.needMillSheet}
+                                                            onChange={e => updateEntry(entry.id, 'needMillSheet', e.target.checked)}
+                                                            className="w-3 h-3 rounded"
+                                                        />
+                                                        <label htmlFor={`mill-${entry.id}`} className="text-[10px] text-orange-400 font-bold cursor-pointer">
+                                                            ミルシート
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

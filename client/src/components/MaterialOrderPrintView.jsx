@@ -173,15 +173,27 @@ export default function MaterialOrderPrintView({ quotation, companyInfo }) {
                                                 {entry.htRecord && <div className="text-red-500 font-bold border-t border-red-100 pt-1">【熱処理記録必要】</div>}
                                             </div>
                                         ) : (
-                                            <>
-                                                {`${entry.shape ? entry.shape + ' | ' : ''} ${entry.itemDimensions || ''}`}
-                                                {entry.heatTreatment?.type && entry.heatTreatment.type !== 'none' && (
-                                                    <span className="ml-2 text-red-500 font-bold border border-red-200 px-1 rounded bg-red-50">
-                                                        熱処理:{entry.heatTreatment.type} ({entry.heatTreatment.hardness})
-                                                        {entry.heatTreatment.shipToVendor && ' [直送]'}
-                                                    </span>
-                                                )}
-                                            </>
+                                            <div className="space-y-1">
+                                                <div>{`${entry.shape ? entry.shape + ' | ' : ''} ${entry.itemDimensions || ''}`}</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {entry.heatTreatment?.type && entry.heatTreatment.type !== 'none' && (
+                                                        <span className="text-red-500 font-bold border border-red-200 px-1 rounded bg-red-50 text-[9px]">
+                                                            熱処理:{entry.heatTreatment.type} ({entry.heatTreatment.hardness})
+                                                            {entry.heatTreatment.shipToVendor && ' [直送]'}
+                                                        </span>
+                                                    )}
+                                                    {entry.needCuttingCert && (
+                                                        <span className="text-orange-600 font-bold border border-orange-200 px-1 rounded bg-orange-50 text-[9px]">
+                                                            【切断証明書要】
+                                                        </span>
+                                                    )}
+                                                    {entry.needMillSheet && (
+                                                        <span className="text-orange-600 font-bold border border-orange-200 px-1 rounded bg-orange-50 text-[9px]">
+                                                            【ミルシート要】
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </td>
