@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 
 export default function UserManagement() {
-    const { user, tenant, userRole } = useAuth();
+    const { user, tenant, userRole, subscription } = useAuth();
     const { showAlert, showConfirm } = useNotification();
     const isSystemAdmin = userRole === 'system_admin';
     const [users, setUsers] = useState([]);
