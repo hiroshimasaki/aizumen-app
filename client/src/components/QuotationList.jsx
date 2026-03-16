@@ -281,8 +281,9 @@ function QuotationCard({
 
     return (
         <div 
+            onClick={() => onEdit(quotation)}
             className={cn(
-                "rounded-xl border-2 p-5 shadow-sm hover:shadow-lg transition-all duration-700 border-l-[6px] backdrop-blur-md will-change-transform",
+                "rounded-xl border-2 p-5 shadow-sm hover:shadow-lg transition-all duration-300 border-l-[6px] backdrop-blur-md will-change-transform cursor-pointer group/card hover:border-indigo-400/50 hover:bg-slate-800/80 active:scale-[0.99]",
                 isFullyDelivered
                     ? "bg-emerald-950/20 border-emerald-600/50 border-l-emerald-500 shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] md:bg-gradient-to-r md:from-emerald-950/30 md:to-transparent" :
                     quotation.status === 'ordered'
@@ -410,7 +411,13 @@ function QuotationCard({
                         <div className="flex items-center gap-2 overflow-hidden">
                             <Mail size={16} className="text-slate-500 shrink-0" />
                             {quotation.emailLink ? (
-                                <a href={quotation.emailLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline truncate">
+                                <a 
+                                    href={quotation.emailLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-blue-400 hover:text-blue-300 hover:underline truncate"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     メールを確認
                                 </a>
                             ) : (
@@ -576,17 +583,17 @@ function QuotationCard({
                         {isAdmin && !isTrashView && (
                             <div className="flex flex-wrap items-center justify-end gap-1 mt-1">
                                 {quotation.status !== 'ordered' && (
-                                    <button onClick={() => onStatusUpdate(quotation.id, 'ordered')} className="px-2 py-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-900/30 rounded border border-emerald-900/50 transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); onStatusUpdate(quotation.id, 'ordered'); }} className="px-2 py-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-900/30 rounded border border-emerald-900/50 transition-colors">
                                         受注にする
                                     </button>
                                 )}
                                 {quotation.status !== 'lost' && (
-                                    <button onClick={() => onStatusUpdate(quotation.id, 'lost')} className="px-2 py-1 text-[10px] font-bold text-slate-400 hover:bg-slate-800 rounded border border-slate-700 transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); onStatusUpdate(quotation.id, 'lost'); }} className="px-2 py-1 text-[10px] font-bold text-slate-400 hover:bg-slate-800 rounded border border-slate-700 transition-colors">
                                         失注にする
                                     </button>
                                 )}
                                 {quotation.status !== 'pending' && (
-                                    <button onClick={() => onStatusUpdate(quotation.id, 'pending')} className="px-2 py-1 text-[10px] font-bold text-cyan-400 hover:bg-cyan-900/30 rounded border border-cyan-900/50 transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); onStatusUpdate(quotation.id, 'pending'); }} className="px-2 py-1 text-[10px] font-bold text-cyan-400 hover:bg-cyan-900/30 rounded border border-cyan-900/50 transition-colors">
                                         検討中に戻す
                                     </button>
                                 )}
@@ -595,7 +602,10 @@ function QuotationCard({
                     </div>
 
 
-                    <div className="flex items-center gap-1.5 bg-slate-900/50 p-1.5 rounded-full border border-slate-800">
+                    <div 
+                        className="flex items-center gap-1.5 bg-slate-900/50 p-1.5 rounded-full border border-slate-800"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         {isTrashView ? (
                             <>
                                 <button onClick={() => onRestore(quotation.id)} className="p-2 text-emerald-400 hover:bg-emerald-900/50 rounded-full transition-colors flex items-center gap-1 px-3" title="ゴミ箱から復元">
@@ -658,7 +668,10 @@ function QuotationCard({
 
 function QuickEditPanel({ quotation, quickEditId, setQuickEditId, quickData, handleQuickChange, saveQuickEdit, isAdmin }) {
     return (
-        <div className="mt-4 pt-4 border-t border-indigo-900/50 bg-indigo-950/30 -mx-5 px-5 py-4 animate-in slide-in-from-top-4 duration-300">
+        <div 
+            className="mt-4 pt-4 border-t border-indigo-900/50 bg-indigo-950/30 -mx-5 px-5 py-4 animate-in slide-in-from-top-4 duration-300"
+            onClick={(e) => e.stopPropagation()}
+        >
             <div className="flex items-center justify-between mb-4">
                 <h4 className="text-xs font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
                     <Activity size={14} />
