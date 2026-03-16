@@ -126,6 +126,7 @@ ipcMain.on('update-minimize-config', (event, value) => {
 });
 
 ipcMain.on('update-auto-analysis-config', (event, value) => {
+    logToRenderer(`Auto Analysis Toggle: ${value}`);
     autoAnalysis = value;
     if (autoAnalysis) {
         startAutoAnalysisIfPossible();
@@ -133,25 +134,35 @@ ipcMain.on('update-auto-analysis-config', (event, value) => {
 });
 
 async function startAutoAnalysisIfPossible() {
-    if (!autoAnalysis || !isLoggedIn || !authToken) return;
+    const statusInfo = `autoAnalysis=${autoAnalysis}, isLoggedIn=${isLoggedIn}, hasToken=${!!authToken}, pendingCount=${pendingFiles.length}`;
+    logToRenderer(`Auto-analysis check: ${statusInfo}`);
+    
+    if (!autoAnalysis || !isLoggedIn || !authToken) {
+        logToRenderer(`Skipping auto-analysis because criteria not met.`);
+        return;
+    }
     
     const filesToProcess = pendingFiles.filter(f => f.status === 'detected');
+    logToRenderer(`Found ${filesToProcess.length} files to auto-process.`);
+    
     for (const file of filesToProcess) {
-        // 並列実行を避けるため順次処理
         await processFile(file);
     }
 }
 
 async function processFile(file) {
     try {
+        logToRenderer(`Starting analysis for ${file.name}`);
         file.status = 'processing';
         mainWindow.webContents.send('update-file-list', pendingFiles);
+
+        // API URL の確認ログ
+        logToRenderer(`API Request to: ${apiBaseUrl}/api/ocr/analyze`);
 
         // 1. OCR解析
         const formData = new FormData();
         formData.append('file', fs.createReadStream(file.path));
 
-        logToRenderer(`Starting analysis for ${file.name}`);
         const ocrResponse = await axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
             headers: {
                 ...formData.getHeaders(),
@@ -325,6 +336,7 @@ app.on('window-all-closed', () => {
 let isLoggedIn = false; // ログイン状態管理
 
 ipcMain.on('auth-success', (event, token) => {
+    logToRenderer('Login success received in Main process.');
     authToken = token;
     isLoggedIn = true;
     startAutoAnalysisIfPossible();
