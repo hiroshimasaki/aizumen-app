@@ -269,14 +269,19 @@ function QuotationCard({
     onPrintHeatTreatmentOrder, startQuickEdit, quickEditId, handleFileDownload, 
     downloadingId, justSavedId, setQuickEditId, quickData, handleQuickChange, saveQuickEdit
 }) {
+    const [isActive, setIsActive] = useState(false);
     const { totalProc, actualProcTotal, variance, variancePercent, hasActuals } = stats;
     const isFullyDelivered = quotation.status === 'ordered' && quotation.items?.length > 0 && quotation.items.every(i => !!i.deliveryDate);
 
     return (
         <div 
             onClick={() => onEdit(quotation)}
+            onMouseDown={() => setIsActive(true)}
+            onMouseUp={() => setIsActive(false)}
+            onMouseLeave={() => setIsActive(false)}
             className={cn(
-                "rounded-xl border-2 p-5 shadow-sm hover:shadow-lg transition-all duration-300 border-l-[6px] backdrop-blur-md will-change-transform cursor-pointer group/card hover:border-indigo-400/50 hover:bg-slate-800/80 active:scale-[0.99]",
+                "rounded-xl border-2 p-5 shadow-sm hover:shadow-lg transition-all duration-300 border-l-[6px] backdrop-blur-md will-change-transform cursor-pointer group/card hover:border-indigo-400/50 hover:bg-slate-800/80",
+                isActive && "scale-[0.99]",
                 isFullyDelivered
                     ? "bg-emerald-950/20 border-emerald-600/50 border-l-emerald-500 shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] md:bg-gradient-to-r md:from-emerald-950/30 md:to-transparent" :
                     quotation.status === 'ordered'
@@ -410,6 +415,7 @@ function QuotationCard({
                                     rel="noopener noreferrer" 
                                     className="text-blue-400 hover:text-blue-300 hover:underline truncate"
                                     onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
                                 >
                                     メールを確認
                                 </a>
@@ -574,7 +580,7 @@ function QuotationCard({
 
                         {/* Status Actions (Hidden in Trash) */}
                         {isAdmin && !isTrashView && (
-                            <div className="flex flex-wrap items-center justify-end gap-1 mt-1">
+                            <div className="flex flex-wrap items-center justify-end gap-1 mt-1" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                                 {quotation.status !== 'ordered' && (
                                     <button onClick={(e) => { e.stopPropagation(); onStatusUpdate(quotation.id, 'ordered'); }} className="px-2 py-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-900/30 rounded border border-emerald-900/50 transition-colors">
                                         受注にする
@@ -598,6 +604,7 @@ function QuotationCard({
                     <div 
                         className="flex flex-col items-stretch gap-1.5 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800/50 backdrop-blur-sm"
                         onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
                     >
                         {isTrashView ? (
                             <>
@@ -696,6 +703,7 @@ function QuickEditPanel({ quotation, quickEditId, setQuickEditId, quickData, han
         <div 
             className="mt-4 pt-4 border-t border-indigo-900/50 bg-indigo-950/30 -mx-5 px-5 py-4 animate-in slide-in-from-top-4 duration-300"
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
         >
             <div className="flex items-center justify-between mb-4">
                 <h4 className="text-xs font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
