@@ -60,7 +60,7 @@ function createWindow() {
     });
 
     mainWindow.loadFile('index.html');
-    mainWindow.webContents.openDevTools(); // デバッグ用に自動で開く
+    // mainWindow.webContents.openDevTools(); // デバッグ用に自動で開く
 
     // システムトレイの設定
     const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
