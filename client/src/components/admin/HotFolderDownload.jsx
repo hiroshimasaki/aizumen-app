@@ -23,27 +23,25 @@ export default function HotFolderDownload() {
                             ブラウザを開く手間なく、現場のワークフローにシームレスに統合できます。
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2">
-                            <div className="relative group/btn">
-                                <a
-                                    href="#"
-                                    className="px-8 py-4 bg-gradient-to-r from-blue-600/50 to-cyan-600/50 text-white/50 font-black rounded-2xl transition-all flex items-center gap-3 cursor-not-allowed pointer-events-none"
-                                    onClick={(e) => e.preventDefault()}
-                                >
-                                    <Download size={20} />
-                                    アプリをダウンロード
-                                </a>
-                                {/* Coming Soon Overlay */}
-                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] rounded-2xl flex items-center justify-center border border-white/10 shadow-2xl overflow-hidden group-hover/btn:backdrop-blur-none transition-all">
-                                    <div className="bg-blue-500/20 px-3 py-1 rounded-full border border-blue-500/30">
-                                        <span className="text-[10px] font-black text-blue-300 uppercase tracking-[0.2em]">Coming Soon</span>
-                                    </div>
-                                    {/* Animated Shine Effect */}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite]" />
-                                </div>
-                            </div>
+                            <a
+                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Setup.exe`}
+                                download
+                                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-black rounded-2xl transition-all flex items-center gap-3 shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98]"
+                            >
+                                <Download size={20} />
+                                インストーラー版をダウンロード
+                            </a>
+                            <a
+                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Portable.exe`}
+                                download
+                                className="px-8 py-4 bg-slate-800/80 text-slate-200 border border-slate-700 font-bold rounded-2xl transition-all flex items-center gap-3 hover:bg-slate-800 hover:text-white"
+                            >
+                                <Download size={20} />
+                                ポータブル版
+                            </a>
                         </div>
                         <p className="text-[10px] text-slate-500">
-                            Version 1.0.2 (Windows 10/11対応) | 最新更新: 2026-03-07
+                            Version 1.0.0 (Windows 10/11対応) | 最新更新: 2026-03-16
                         </p>
                     </div>
 

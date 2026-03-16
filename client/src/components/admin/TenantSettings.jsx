@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, FileJson, Sparkles, ClipboardList, Hash, Download, Monitor } from 'lucide-react';
+import { Save, FileJson, Sparkles, ClipboardList, Hash } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -273,41 +273,6 @@ export default function TenantSettings() {
                 </div>
             </div>
 
-            <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
-                        <Monitor size={20} className="text-blue-400" />
-                        デスクトップアプリ (HotFolder)
-                    </h3>
-                </div>
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 bg-slate-900/50 p-4 rounded-lg border border-slate-700/50">
-                        <h4 className="text-sm font-bold text-slate-300 mb-2">インストーラー版</h4>
-                        <p className="text-[11px] text-slate-500 mb-4">PCにインストールして使用する標準版です。デスクトップにショートカットが作成されます。</p>
-                        <a
-                            href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Setup.exe`}
-                            download
-                            className="inline-flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 px-4 py-2 rounded-lg text-sm font-bold transition-all"
-                        >
-                            <Download size={16} />
-                            Setup.exe をダウンロード
-                        </a>
-                    </div>
-                    <div className="flex-1 bg-slate-900/50 p-4 rounded-lg border border-slate-700/50">
-                        <h4 className="text-sm font-bold text-slate-300 mb-2">ポータブル版</h4>
-                        <p className="text-[11px] text-slate-500 mb-4">インストール不要で、exeファイル単体で動作します。USBメモリ等での持ち運びにも便利です。</p>
-                        <a
-                            href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Portable.exe`}
-                            download
-                            className="inline-flex items-center gap-2 bg-slate-700/40 hover:bg-slate-700/60 text-slate-300 border border-slate-600/30 px-4 py-2 rounded-lg text-sm font-bold transition-all"
-                        >
-                            <Download size={16} />
-                            Portable.exe をダウンロード
-                        </a>
-                    </div>
-                </div>
-                <p className="text-[10px] text-slate-500 mt-4">※Windows Defenderの警告が出た場合は、「詳細情報」→「実行」の順にクリックして進めてください。</p>
-            </div>
 
             <div className="flex justify-end">
                 <button
