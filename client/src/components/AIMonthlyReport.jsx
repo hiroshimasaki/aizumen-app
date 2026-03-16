@@ -13,12 +13,20 @@ export default function AIMonthlyReport({ defaultMonth, isPro: isProProp = true 
     const [isExpanded, setIsExpanded] = useState(false);
 
     useEffect(() => {
+        setIsPro(isProProp);
+    }, [isProProp]);
+
+    useEffect(() => {
         fetchReport();
         // Reset expanded state when month changes to allow user to decide to open it
         setIsExpanded(false);
     }, [targetMonth]);
 
     const fetchReport = async () => {
+        if (!isPro) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
