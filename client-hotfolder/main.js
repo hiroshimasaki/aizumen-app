@@ -127,7 +127,20 @@ ipcMain.on('update-minimize-config', (event, value) => {
 
 ipcMain.on('update-auto-analysis-config', (event, value) => {
     autoAnalysis = value;
+    if (autoAnalysis) {
+        startAutoAnalysisIfPossible();
+    }
 });
+
+async function startAutoAnalysisIfPossible() {
+    if (!autoAnalysis || !isLoggedIn || !authToken) return;
+    
+    const filesToProcess = pendingFiles.filter(f => f.status === 'detected');
+    for (const file of filesToProcess) {
+        // 並列実行を避けるため順次処理
+        await processFile(file);
+    }
+}
 
 async function processFile(file) {
     try {
@@ -314,6 +327,7 @@ let isLoggedIn = false; // ログイン状態管理
 ipcMain.on('auth-success', (event, token) => {
     authToken = token;
     isLoggedIn = true;
+    startAutoAnalysisIfPossible();
 });
 
 ipcMain.on('auth-logout', () => {
@@ -378,6 +392,8 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
         isReady = true;
         // 初期スキャン完了後に一括送信
         mainWindow.webContents.send('update-file-list', pendingFiles);
+        // 自動解析がONなら開始
+        startAutoAnalysisIfPossible();
     });
 
     // ファイルが直接削除された場合の検知
