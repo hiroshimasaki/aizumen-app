@@ -362,14 +362,30 @@ analyzeAllBtn.addEventListener('click', () => {
     ipcRenderer.send('start-bulk-analysis', userToken);
 });
 
+// DOM Elements
+const autoAnalysisToggle = document.getElementById('auto-analysis-toggle');
+
 // Minimize Toggle Handler
-minimizeToggle.addEventListener('change', () => {
-    const configData = {
-        minimizeOnClose: minimizeToggle.checked
-    };
-    ipcRenderer.send('update-config', configData);
-    ipcRenderer.send('update-minimize-config', minimizeToggle.checked);
-});
+if (minimizeToggle) {
+    minimizeToggle.addEventListener('change', () => {
+        const configData = {
+            minimizeOnClose: minimizeToggle.checked
+        };
+        ipcRenderer.send('update-config', configData);
+        ipcRenderer.send('update-minimize-config', minimizeToggle.checked);
+    });
+}
+
+// Auto Analysis Toggle Handler
+if (autoAnalysisToggle) {
+    autoAnalysisToggle.addEventListener('change', () => {
+        const configData = {
+            autoAnalysis: autoAnalysisToggle.checked
+        };
+        ipcRenderer.send('update-config', configData);
+        ipcRenderer.send('update-auto-analysis-config', autoAnalysisToggle.checked);
+    });
+}
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
@@ -398,9 +414,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // 最小化設定
-            if (config.minimizeOnClose !== undefined) {
+            if (config.minimizeOnClose !== undefined && minimizeToggle) {
                 minimizeToggle.checked = config.minimizeOnClose;
                 ipcRenderer.send('update-minimize-config', config.minimizeOnClose);
+            }
+
+            // 自動解析設定
+            if (config.autoAnalysis !== undefined && autoAnalysisToggle) {
+                autoAnalysisToggle.checked = config.autoAnalysis;
+                ipcRenderer.send('update-auto-analysis-config', config.autoAnalysis);
             }
         }
     } catch (e) {

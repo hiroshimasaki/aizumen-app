@@ -14,6 +14,7 @@ const apiBaseUrl = 'https://aizumen-production.up.railway.app';
 let watchFolder = null;
 let tray = null; // トレイアイコン用
 let minimizeOnClose = true; // 閉じるボタンで最小化するかどうか
+let autoAnalysis = false; // 自動解析モード
 
 if (app) {
     app.isQuiting = false; // 終了フラグの初期化
@@ -27,6 +28,9 @@ function loadConfig() {
             const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8'));
             if (config.minimizeOnClose !== undefined) {
                 minimizeOnClose = config.minimizeOnClose;
+            }
+            if (config.autoAnalysis !== undefined) {
+                autoAnalysis = config.autoAnalysis;
             }
             return config;
         }
@@ -120,6 +124,114 @@ function logToRenderer(message, data = null) {
 ipcMain.on('update-minimize-config', (event, value) => {
     minimizeOnClose = value;
 });
+
+ipcMain.on('update-auto-analysis-config', (event, value) => {
+    autoAnalysis = value;
+});
+
+async function processFile(file) {
+    try {
+        file.status = 'processing';
+        mainWindow.webContents.send('update-file-list', pendingFiles);
+
+        // 1. OCR解析
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(file.path));
+
+        logToRenderer(`Starting analysis for ${file.name}`);
+        const ocrResponse = await axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'Authorization': `Bearer ${authToken}`,
+                'X-Client-Type': 'hotfolder'
+            }
+        });
+
+        if (ocrResponse.status !== 200) {
+            throw new Error(ocrResponse.data?.error || `OCR解析エラー (Status: ${ocrResponse.status})`);
+        }
+
+        const ocrData = ocrResponse.data;
+
+        // 2. 案件登録
+        const items = (ocrData.items && ocrData.items.length > 0)
+            ? ocrData.items.map(aiItem => ({
+                name: aiItem.name || file.name.split('.')[0],
+                quantity: aiItem.quantity || 1,
+                processingCost: aiItem.price || 0,
+                materialCost: 0,
+                dueDate: aiItem.dueDate || ''
+            }))
+            : [{
+                name: file.name.split('.')[0],
+                quantity: 1,
+                processingCost: 0,
+                materialCost: 0,
+                dueDate: ''
+            }];
+
+        const quotationPayload = {
+            companyName: ocrData.companyName || '自動作成（ホットフォルダ）',
+            orderNumber: ocrData.orderNumber || '',
+            constructionNumber: ocrData.constructionNumber || '',
+            status: 'ordered',
+            is_verified: false,
+            notes: ocrData.notes || 'ホットフォルダから自動投入',
+            items: items
+        };
+        logToRenderer(`Sending Quotation Payload for ${file.name}`, quotationPayload);
+
+        const quoteResponse = await axios.post(`${apiBaseUrl}/api/quotations`, quotationPayload, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'X-Client-Type': 'hotfolder'
+            }
+        });
+
+        if (quoteResponse.status !== 200 && quoteResponse.status !== 201) {
+            throw new Error(quoteResponse.data?.error || `案件登録エラー (Status: ${quoteResponse.status})`);
+        }
+
+        const newQuote = quoteResponse.data;
+
+        // 3. ファイルアップロード
+        if (newQuote && newQuote.id) {
+            const uploadFormData = new FormData();
+            uploadFormData.append('quotationId', newQuote.id);
+            uploadFormData.append('files', fs.createReadStream(file.path));
+
+            const uploadResponse = await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
+                headers: {
+                    ...uploadFormData.getHeaders(),
+                    'Authorization': `Bearer ${authToken}`,
+                    'X-Client-Type': 'hotfolder'
+                }
+            });
+
+            if (uploadResponse.status !== 201 && uploadResponse.status !== 200) {
+                throw new Error(uploadResponse.data?.error || `ファイル登録エラー (Status: ${uploadResponse.status})`);
+            }
+        }
+
+        // 4. 後処理（移動）
+        const processedPath = path.join(watchFolder, 'processed', file.name);
+        fs.renameSync(file.path, processedPath);
+
+        file.status = 'completed';
+        file.path = processedPath; // 移動後のパスに更新
+        delete file.errorMessage;
+    } catch (err) {
+        console.error(`Error processing ${file.name}:`, err.response?.data || err.message);
+        file.status = 'error';
+        file.errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+        logToRenderer(`Error processing ${file.name}`, { 
+            errorData: err.response?.data,
+            status: err.response?.status
+        });
+    } finally {
+        mainWindow.webContents.send('update-file-list', pendingFiles);
+    }
+}
 
 // カスタムメニューの設定 (File -> Exit のみ)
 const menuTemplate = [
@@ -251,6 +363,11 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
                 // 準備完了後なら即座に送信
                 if (isReady) {
                     mainWindow.webContents.send('update-file-list', pendingFiles);
+                    
+                    // 自動解析モードがONかつログイン中かつトークンがある場合、即座に解析開始
+                    if (autoAnalysis && isLoggedIn && authToken) {
+                        processFile(newFile);
+                    }
                 }
             }
         }
@@ -308,113 +425,7 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
     const filesToProcess = pendingFiles.filter(f => f.status === 'detected' || f.status === 'error');
 
     for (const file of filesToProcess) {
-        try {
-            file.status = 'processing';
-            mainWindow.webContents.send('update-file-list', pendingFiles);
-
-            // 1. OCR解析
-            const formData = new FormData();
-            formData.append('file', fs.createReadStream(file.path));
-
-            logToRenderer(`Starting analysis for ${file.name}`);
-            const ocrResponse = await axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                    'Authorization': `Bearer ${authToken}`,
-                    'X-Client-Type': 'hotfolder'
-                }
-            });
-
-            if (ocrResponse.status !== 200) {
-                throw new Error(ocrResponse.data?.error || `OCR解析エラー (Status: ${ocrResponse.status})`);
-            }
-
-            const ocrData = ocrResponse.data;
-            console.log(`[OCR] Analysis Result for ${file.name}:`, JSON.stringify(ocrData, null, 2));
-
-            // 2. 案件登録
-            const items = (ocrData.items && ocrData.items.length > 0)
-                ? ocrData.items.map(aiItem => ({
-                    name: aiItem.name || file.name.split('.')[0],
-                    quantity: aiItem.quantity || 1,
-                    processingCost: aiItem.price || 0,
-                    materialCost: 0,
-                    dueDate: aiItem.dueDate || ''
-                }))
-                : [{
-                    name: file.name.split('.')[0],
-                    quantity: 1,
-                    processingCost: 0,
-                    materialCost: 0,
-                    dueDate: ''
-                }];
-
-            const quotationPayload = {
-                companyName: ocrData.companyName || '自動作成（ホットフォルダ）',
-                orderNumber: ocrData.orderNumber || '',
-                constructionNumber: ocrData.constructionNumber || '',
-                status: 'ordered',
-                is_verified: false,
-                notes: ocrData.notes || 'ホットフォルダから自動投入',
-                items: items
-            };
-            console.log(`[OCR] Sending Quotation Payload for ${file.name}:`, JSON.stringify(quotationPayload, null, 2));
-            logToRenderer(`Sending Quotation Payload for ${file.name}`, quotationPayload);
-
-            const quoteResponse = await axios.post(`${apiBaseUrl}/api/quotations`, quotationPayload, {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'X-Client-Type': 'hotfolder'
-                }
-            });
-
-            if (quoteResponse.status !== 200 && quoteResponse.status !== 201) {
-                throw new Error(quoteResponse.data?.error || `案件登録エラー (Status: ${quoteResponse.status})`);
-            }
-
-            const newQuote = quoteResponse.data;
-
-            // 3. ファイルアップロード
-            if (newQuote && newQuote.id) {
-                const uploadFormData = new FormData();
-                uploadFormData.append('quotationId', newQuote.id);
-                uploadFormData.append('files', fs.createReadStream(file.path));
-
-                const uploadResponse = await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
-                    headers: {
-                        ...uploadFormData.getHeaders(),
-                        'Authorization': `Bearer ${authToken}`,
-                        'X-Client-Type': 'hotfolder'
-                    }
-                });
-
-                if (uploadResponse.status !== 201 && uploadResponse.status !== 200) {
-                    throw new Error(uploadResponse.data?.error || `ファイル登録エラー (Status: ${uploadResponse.status})`);
-                }
-            }
-
-            // 4. 後処理（移動）
-            const processedPath = path.join(watchFolder, 'processed', file.name);
-            fs.renameSync(file.path, processedPath);
-
-            file.status = 'completed';
-            file.path = processedPath; // 移動後のパスに更新
-            delete file.errorMessage;
-        } catch (err) {
-            console.error(`Error processing ${file.name}:`, err.response?.data || err.message);
-            file.status = 'error';
-            // サーバー側から返ってきた具体的なエラー詳細を抽出して表示
-            file.errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
-            logToRenderer(`Error processing ${file.name}`, { 
-                errorData: err.response?.data,
-                status: err.response?.status,
-                statusText: err.response?.statusText,
-                headers: err.response?.headers
-            });
-            console.error(`[Main Process] Detailed Error for ${file.name}:`, err.response?.data || err.message);
-        }
-
-        mainWindow.webContents.send('update-file-list', pendingFiles);
+        await processFile(file);
     }
 
     new Notification({
