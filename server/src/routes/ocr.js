@@ -51,15 +51,17 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
         ]);
 
         const ocrMapping = settings?.settings_json?.ocrMapping || {};
+        const ai_learning_hints = settings?.settings_json?.ai_learning_hints || [];
         const tenantName = tenant?.name || '';
 
         // Gemini APIによる解析
         logService.debug('OCR: Starting analysis', { 
             fileName: originalName, 
             mimeType: req.file.mimetype,
-            mapping: ocrMapping 
+            mapping: ocrMapping,
+            learningHints: ai_learning_hints
         });
-        const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, { ocrMapping, name: tenantName });
+        const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, { ocrMapping, ai_learning_hints, name: tenantName });
 
         // クレジット消費処理
         const creditResult = await creditService.consumeCredits(
@@ -143,6 +145,7 @@ router.post('/bulk-register', authMiddleware, checkTrialLimit, async (req, res, 
         ]);
 
         const ocrMapping = settings?.settings_json?.ocrMapping || {};
+        const ai_learning_hints = settings?.settings_json?.ai_learning_hints || [];
         const tenantName = tenant?.name || '';
 
         if (!credits || credits.balance < required) {
@@ -187,7 +190,7 @@ router.post('/bulk-register', authMiddleware, checkTrialLimit, async (req, res, 
                 const buffer = Buffer.from(arrayBuffer);
 
                 // AI解析 (マッピング設定と自社名を渡す)
-                const analysis = await aiService.analyzeDocument(buffer, fileMeta.mime_type, { ocrMapping, name: tenantName });
+                const analysis = await aiService.analyzeDocument(buffer, fileMeta.mime_type, { ocrMapping, ai_learning_hints, name: tenantName });
                 
                 // 図面番号の更新とバージョン管理
                 if (analysis.drawingNumber) {
