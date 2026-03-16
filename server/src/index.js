@@ -254,12 +254,12 @@ app.listen(PORT, '0.0.0.0', () => {
       // 1. 自動失注設定が有効なテナントを取得
       const { data: tenants, error: tError } = await supabaseAdmin
         .from('tenants')
-        .select('id, name, settings');
+        .select('id, name, auto_lost_days');
 
       if (tError) throw tError;
 
       for (const tenant of tenants) {
-        const autoLostDays = parseInt(tenant.settings?.auto_lost_days);
+        const autoLostDays = parseInt(tenant.auto_lost_days);
         if (!autoLostDays || autoLostDays <= 0) continue;
 
         console.log(`[Cron] Checking tenant: ${tenant.name} (Auto-lost: ${autoLostDays} days)`);

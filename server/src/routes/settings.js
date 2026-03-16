@@ -64,12 +64,6 @@ router.put('/', authMiddleware, requireRole('admin'), async (req, res, next) => 
 
         // hourlyRate または autoLostDays があれば tenants テーブルも更新
         if (req.body.hourlyRate !== undefined || req.body.autoLostDays !== undefined) {
-            const { data: currentTenant } = await supabaseAdmin
-                .from('tenants')
-                .select('settings, hourly_rate')
-                .eq('id', req.tenantId)
-                .single();
-
             const tUpdates = { updated_at: new Date().toISOString() };
             
             if (req.body.hourlyRate !== undefined) {
@@ -77,11 +71,7 @@ router.put('/', authMiddleware, requireRole('admin'), async (req, res, next) => 
             }
 
             if (req.body.autoLostDays !== undefined) {
-                const currentSettings = currentTenant?.settings || {};
-                tUpdates.settings = {
-                    ...currentSettings,
-                    auto_lost_days: Number(req.body.autoLostDays)
-                };
+                tUpdates.auto_lost_days = Number(req.body.autoLostDays);
             }
 
             const { error: tError } = await supabaseAdmin

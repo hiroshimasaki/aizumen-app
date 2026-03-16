@@ -31,8 +31,8 @@ export default function TenantSettings() {
         if (tenant?.hourly_rate) {
             setHourlyRate(tenant.hourly_rate);
         }
-        if (tenant?.settings?.auto_lost_days) {
-            setAutoLostDays(tenant.settings.auto_lost_days);
+        if (tenant?.auto_lost_days) {
+            setAutoLostDays(tenant.auto_lost_days);
         }
     }, [tenant]);
 
@@ -71,10 +71,7 @@ export default function TenantSettings() {
             setTenant({
                 ...tenant,
                 hourly_rate: Number(hourlyRate),
-                settings: {
-                    ...(tenant.settings || {}),
-                    auto_lost_days: Number(autoLostDays)
-                }
+                auto_lost_days: Number(autoLostDays)
             });
 
             await showAlert('設定を保存しました', 'success');
