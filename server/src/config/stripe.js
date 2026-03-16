@@ -38,7 +38,7 @@ const PLAN_CONFIG = {
     },
     pro: {
         name: 'Pro',
-        maxUsers: 50, // 20 -> 50 に引き上げ
+        maxUsers: 20, // 50 -> 20 に戻す
         monthlyCredits: 1000,
         maxStorageGB: 100,
         priceId: process.env.STRIPE_PRICE_PRO,

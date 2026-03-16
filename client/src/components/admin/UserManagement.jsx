@@ -49,7 +49,7 @@ export default function UserManagement() {
         }
     };
 
-    const maxUsers = subscription?.maxUsers || (tenant?.plan === 'plus' ? 10 : tenant?.plan === 'pro' ? 50 : tenant?.plan === 'lite' ? 2 : 1);
+    const maxUsers = subscription?.maxUsers || (tenant?.plan === 'plus' ? 10 : tenant?.plan === 'pro' ? 20 : tenant?.plan === 'lite' ? 2 : 1);
 
     const handleInvite = async (e) => {
         e.preventDefault();
