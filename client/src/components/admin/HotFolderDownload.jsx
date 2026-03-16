@@ -174,16 +174,34 @@ export default function HotFolderDownload() {
                         </div>
                     </div>
 
-                    {/* Troubleshooting */}
-                    <div className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl flex gap-3 mt-8">
-                        <AlertCircle className="text-rose-500 shrink-0" size={20} />
-                        <div className="text-xs text-slate-400">
-                            <p className="font-bold text-rose-300 mb-1">うまくいかない場合</p>
-                            <ul className="list-disc list-inside space-y-1">
-                                <li>Windowsのウイルス対策ソフトがアプリの実行をブロックしていないか確認してください。</li>
-                                <li>インターネット接続が安定しているか確認してください。</li>
-                                <li>一度に大量のファイルを投入すると、解析の待ち時間が発生する場合があります。</li>
-                            </ul>
+                    {/* Security Notice / Troubleshooting */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                        <div className="p-5 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex gap-3">
+                            <Shield className="text-blue-500 shrink-0" size={20} />
+                            <div className="text-xs text-slate-400">
+                                <p className="font-bold text-blue-300 mb-2">Windows による保護の警告について</p>
+                                <p className="leading-relaxed">
+                                    起動時に「WindowsによってPCが保護されました」と表示される場合があります。これは未署名の自作アプリに対する標準的な警告です。
+                                </p>
+                                <div className="mt-3 flex items-center gap-2 text-blue-400 font-bold">
+                                    <span>「詳細情報」</span>
+                                    <ArrowRight size={12} />
+                                    <span>「実行」</span>
+                                </div>
+                                <p className="mt-1 text-[10px]">の順にクリックすることで起動いただけます。</p>
+                            </div>
+                        </div>
+
+                        <div className="p-5 bg-slate-800/40 border border-slate-700/50 rounded-2xl flex gap-3">
+                            <AlertCircle className="text-slate-500 shrink-0" size={20} />
+                            <div className="text-xs text-slate-400">
+                                <p className="font-bold text-slate-300 mb-2">トラブルシューティング</p>
+                                <ul className="list-disc list-inside space-y-1 text-[11px]">
+                                    <li>インターネット接続が安定しているか確認してください。</li>
+                                    <li>一度に大量のファイルを投入すると、解析の待ち時間が発生する場合があります。</li>
+                                    <li>設定が反映されない場合は、アプリを一度終了して再起動してください。</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
