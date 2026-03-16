@@ -28,10 +28,10 @@ export default function TenantSettings() {
 
     useEffect(() => {
         fetchSettings();
-        if (tenant?.hourly_rate) {
+        if (tenant?.hourly_rate !== undefined) {
             setHourlyRate(tenant.hourly_rate);
         }
-        if (tenant?.auto_lost_days) {
+        if (tenant?.auto_lost_days !== undefined) {
             setAutoLostDays(tenant.auto_lost_days);
         }
     }, [tenant]);

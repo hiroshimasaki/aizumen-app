@@ -518,7 +518,7 @@ router.get('/me', authMiddleware, async (req, res, next) => {
         console.log('[Auth/Me] Fetching tenant for ID:', req.tenantId);
         const { data: tenant, error: tenantError } = await supabaseAdmin
             .from('tenants')
-            .select('id, name, slug, plan, hourly_rate, zip, fax, email, address, phone, website, trial_ends_at, settings')
+            .select('id, name, slug, plan, hourly_rate, auto_lost_days, zip, fax, email, address, phone, website, trial_ends_at, settings')
             .eq('id', req.tenantId)
             .single();
 
