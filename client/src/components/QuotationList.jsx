@@ -596,42 +596,79 @@ function QuotationCard({
 
 
                     <div 
-                        className="flex items-center gap-1.5 bg-slate-900/50 p-1.5 rounded-full border border-slate-800"
+                        className="flex flex-wrap items-center gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/50 backdrop-blur-sm self-end"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {isTrashView ? (
                             <>
-                                <button onClick={() => onRestore(quotation.id)} className="p-2 text-emerald-400 hover:bg-emerald-900/50 rounded-full transition-colors flex items-center gap-1 px-3" title="ゴミ箱から復元">
-                                    <ArchiveRestore size={16} />
-                                    <span className="text-xs font-bold">復元</span>
+                                <button 
+                                    onClick={() => onRestore(quotation.id)} 
+                                    className="flex items-center gap-2 px-3 py-1.5 text-emerald-400 hover:text-emerald-300 bg-emerald-900/10 hover:bg-emerald-900/20 border border-emerald-800/30 hover:border-emerald-500/50 rounded-lg transition-all active:scale-95 group/btn"
+                                >
+                                    <ArchiveRestore size={14} className="group-hover/btn:scale-110 transition-transform" />
+                                    <span className="text-[9px] font-black tracking-widest uppercase">Restore</span>
                                 </button>
-                                <div className="w-[1px] h-4 bg-slate-800" />
-                                <button onClick={() => onPermanentDelete(quotation.id)} className="p-2 text-red-500 hover:bg-red-900/50 rounded-full transition-colors flex items-center gap-1 px-3" title="完全に削除">
-                                    <Trash size={16} />
-                                    <span className="text-xs font-bold">完全削除</span>
+                                <button 
+                                    onClick={() => onPermanentDelete(quotation.id)} 
+                                    className="flex items-center gap-2 px-3 py-1.5 text-red-400 hover:text-red-300 bg-red-900/10 hover:bg-red-900/20 border border-red-800/30 hover:border-red-500/50 rounded-lg transition-all active:scale-95 group/btn"
+                                >
+                                    <Trash size={14} className="group-hover/btn:scale-110 transition-transform" />
+                                    <span className="text-[9px] font-black tracking-widest uppercase">Purge</span>
                                 </button>
                             </>
                         ) : (
                             <>
-                                <button onClick={() => onPrint(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title="見積書を印刷・PDF出力">
-                                    <Printer size={16} />
-                                </button>
+                                <div className="flex items-center gap-1.5 pr-2 mr-2 border-r border-slate-800/50">
+                                    <button 
+                                        onClick={() => onPrint(quotation)} 
+                                        className="flex items-center gap-2 px-3 py-1.5 text-slate-400 hover:text-slate-100 bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/30 hover:border-slate-500/50 rounded-lg transition-all group/btn"
+                                        title="見積書出力"
+                                    >
+                                        <Printer size={14} />
+                                        <span className="text-[9px] font-black tracking-widest uppercase">Print</span>
+                                    </button>
+                                    {isAdmin && (
+                                        <button 
+                                            onClick={() => onPrintMaterialOrder(quotation)} 
+                                            className="flex items-center gap-2 px-3 py-1.5 text-slate-400 hover:text-slate-100 bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/30 hover:border-slate-500/50 rounded-lg transition-all group/btn"
+                                            title="材料注文書出力"
+                                        >
+                                            <FileText size={14} className={cn(quotation.items?.some(i => i.material_metadata?.heatTreatment?.shipToVendor) && "text-red-400")} />
+                                            <span className="text-[9px] font-black tracking-widest uppercase">Material</span>
+                                        </button>
+                                    )}
+                                </div>
+
                                 {isAdmin && (
-                                    <button onClick={() => onPrintMaterialOrder(quotation)} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-full transition-colors" title="材料注文書を印刷・PDF出力">
-                                        <FileText size={16} className={cn(quotation.items?.some(i => i.material_metadata?.heatTreatment?.shipToVendor) && "text-red-400")} />
+                                    <button 
+                                        onClick={() => onCopy(quotation)} 
+                                        className="flex items-center gap-2 px-3 py-1.5 text-blue-400 hover:text-blue-300 bg-blue-900/10 hover:bg-blue-900/20 border border-blue-800/30 hover:border-blue-500/50 rounded-lg transition-all active:scale-95 group/btn"
+                                    >
+                                        <Copy size={14} />
+                                        <span className="text-[9px] font-black tracking-widest uppercase">Clone</span>
                                     </button>
                                 )}
-                                {isAdmin && (
-                                    <button onClick={() => onCopy(quotation)} className="p-2 text-slate-400 hover:bg-blue-900/50 hover:text-blue-400 rounded-full transition-colors" title="この案件を転用して作成 (コピー)">
-                                        <Copy size={16} />
-                                    </button>
-                                )}
-                                <button onClick={() => startQuickEdit(quotation)} className={cn("p-2 rounded-full transition-all", quickEditId === quotation.id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-slate-400 hover:bg-indigo-900/50 hover:text-indigo-400")} title="実績をクイック入力">
-                                    <Activity size={16} />
+
+                                <button 
+                                    onClick={() => startQuickEdit(quotation)} 
+                                    className={cn(
+                                        "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all active:scale-95 group/btn",
+                                        quickEditId === quotation.id 
+                                            ? "bg-indigo-600 text-white border-indigo-400 shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)]" 
+                                            : "text-indigo-400 hover:text-indigo-300 bg-indigo-900/10 hover:bg-indigo-900/20 border border-indigo-800/30 hover:border-indigo-500/50"
+                                    )}
+                                >
+                                    <Activity size={14} className={cn(quickEditId === quotation.id && "animate-pulse")} />
+                                    <span className="text-[9px] font-black tracking-widest uppercase">Results</span>
                                 </button>
+
                                 {isAdmin && (
-                                    <button onClick={() => onDelete(quotation.id)} className="p-2 text-slate-400 hover:bg-red-900/50 hover:text-red-400 rounded-full transition-colors" title="削除">
-                                        <Trash2 size={16} />
+                                    <button 
+                                        onClick={() => onDelete(quotation.id)} 
+                                        className="flex items-center gap-2 px-3 py-1.5 text-slate-500 hover:text-red-400 bg-slate-800/10 hover:bg-red-900/10 border border-slate-800 hover:border-red-900/50 rounded-lg transition-all active:scale-95 group/btn"
+                                    >
+                                        <Trash2 size={14} />
+                                        <span className="text-[9px] font-black tracking-widest uppercase">Delete</span>
                                     </button>
                                 )}
                             </>
