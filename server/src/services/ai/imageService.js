@@ -195,8 +195,10 @@ async function preprocessImage(buffer, mimeType = 'image/png') {
     }
 
     // thresholdを微調整 (二値化せずにコントラスト強調)
+    // [ADD] メモリ保護とAI性能のバランスのため、最大4000pxにリサイズ
     return sharp(imageBuffer)
         .grayscale()
+        .resize({ width: 4000, height: 4000, fit: 'inside', withoutEnlargement: true })
         .threshold(230) // 少し緩めて (240 -> 230) 細い線の消失を防ぐ
         .toBuffer();
 }

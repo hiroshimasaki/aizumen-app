@@ -7,8 +7,10 @@ const imageService = require('../services/ai/imageService'); // Added
 const { supabaseAdmin } = require('../config/supabase'); // Added
 const { AppError } = require('../middleware/errorHandler');
 
+const { checkTrialLimit } = require('../middleware/trialMiddleware');
 const { checkCredits } = require('../middleware/credits');
 const creditService = require('../services/creditService');
+const logService = require('../services/logService');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -16,12 +18,12 @@ const upload = multer({ storage: multer.memoryStorage() });
  * POST /api/search/similar
  * 矩形選択範囲の画像を用いた類似図面検索
  */
-router.post('/similar', authMiddleware, checkCredits(1), upload.fields([{ name: 'queryImage' }, { name: 'fullPageImage' }, { name: 'pdfFile' }]), async (req, res, next) => {
+router.post('/similar', authMiddleware, checkTrialLimit, checkCredits(1), upload.fields([{ name: 'queryImage' }, { name: 'fullPageImage' }, { name: 'pdfFile' }]), async (req, res, next) => {
     try {
         const queryFile = req.files['queryImage']?.[0];
         const fullPageFile = req.files['fullPageImage']?.[0];
         const pdfFile = req.files['pdfFile']?.[0];
-        const fileId = req.body.fileId || null; // 既存ファイルのID（任意）
+        const fileId = req.body.fileId || null;
 
         if (!queryFile) {
             throw new AppError('検索クエリ画像が必要です', 400, 'NO_QUERY_IMAGE');
@@ -46,6 +48,15 @@ router.post('/similar', authMiddleware, checkCredits(1), upload.fields([{ name: 
             `類似図面検索 (矩形選択)`
         );
 
+        // 監査ログの追加
+        await logService.audit({
+            action: 'drawing_searched',
+            entityType: 'search',
+            description: `類似図面検索を実行しました: 候補 ${results.length}件`,
+            tenantId: req.tenantId,
+            userId: req.userId
+        });
+
         res.json({
             success: true,
             results: results,
@@ -56,8 +67,7 @@ router.post('/similar', authMiddleware, checkCredits(1), upload.fields([{ name: 
             }
         });
     } catch (error) {
-        console.error('[Search API] Error:', error);
-        res.status(500).json({ error: 'Search failed' }); // Modified
+        next(error);
     }
 });
 
