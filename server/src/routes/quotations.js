@@ -83,14 +83,20 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
                 ).join(',');
                 const { data: matchedItems } = await supabaseAdmin
                     .from('quotation_items')
-                    .select('quotation_id, name')
+                    .select('quotation_id, name, material, processing_method, surface_treatment')
                     .eq('tenant_id', req.tenantId)
                     .or(itemOrs);
 
                 if (matchedItems) {
                     matchedItems.forEach(item => {
                         validTerms.forEach(term => {
-                            if (item.name && normalizeSearchTerm(item.name).includes(term)) {
+                            const isMatch = 
+                                (item.name && normalizeSearchTerm(item.name).includes(term)) ||
+                                (item.material && normalizeSearchTerm(item.material).includes(term)) ||
+                                (item.processing_method && normalizeSearchTerm(item.processing_method).includes(term)) ||
+                                (item.surface_treatment && normalizeSearchTerm(item.surface_treatment).includes(term));
+
+                            if (isMatch) {
                                 if (!matchedIdsByTerm[term]) matchedIdsByTerm[term] = [];
                                 matchedIdsByTerm[term].push(item.quotation_id);
                             }
