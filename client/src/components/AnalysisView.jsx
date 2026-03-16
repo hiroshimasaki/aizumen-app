@@ -80,37 +80,45 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
 
         const ordered = filteredQuotations.filter(q => validStatuses.includes(q.status));
 
-        // 1. Monthly Revenue Trend (Last 6 months, always shows 6 months for trend)
+        // 1. Monthly Revenue Trend (Always 6 months for trend)
+        const monthsToShow = 6;
         const monthlyRevenue = {};
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < monthsToShow; i++) {
             const d = new Date(currentYear, currentMonth - i, 1);
             const mStr = String(d.getMonth() + 1).padStart(2, '0');
             const key = `${d.getFullYear()}/${mStr}`;
-            monthlyRevenue[key] = { proc: 0, mat: 0, other: 0, total: 0 };
+            monthlyRevenue[key] = { proc: 0, mat: 0, other: 0, total: 0, sales: 0, count: 0 };
         }
 
         quotations.filter(q => validStatuses.includes(q.status)).forEach(q => {
-            (q.items || []).forEach(item => {
-                const d = item.deliveryDate ? new Date(item.deliveryDate) : (q.createdAt ? new Date(q.createdAt) : null);
-                if (!d || isNaN(d.getTime())) return;
-                const mStr = String(d.getMonth() + 1).padStart(2, '0');
-                const key = `${d.getFullYear()}/${mStr}`;
-                if (monthlyRevenue.hasOwnProperty(key)) {
+            const targetDate = getTargetDate(q);
+            const mStr = String(targetDate.getMonth() + 1).padStart(2, '0');
+            const key = `${targetDate.getFullYear()}/${mStr}`;
+            
+            if (monthlyRevenue.hasOwnProperty(key)) {
+                monthlyRevenue[key].count += 1;
+                (q.items || []).forEach(item => {
                     const qty = Number(item.quantity) || 1;
                     const p = (Number(item.processingCost) || 0) * qty;
                     const m = (Number(item.materialCost) || 0) * qty;
                     const o = (Number(item.otherCost) || 0) * qty;
+                    const itemTotal = p + m + o;
                     monthlyRevenue[key].proc += p;
                     monthlyRevenue[key].mat += m;
                     monthlyRevenue[key].other += o;
-                    monthlyRevenue[key].total += (p + m + o);
-                }
-            });
+                    monthlyRevenue[key].total += itemTotal;
+                    monthlyRevenue[key].sales += itemTotal;
+                });
+            }
         });
 
         const trendData = Object.entries(monthlyRevenue)
             .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([month, data]) => ({ month, ...data, amount: data.total }));
+            .map(([month, data]) => ({ 
+                month,
+                date: month.replace('/', '-'), 
+                ...data 
+            }));
 
         // 2. Profitability Ranking (Processing Margin ONLY)
         const profitability = ordered.map(q => {
@@ -220,7 +228,7 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
 
     const { maxRevenue, maxCount } = useMemo(() => {
         const data = analysisData.trendData;
-        const rawMaxRev = Math.max(...data.map(d => d.total || 0), 0);
+        const rawMaxRev = Math.max(...data.map(d => d.sales || 0), 0);
         const rawMaxCount = Math.max(...data.map(d => d.count || 0), 0);
 
         // バッファ（10%）を持たせて、データが0でも最小限のレンジを確保

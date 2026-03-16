@@ -95,59 +95,64 @@ export default function AnalysisPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-900/30 text-indigo-400 rounded-xl">
-                    <BarChart3 size={28} />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-black text-white">データ分析</h1>
-                    <p className="text-slate-400 text-sm">受注・収益の分析ダッシュボード</p>
-                </div>
-                <div className="flex-1 flex justify-end gap-3">
-                    <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-1 flex gap-1 shadow-lg h-fit">
+            {/* Sticky Header with Filters - Adjusted to sit below global header (h-14) */}
+            <div className="sticky top-14 z-30 -mx-4 px-4 py-4 bg-slate-950/80 backdrop-blur-md border-b border-white/5 -mt-6 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-900/30 text-indigo-400 rounded-xl">
+                            <BarChart3 size={28} />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-white">データ分析</h1>
+                            <p className="text-slate-400 text-sm">受注・収益の分析ダッシュボード</p>
+                        </div>
+                    </div>
+                    <div className="flex-1 flex justify-end gap-3">
+                        <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-1 flex gap-1 shadow-lg h-fit">
+                            <button
+                                onClick={() => setFilterPeriod('current')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                    filterPeriod === 'current' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                今月
+                            </button>
+                            <button
+                                onClick={() => setFilterPeriod('3months')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                    filterPeriod === '3months' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                過去3ヶ月
+                            </button>
+                            <button
+                                onClick={() => setFilterPeriod('6months')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                    filterPeriod === '6months' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                過去6ヶ月
+                            </button>
+                            <button
+                                onClick={() => setFilterPeriod('1year')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                                    filterPeriod === '1year' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                過去1年
+                            </button>
+                        </div>
                         <button
-                            onClick={() => setFilterPeriod('current')}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
-                                filterPeriod === 'current' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
-                            )}
+                            onClick={() => { setLoading(true); }} // This will trigger fetch via effect if we use a trigger state, but for now simple refresh is fine
+                            className="p-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all"
                         >
-                            今月
-                        </button>
-                        <button
-                            onClick={() => setFilterPeriod('3months')}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
-                                filterPeriod === '3months' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
-                            )}
-                        >
-                            過去3ヶ月
-                        </button>
-                        <button
-                            onClick={() => setFilterPeriod('6months')}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
-                                filterPeriod === '6months' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
-                            )}
-                        >
-                            過去6ヶ月
-                        </button>
-                        <button
-                            onClick={() => setFilterPeriod('1year')}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
-                                filterPeriod === '1year' ? "bg-indigo-600 text-white shadow-indigo-500/20 shadow-lg" : "text-slate-500 hover:text-slate-300"
-                            )}
-                        >
-                            過去1年
+                            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
                         </button>
                     </div>
-                    <button
-                        onClick={() => { setLoading(true); }} // This will trigger fetch via effect if we use a trigger state, but for now simple refresh is fine
-                        className="p-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all"
-                    >
-                        <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-                    </button>
                 </div>
             </div>
 
