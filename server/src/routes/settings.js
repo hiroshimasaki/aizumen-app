@@ -62,14 +62,34 @@ router.put('/', authMiddleware, requireRole('admin'), async (req, res, next) => 
             userId: req.userId
         });
 
-        // hourlyRate があれば tenants テーブルも更新
-        if (req.body.hourlyRate !== undefined) {
+        // hourlyRate または autoLostDays があれば tenants テーブルも更新
+        if (req.body.hourlyRate !== undefined || req.body.autoLostDays !== undefined) {
+            const { data: currentTenant } = await supabaseAdmin
+                .from('tenants')
+                .select('settings, hourly_rate')
+                .eq('id', req.tenantId)
+                .single();
+
+            const tUpdates = { updated_at: new Date().toISOString() };
+            
+            if (req.body.hourlyRate !== undefined) {
+                tUpdates.hourly_rate = Number(req.body.hourlyRate);
+            }
+
+            if (req.body.autoLostDays !== undefined) {
+                const currentSettings = currentTenant?.settings || {};
+                tUpdates.settings = {
+                    ...currentSettings,
+                    auto_lost_days: Number(req.body.autoLostDays)
+                };
+            }
+
             const { error: tError } = await supabaseAdmin
                 .from('tenants')
-                .update({ hourly_rate: Number(req.body.hourlyRate), updated_at: new Date().toISOString() })
+                .update(tUpdates)
                 .eq('id', req.tenantId);
 
-            if (tError) console.error('Failed to update hourly_rate in tenants table:', tError);
+            if (tError) console.error('Failed to update tenants table:', tError);
         }
 
         res.json(data);

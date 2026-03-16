@@ -24,11 +24,15 @@ export default function TenantSettings() {
         constructionNumberLabel: '工事番号'
     });
     const [hourlyRate, setHourlyRate] = useState(8000);
+    const [autoLostDays, setAutoLostDays] = useState(0);
 
     useEffect(() => {
         fetchSettings();
         if (tenant?.hourly_rate) {
             setHourlyRate(tenant.hourly_rate);
+        }
+        if (tenant?.settings?.auto_lost_days) {
+            setAutoLostDays(tenant.settings.auto_lost_days);
         }
     }, [tenant]);
 
@@ -59,13 +63,18 @@ export default function TenantSettings() {
 
             await api.put('/api/settings', {
                 settingsJson: updatedJson,
-                hourlyRate: Number(hourlyRate)
+                hourlyRate: Number(hourlyRate),
+                autoLostDays: Number(autoLostDays)
             });
 
             // Update local context
             setTenant({
                 ...tenant,
-                hourly_rate: Number(hourlyRate)
+                hourly_rate: Number(hourlyRate),
+                settings: {
+                    ...(tenant.settings || {}),
+                    auto_lost_days: Number(autoLostDays)
+                }
             });
 
             await showAlert('設定を保存しました', 'success');
@@ -218,27 +227,52 @@ export default function TenantSettings() {
                 </div>
             </div>
 
-            {/* コスト計算設定をこちらに移動 */}
-            <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                <h3 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
-                    <Sparkles size={20} className="text-indigo-400" />
-                    コスト計算（標準単価）設定
-                </h3>
-                <div className="max-w-xs space-y-2">
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">
-                        時間単価 (円/時間)
-                    </label>
-                    <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">¥</span>
-                        <input
-                            type="number"
-                            value={hourlyRate}
-                            onChange={(e) => setHourlyRate(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all text-sm"
-                            placeholder="8000"
-                        />
+            {/* コスト計算設定と自動失注設定を並べて配置 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                        <Sparkles size={20} className="text-indigo-400" />
+                        コスト計算（標準単価）設定
+                    </h3>
+                    <div className="space-y-2">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">
+                            時間単価 (円/時間)
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">¥</span>
+                            <input
+                                type="number"
+                                value={hourlyRate}
+                                onChange={(e) => setHourlyRate(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all text-sm"
+                                placeholder="8000"
+                            />
+                        </div>
+                        <p className="text-[10px] text-slate-500">実績工数から加工費を算出する際の基準価格です。</p>
                     </div>
-                    <p className="text-[10px] text-slate-500">実績工数から加工費を算出する際の基準価格です。</p>
+                </div>
+
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                        <Sparkles size={20} className="text-rose-400" />
+                        自動ステータス更新設定
+                    </h3>
+                    <div className="space-y-2">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">
+                            自動失注までの日数 (回答日基準)
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                value={autoLostDays}
+                                onChange={(e) => setAutoLostDays(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono focus:ring-2 focus:ring-rose-500/50 outline-none transition-all text-sm"
+                                placeholder="0"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs">日経過</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">回答日から指定日数が経過した検討中案件を自動で失注扱いにします（0で無効）。</p>
+                    </div>
                 </div>
             </div>
 

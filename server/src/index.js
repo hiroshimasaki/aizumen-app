@@ -247,7 +247,104 @@ app.listen(PORT, '0.0.0.0', () => {
     timezone: 'Asia/Tokyo'
   });
 
-  console.log('[AiZumen API] Cron job registered: trash purge at 03:00 JST daily');
+  // 毎日 AM 4:00 に回答日超過による自動失注を実行
+  cron.schedule('0 4 * * *', async () => {
+    console.log('[Cron] Starting auto-lost status update job...');
+    try {
+      // 1. 自動失注設定が有効なテナントを取得
+      const { data: tenants, error: tError } = await supabaseAdmin
+        .from('tenants')
+        .select('id, name, settings');
+
+      if (tError) throw tError;
+
+      for (const tenant of tenants) {
+        const autoLostDays = parseInt(tenant.settings?.auto_lost_days);
+        if (!autoLostDays || autoLostDays <= 0) continue;
+
+        console.log(`[Cron] Checking tenant: ${tenant.name} (Auto-lost: ${autoLostDays} days)`);
+
+        // 2. 検討中かつ削除されていない案件を取得（明細も含む）
+        const { data: quotations, error: qError } = await supabaseAdmin
+          .from('quotations')
+          .select('id, display_id, company_name, quotation_items(response_date)')
+          .eq('tenant_id', tenant.id)
+          .eq('status', 'pending')
+          .eq('is_deleted', false);
+
+        if (qError) {
+          console.error(`[Cron] Error fetching quotations for ${tenant.name}:`, qError.message);
+          continue;
+        }
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        for (const quotation of quotations) {
+          if (!quotation.quotation_items || quotation.quotation_items.length === 0) continue;
+
+          // 明細の中で最も遅い回答日を探す
+          const dates = quotation.quotation_items
+            .map(item => item.response_date)
+            .filter(Boolean)
+            .map(d => new Date(d));
+
+          if (dates.length === 0) continue;
+
+          const latestResponseDate = new Date(Math.max(...dates));
+          latestResponseDate.setHours(0, 0, 0, 0);
+
+          // 経過日数を計算
+          const diffTime = now.getTime() - latestResponseDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays >= autoLostDays) {
+            console.log(`[Cron] Auto-lost: ${quotation.display_id} (Diff: ${diffDays} days)`);
+
+            // ステータスを失注に更新
+            const { error: updateError } = await supabaseAdmin
+              .from('quotations')
+              .update({ 
+                status: 'lost',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', quotation.id);
+
+            if (!updateError) {
+              // 履歴に記録
+              await supabaseAdmin.from('quotation_history').insert({
+                quotation_id: quotation.id,
+                tenant_id: tenant.id,
+                change_type: 'updated',
+                changes: { 
+                  'ステータス': { from: 'pending', to: 'lost' },
+                  '注記': '回答日から一定期間経過したためシステムにより自動失注処理されました'
+                }
+              });
+
+              await logService.audit({
+                action: 'quotation_auto_lost',
+                entityType: 'quotation',
+                entityId: quotation.id,
+                description: `自動失注処理: ${quotation.display_id} (${diffDays}日経過)`,
+                tenantId: tenant.id,
+                system: true
+              });
+            } else {
+              console.error(`[Cron] Update failed for ${quotation.id}:`, updateError.message);
+            }
+          }
+        }
+      }
+      console.log('[Cron] Auto-lost job completed.');
+    } catch (err) {
+      console.error('[Cron] Auto-lost job failed:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Tokyo'
+  });
+
+  console.log('[AiZumen API] Cron job registered: auto-lost at 04:00 JST daily');
 });
 
 // グローバルエラー捕捉
