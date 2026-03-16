@@ -119,7 +119,11 @@ function mapErrorMessage(msg) {
 }
 
 // Debug log for initialization
-console.log('Renderer.js: Initializing...');
+console.log('Renderer.js: Initializing v1.1.0...');
+ipcRenderer.on('main-log', (event, { message, data }) => {
+    console.log(`%c[Main Process] ${message}`, 'color: #3b82f6; font-weight: bold;', data || '');
+});
+console.log('Main Process log listener attached.');
 
 window.onerror = function(message, source, lineno, colno, error) {
     console.error('GLOBAL ERROR:', message, source, lineno, colno, error);
