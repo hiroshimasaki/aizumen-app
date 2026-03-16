@@ -73,9 +73,8 @@ function normalizeSearchTerm(term) {
     return term
         // 全角英数字・記号を半角に変換
         .replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
-        // 特殊なハイフンや長音を標準的なハイフンに統一
-        .replace(/[ー‐－―]/g, '-')
-        // カタカナの半角・全角等は今回触れず、英数字メイン
+        // 特殊なハイフンやダッシュを標準的なハイフンに統一（長音記号「ー」は除外）
+        .replace(/[‐－―]/g, '-')
         .toLowerCase()
         .trim();
 }
