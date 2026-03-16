@@ -55,7 +55,7 @@ router.get('/', authMiddleware, checkTrialLimit, async (req, res, next) => {
 
         let query = supabaseAdmin
             .from('quotations')
-            .select('*, quotation_items(*), quotation_files(id, original_name, file_type)', { count: 'exact' })
+            .select('*, quotation_items(*), quotation_files(id, original_name, file_type, storage_path)', { count: 'exact' })
             .eq('tenant_id', req.tenantId)
             .eq('is_deleted', showDeleted === 'true');
 

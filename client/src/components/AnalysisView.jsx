@@ -146,11 +146,14 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
             const margin = estProcTotal - actProcTotal;
             const marginPct = estProcTotal > 0 ? (margin / estProcTotal) * 100 : 0;
 
+            const mainFile = (q.files && q.files.length > 0) ? q.files[0] : null;
+
             return {
                 id: q.id,
                 company: q.companyName,
                 subject: (q.items && q.items[0] && q.items[0].name) || '無題',
-                estProcTotal, actProcTotal, margin, marginPct, hasActuals
+                estProcTotal, actProcTotal, margin, marginPct, hasActuals,
+                mainFile
             };
         }).filter(p => p.hasActuals).sort((a, b) => b.marginPct - a.marginPct);
 
@@ -244,6 +247,20 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
         d.setMonth(d.getMonth() - 1);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }, []);
+
+    const handlePreview = async (filePath) => {
+        if (!filePath) return;
+        try {
+            const { data, error } = await api.post('/api/quotations/signed-url', { filePath });
+            if (error) throw error;
+            if (data?.signedUrl) {
+                window.open(data.signedUrl, '_blank');
+            }
+        } catch (err) {
+            console.error('Failed to get preview URL:', err);
+            alert('図面の取得に失敗しました');
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -503,8 +520,24 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
                                     onClick={() => isPro && setSelectedId(p.id)}
                                 >
                                     <td className="py-3 pl-2">
-                                        <div className="font-bold text-slate-200 truncate max-w-[200px] group-hover:text-blue-400 transition-colors">{p.subject || '無題'}</div>
-                                        <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{p.company}</div>
+                                        <div className="flex items-center gap-2 overflow-hidden group/item">
+                                            <div className="overflow-hidden">
+                                                <div className="font-bold text-slate-200 truncate max-w-[180px] group-hover:text-blue-400 transition-colors">{p.subject || '無題'}</div>
+                                                <div className="text-[10px] text-slate-500 truncate max-w-[180px]">{p.company}</div>
+                                            </div>
+                                            {p.mainFile && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handlePreview(p.mainFile.storagePath);
+                                                    }}
+                                                    className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-900/30 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                    title={`図面をプレビュー: ${p.mainFile.originalName}`}
+                                                >
+                                                    <FileText size={14} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="text-right py-3 font-medium text-slate-400 italic">¥{p.estProcTotal.toLocaleString()}</td>
                                     <td className="text-right py-3 font-medium text-slate-400">¥{p.actProcTotal.toLocaleString()}</td>
@@ -548,6 +581,27 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
                             {/* Modal Content */}
                             <div className="p-6 overflow-y-auto flex-1">
                                 <div className="space-y-6">
+                                    {/* Files Section */}
+                                    {q.files && q.files.length > 0 && (
+                                        <div className="space-y-3">
+                                            <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">関連図面ファイル</h5>
+                                            <div className="flex flex-wrap gap-2">
+                                                {q.files.map((file) => (
+                                                    <button
+                                                        key={file.id}
+                                                        onClick={() => handlePreview(file.storagePath)}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all group/file"
+                                                    >
+                                                        <FileText size={16} className="text-blue-400 group-hover/file:scale-110 transition-transform" />
+                                                        <span className="text-xs font-bold text-slate-300 group-hover/file:text-white truncate max-w-[150px]">
+                                                            {file.originalName}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Basic Info */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700 text-sm">
                                         <div className="space-y-2.5">
@@ -580,12 +634,12 @@ export default function AnalysisView({ quotations, stats, period = 'all', hourly
                                                             </div>
                                                             <span className="font-black text-slate-200 text-base">{item.name || '未命名項目'}</span>
                                                         </div>
-                                                        <div className="flex flex-col items-end">
-                                                            <span className="text-[10px] font-black text-slate-600 uppercase">数量</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-sm font-black text-slate-400">{qty.toLocaleString()}</span>
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="text-[10px] font-black text-slate-600 uppercase">数量</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-sm font-black text-slate-400">{qty.toLocaleString()}</span>
+                                                                </div>
                                                             </div>
-                                                        </div>
                                                     </div>
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                                         <div className="p-2 bg-blue-900/10 rounded-lg">

@@ -50,6 +50,7 @@ export default function AnalysisPage() {
                     files: (q.quotation_files || []).map(f => ({
                         id: f.id,
                         originalName: f.original_name,
+                        storagePath: f.storage_path,
                     })),
                 }));
                 setAllQuotations(mapped);
