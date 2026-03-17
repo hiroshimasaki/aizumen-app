@@ -5,6 +5,7 @@ const fs = require('fs');
 const axios = require('axios');
 const FormData = require('form-data');
 const notifier = require('node-notifier');
+const { PDFDocument } = require('pdf-lib');
 
 let mainWindow;
 let watcher;
@@ -150,6 +151,36 @@ async function startAutoAnalysisIfPossible() {
     }
 }
 
+/**
+ * PDFを指定されたページで分割し、Bufferとして返す
+ * @param {Buffer} originalBuffer 元のPDFデータのBuffer
+ * @param {number[]} pageNumbers 抽出するページ番号の配列 (1-indexed)
+ * @returns {Promise<Buffer|null>} 抽出後のPDFデータのBuffer
+ */
+async function splitPdfBuffer(originalBuffer, pageNumbers) {
+    if (!pageNumbers || pageNumbers.length === 0) return null;
+    try {
+        const pdfDoc = await PDFDocument.load(originalBuffer);
+        const newPdfDoc = await PDFDocument.create();
+
+        // ページ番号を 0-indexed に変換し、存在するページのみ追加
+        const indices = pageNumbers
+            .map(n => n - 1)
+            .filter(i => i >= 0 && i < pdfDoc.getPageCount());
+
+        if (indices.length === 0) return null;
+
+        const copiedPages = await newPdfDoc.copyPages(pdfDoc, indices);
+        copiedPages.forEach((page) => newPdfDoc.addPage(page));
+
+        const pdfBytes = await newPdfDoc.save();
+        return Buffer.from(pdfBytes);
+    } catch (err) {
+        logToRenderer(`[PDF Split Error] ${err.message}`);
+        return null;
+    }
+}
+
 async function processFile(file) {
     try {
         logToRenderer(`Starting analysis for ${file.name}`);
@@ -217,7 +248,8 @@ async function processFile(file) {
                 dimensions: aiItem.dimensions || '',
                 material: aiItem.material || '',
                 processingMethod: aiItem.processingMethod || '',
-                surfaceTreatment: aiItem.surface_treatment || ''
+                surface_treatment: aiItem.surface_treatment || aiItem.surfaceTreatment || '',
+                requiresVerification: aiItem.requiresVerification || false
             }))
             : [{
                 name: file.name.split('.')[0],
@@ -229,7 +261,8 @@ async function processFile(file) {
                 dimensions: '',
                 material: '',
                 processingMethod: '',
-                surfaceTreatment: ''
+                surfaceTreatment: '',
+                requiresVerification: false
             }];
 
         const quotationPayload = {
@@ -266,7 +299,40 @@ async function processFile(file) {
         if (newQuote && newQuote.id) {
             const uploadFormData = new FormData();
             uploadFormData.append('quotationId', newQuote.id);
-            uploadFormData.append('files', fs.createReadStream(file.path));
+
+            const fileBuffer = fs.readFileSync(file.path);
+            let uploadedCount = 0;
+
+            // PDF かつ ページ詳細がある場合は分割を試みる
+            if (ocrData.pageClassifications && file.name.toLowerCase().endsWith('.pdf')) {
+                logToRenderer(`Attempting to split PDF based on AI classification...`);
+                const orderFormPages = ocrData.pageClassifications.filter(p => p.type === 'order_form').map(p => p.page);
+                const drawingPages = ocrData.pageClassifications.filter(p => p.type === 'drawing').map(p => p.page);
+
+                const suffix = ocrData.orderNumber ? `_${ocrData.orderNumber}` : '';
+
+                if (orderFormPages.length > 0) {
+                    const buffer = await splitPdfBuffer(fileBuffer, orderFormPages);
+                    if (buffer) {
+                        uploadFormData.append('files', buffer, { filename: `注文書${suffix}.pdf`, contentType: 'application/pdf' });
+                        uploadedCount++;
+                        logToRenderer(`Order form split: ${orderFormPages.length} pages`);
+                    }
+                }
+                if (drawingPages.length > 0) {
+                    const buffer = await splitPdfBuffer(fileBuffer, drawingPages);
+                    if (buffer) {
+                        uploadFormData.append('files', buffer, { filename: `図面${suffix}.pdf`, contentType: 'application/pdf' });
+                        uploadedCount++;
+                        logToRenderer(`Drawing split: ${drawingPages.length} pages`);
+                    }
+                }
+            }
+
+            // 分割されなかった、またはPDF以外の場合は元のファイルをそのまま送る
+            if (uploadedCount === 0) {
+                uploadFormData.append('files', fs.createReadStream(file.path));
+            }
 
             try {
                 const uploadResponse = await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
