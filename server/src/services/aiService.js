@@ -159,11 +159,14 @@ class AIService {
             logService.debug('AI: Raw response received', { textPreview: responseText.substring(0, 100) });
             return this.parseJsonResponse(responseText);
         } catch (error) {
-            logService.error({
-                message: `AI Analysis failed: ${error.message}`,
-                stack: error.stack,
-                source: 'server_ai_service'
-            });
+            const errorDetails = {
+                message: error.message,
+                status: error.status,
+                code: error.code,
+                source: 'server_ai_service_generateContent'
+            };
+            logService.error(errorDetails);
+            console.error('[AIService] Analysis error:', errorDetails);
             throw error;
         }
     }

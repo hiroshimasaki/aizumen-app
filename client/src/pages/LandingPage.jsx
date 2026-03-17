@@ -1,659 +1,690 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Zap, Brain, CalendarDays, FileText, ChevronRight, Shield, Upload, Cpu, CheckCircle, Check, ArrowRight, TrendingUp, Mail, Search, Users, MapPin, ShieldCheck, Lock } from 'lucide-react';
+import {
+    Zap, Brain, CalendarDays, FileText, ChevronRight, Shield, Upload, Cpu,
+    CheckCircle, Check, ArrowRight, TrendingUp, Mail, Search, Users,
+    MapPin, ShieldCheck, Lock, Clock, Rocket, BarChart3, LayoutDashboard,
+    Play, MessageSquare, Info
+} from 'lucide-react';
 
 export default function LandingPage() {
     return (
-        <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans selection:bg-blue-500/30 overflow-x-hidden">
-            {/* Background Effects */}
-            <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none" />
-            <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-600/20 blur-[120px] pointer-events-none" />
+        <div className="min-h-screen bg-[#0a0a0a] text-white font-['Inter'] selection:bg-cyan-500/30 overflow-x-hidden">
+            {/* SEO & Meta (Head handled by index.html or Helmet if added) */}
+
+            {/* Global Decor */}
+            <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-600/10 blur-[120px]" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-[0.03] pointer-events-none"
+                    style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+            </div>
 
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/50 backdrop-blur-md border-b border-white/10">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Zap className="w-6 h-6 text-cyan-400" />
-                        <span className="text-xl font-bold text-blue-400 tracking-tight">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/70 backdrop-blur-xl border-b border-white/5">
+                <div className="max-w-7xl mx-auto px-6 md:px-12 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                            <Zap className="w-6 h-6 text-white" />
+                        </div>
+                        <span className="text-2xl font-['Roboto_Mono'] font-bold tracking-tighter text-white">
                             AiZumen
                         </span>
                     </div>
+
+                    <nav className="hidden md:flex items-center gap-10">
+                        {['機能', '解決策', '料金', 'セキュリティ'].map((item) => (
+                            <a key={item} href={`#${item}`} className="text-sm font-medium text-lp-text-sub hover:text-lp-accent transition-colors">
+                                {item}
+                            </a>
+                        ))}
+                    </nav>
+
                     <div className="flex items-center gap-4">
-                        <Link
-                            to="/login"
-                            className="text-sm font-medium text-slate-300 hover:text-white transition-colors hidden sm:block"
-                        >
+                        <Link to="/login" className="px-6 py-2.5 text-sm font-bold text-white hover:text-lp-accent transition-colors">
                             ログイン
                         </Link>
-                        <Link
-                            to="/signup"
-                            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white text-sm font-bold transition-all"
-                        >
+                        <Link to="/signup" className="px-6 py-3 bg-lp-accent text-black font-black text-sm rounded-xl hover:shadow-[0_0_20px_rgba(0,229,255,0.4)] transition-all hover:scale-105 active:scale-95">
                             無料トライアル
                         </Link>
                     </div>
                 </div>
             </header>
 
-            <main className="relative z-10 pt-24 pb-16">
-                {/* Hero Section */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 pt-16 md:pt-32 pb-20 text-center">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold mb-8 animate-[fade-in-up_0.8s_ease-out_forwards]">
+            <main className="relative z-10">
+                {/* Section 1: Hero */}
+                <section className="relative pt-40 pb-24 px-6 md:px-12 container mx-auto flex flex-col items-center text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-lp-accent text-xs font-black mb-10 tracking-widest animate-[fade-in-up_0.8s_ease-out]">
                         <Sparkles className="w-4 h-4" />
-                        <span>製造業・町工場のDXを支える AI図面検索・工程管理SaaS</span>
+                        <span>町工場・製造業のためのAI図面管理システム</span>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight tracking-tight opacity-0 animate-[fade-in-up_0.8s_ease-out_0.1s_forwards]">
-                        製造業・町工場のDXを、<br />
-                        <span className="text-blue-400">AIとクラウドで一元化。</span>
+
+                    <h1 className="text-5xl md:text-8xl font-['Roboto_Mono'] font-bold text-white mb-8 leading-[1.1] tracking-tight animate-[fade-in-up_0.8s_ease-out_0.1s_forwards] opacity-0">
+                        見積業務の「属人化」と<br />
+                        <span className="text-lp-accent inline-block drop-shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+                            「非効率」をAIで一掃する。
+                        </span>
                     </h1>
-                    <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 mb-10 opacity-0 animate-[fade-in-up_0.8s_ease-out_0.2s_forwards]">
-                        製造現場を刷新するDXクラウドサービス。AIが注文書から項目を自動抽出し、高度な図面検索で過去の知見を瞬時に活用。町工場のペーパーレス化と見積精度の向上を強力に支援します。
+
+                    <p className="max-w-3xl text-lg md:text-2xl text-lp-text-sub mb-12 leading-relaxed animate-[fade-in-up_0.8s_ease-out_0.2s_forwards] opacity-0 font-medium">
+                        現場を知る経営者が開発した、町工場のためのAI図面管理システム。<br className="hidden md:block" />
+                        紙図面やFAXからでもAIが自動解析。見積に1時間かかっていたのが、1.5分に。
                     </p>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 opacity-0 animate-[fade-in-up_0.8s_ease-out_0.3s_forwards]">
-                        <Link
-                            to="/signup"
-                            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 text-white font-bold text-lg hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 group"
-                        >
-                            無料で始める
-                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+
+                    <div className="flex flex-col sm:flex-row gap-6 mb-20 animate-[fade-in-up_0.8s_ease-out_0.3s_forwards] opacity-0">
+                        <Link to="/signup" className="px-10 py-5 bg-lp-accent text-black font-black text-xl rounded-2xl shadow-[0_0_30px_rgba(0,229,255,0.3)] hover:shadow-[0_0_40px_rgba(0,229,255,0.5)] transition-all hover:scale-105 group relative overflow-hidden">
+                            <span className="relative z-10 flex items-center gap-3">
+                                無料トライアルを始める
+                                <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                            </span>
                         </Link>
-                        <Link
-                            to="/login"
-                            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-lg transition-all flex items-center justify-center gap-2 sm:hidden"
-                        >
-                            ログイン
-                        </Link>
+                        <a href="#demo-video" className="px-10 py-5 bg-white/5 border border-white/10 text-white font-black text-xl rounded-2xl hover:bg-white/10 transition-all flex items-center gap-3">
+                            <Play className="w-6 h-6 fill-current" />
+                            デモを見る
+                        </a>
                     </div>
+
+                    {/* Simple Flow Visual */}
+                    <div className="max-w-5xl w-full p-8 md:p-12 rounded-[3rem] bg-gradient-to-b from-white/5 to-transparent border border-white/10 animate-[fade-in-up_1s_ease-out_0.5s_forwards] opacity-0">
+                        <div className="grid grid-cols-1 md:grid-cols-5 items-center gap-8">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="w-20 h-20 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center shadow-xl">
+                                    <FileText className="w-10 h-10 text-lp-text-sub" />
+                                </div>
+                                <span className="text-sm font-bold">見積依頼・図面</span>
+                            </div>
+                            <div className="flex justify-center">
+                                <ArrowRight className="w-8 h-8 text-lp-accent hidden md:block" />
+                                <ChevronRight className="w-8 h-8 text-lp-accent md:hidden" />
+                            </div>
+                            <div className="flex flex-col items-center gap-4 scale-110">
+                                <div className="w-24 h-24 rounded-[2rem] bg-lp-accent/10 border-2 border-lp-accent flex items-center justify-center shadow-[0_0_30px_rgba(0,229,255,0.2)]">
+                                    <Brain className="w-12 h-12 text-lp-accent" />
+                                </div>
+                                <span className="text-lg font-black text-lp-accent">AI自動解析</span>
+                            </div>
+                            <div className="flex justify-center">
+                                <ArrowRight className="w-8 h-8 text-lp-accent hidden md:block" />
+                                <ChevronRight className="w-8 h-8 text-lp-accent md:hidden" />
+                            </div>
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="w-20 h-20 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center shadow-xl">
+                                    <TrendingUp className="w-10 h-10 text-lp-text-sub" />
+                                </div>
+                                <span className="text-sm font-bold">1秒で過去検索</span>
+                            </div>
+                        </div>
+                        <div className="mt-12 text-center text-lp-text-sub text-sm italic">
+                            現場を知り尽くした経営者が、自らの経験から生み出した「本当に使える」DXの形。
+                        </div>
+                    </div>
+
                 </section>
 
-                {/* Hero Dashboard Mockup */}
-                <div className="max-w-6xl mx-auto px-4 mt-12 mb-20 opacity-0 animate-[fade-in-up_1s_ease-out_0.5s_forwards]">
-                    <div className="relative group">
-                        {/* Decorative background glow */}
-                        <div className="absolute -inset-1 bg-blue-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200"></div>
-
-                        <div className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-slate-900 shadow-2xl">
-                            {/* Real Screenshot with its own header */}
-                            <img
-                                src="/assets/lp/hero-dashboard.png"
-                                alt="AiZumen 案件一覧画面"
-                                className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-[1.01]"
-                            />
-
-                            {/* Floating Stats or Overlay */}
-                            <div className="absolute bottom-6 right-6 p-4 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl transform translate-y-2 group-hover:translate-y-0 transition-transform hidden md:block">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                                        <CheckCircle className="w-5 h-5 text-emerald-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">実績同期完了</p>
-                                        <p className="text-sm font-bold text-white leading-tight">リアルタイムに数値を更新</p>
+                {/* Section 1.5: Demo Video */}
+                <section id="demo-video" className="py-24 px-6 md:px-12 scroll-mt-24">
+                    <div className="max-w-5xl mx-auto">
+                        <div className="relative group">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-lp-accent to-blue-600 rounded-[3rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                            <div className="relative rounded-[2.5rem] bg-[#0a0a0a] border border-white/10 overflow-hidden shadow-2xl">
+                                <div className="aspect-video w-full">
+                                    <iframe
+                                        className="w-full h-full"
+                                        src="https://www.youtube.com/embed/6vERhJV5v2E"
+                                        title="AiZumen Demo Video"
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowFullScreen
+                                    ></iframe>
+                                </div>
+                                <div className="p-8 md:p-10 bg-gradient-to-b from-white/[0.02] to-transparent">
+                                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                                        <div className="text-left">
+                                            <h3 className="text-2xl font-bold text-white mb-2">実際の操作画面を1.5分で体感</h3>
+                                            <p className="text-lp-text-sub font-medium">図面のAI解析から過去検索、見積作成までの一連の流れをご覧いただけます。</p>
+                                        </div>
+                                        <Link to="/signup" className="px-8 py-4 bg-lp-accent text-black font-black rounded-xl hover:scale-105 transition-all shadow-lg shadow-cyan-500/20 shrink-0">
+                                            今すぐ無料で試す
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        {/* Note */}
-                        <p className="mt-4 text-center text-xs text-slate-400/80 italic">※画面はテストデータを用いた開発中のものです。</p>
-                    </div>
-                </div>
-
-                {/* Pain Points Section */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 py-24 relative overflow-hidden">
-                    <div className="absolute top-1/2 left-0 -translate-y-1/2 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none"></div>
-                    <div className="text-center mb-16 relative z-10">
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6">こんなお困りごとないですか？</h2>
-                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">町工場や製造現場の「当たり前」になってしまっている非効率。AiZumenがDXで変えます。</p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-8 relative z-10">
-                        {/* Pain Point 1 */}
-                        <div className="p-8 rounded-3xl bg-slate-800/30 border border-slate-700/50 hover:border-blue-500/30 transition-all group">
-                            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <Mail className="w-7 h-7 text-blue-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-4">お客様からの注文は<br />FAXや郵便で届く</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
-                                届いた書類を手動でシステムに入力する手間。忙しい時の入力漏れや、小さな数字の転記ミスへの不安が常にありませんか？
-                            </p>
-                        </div>
-
-                        {/* Pain Point 2 */}
-                        <div className="p-8 rounded-3xl bg-slate-800/30 border border-slate-700/50 hover:border-cyan-500/30 transition-all group">
-                            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <Search className="w-7 h-7 text-cyan-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-4">ファイルに綴じているが、<br />探すのに時間がかかる</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
-                                「あの図面どこだっけ？」と過去の資料を棚から引っ張り出す時間。事務所内を走り回るムダな時間は、もう終わりにしましょう。
-                            </p>
-                        </div>
-
-                        {/* Pain Point 3 */}
-                        <div className="p-8 rounded-3xl bg-slate-800/30 border border-slate-700/50 hover:border-emerald-500/30 transition-all group">
-                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <Users className="w-7 h-7 text-emerald-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-4">進捗や図面が、<br />担当者に聞かないと不明</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
-                                現場と事務所で情報が分断され、納期確認や工程の把握が電話や口頭頼みに。属人化した情報管理こそが、ミスの温床です。
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="mt-16 text-center">
-                        <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
-                            <Zap className="w-5 h-5 text-blue-400" />
-                            <p className="text-sm font-bold text-white">AiZumenなら、これらのお困りごとをまるごと解決できます。</p>
-                        </div>
                     </div>
                 </section>
 
-                {/* Workflow Section */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 py-20 bg-slate-900/40 border-y border-white/5 relative overflow-hidden">
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent"></div>
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold mb-4">
-                            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-                            SIMPLE WORKFLOW
-                        </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6">利用の流れ</h2>
-                        <p className="text-lg text-slate-400 md:max-w-2xl mx-auto">わずか3ステップ。注文書の処理からAI図面検索、工程管理まで、すべての業務のDXがブラウザ上で完結します。</p>
-                    </div>
 
-                    <div className="grid md:grid-cols-3 gap-8 relative mt-12">
-                        <div className="hidden md:block absolute top-[45px] left-[15%] right-[15%] h-0.5 bg-slate-800 z-0 border-b border-dashed border-slate-700"></div>
-                        {/* Step 1 */}
-                        <div className="relative z-10 flex flex-col justify-start text-center p-6">
-                            <div className="w-20 h-20 mx-auto rounded-3xl bg-slate-800 border-2 border-blue-500/30 flex items-center justify-center mb-8 shadow-xl shadow-blue-500/10 rotate-3 hover:rotate-0 transition-transform">
-                                <Upload className="w-8 h-8 text-blue-400" />
-                            </div>
-                            <div className="text-blue-400 font-black text-sm uppercase tracking-widest mb-3">Step 1</div>
-                            <h3 className="text-2xl font-bold text-white mb-4">注文書をアップロード</h3>
-                            <p className="text-slate-400 leading-relaxed text-sm">
-                                PDF形式の注文書と関連する図面データをドラッグ＆ドロップ。複数ファイルの一括登録にも対応しています。
+                {/* Section 2: Pain Points */}
+                <section className="py-24 px-6 md:px-12 bg-white/[0.02]">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-20">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold text-white mb-6">
+                                こんな課題、抱えていませんか？
+                            </h2>
+                            <p className="text-xl text-lp-text-sub font-medium">
+                                町工場の経営者の80%が、見積業務の効率化に課題を感じています。
                             </p>
                         </div>
-                        {/* Step 2 */}
-                        <div className="relative z-10 flex flex-col justify-start text-center p-6">
-                            <div className="w-20 h-20 mx-auto rounded-3xl bg-slate-800 border-2 border-cyan-500/30 flex items-center justify-center mb-8 shadow-xl shadow-cyan-500/10 -rotate-3 hover:rotate-0 transition-transform">
-                                <Cpu className="w-8 h-8 text-cyan-400" />
-                            </div>
-                            <div className="text-cyan-400 font-black text-sm uppercase tracking-widest mb-3">Step 2</div>
-                            <h3 className="text-2xl font-bold text-white mb-4">AIが注文書を解析</h3>
-                            <p className="text-slate-400 leading-relaxed text-sm">
-                                AIが注文書を読み取り、品名・材質・数量・寸法などの情報を瞬時にデータ化し、図面と一緒にシステムへ登録されます。
-                            </p>
-                        </div>
-                        {/* Step 3 */}
-                        <div className="relative z-10 flex flex-col justify-start text-center p-6">
-                            <div className="w-20 h-20 mx-auto rounded-3xl bg-slate-800 border-2 border-emerald-500/30 flex items-center justify-center mb-8 shadow-xl shadow-emerald-500/10 rotate-3 hover:rotate-0 transition-transform">
-                                <CalendarDays className="w-8 h-8 text-emerald-400" />
-                            </div>
-                            <div className="text-emerald-400 font-black text-sm uppercase tracking-widest mb-3">Step 3</div>
-                            <h3 className="text-2xl font-bold text-white mb-4">ペーパーレス工程管理</h3>
-                            <p className="text-slate-400 leading-relaxed text-sm">
-                                案件はガントチャートで進捗管理。現場から直接ブラウザで紐づいた図面を拡大確認できるため、紙図面を探す手間が省かれます。
-                            </p>
-                        </div>
-                    </div>
-                </section>
 
-                {/* Features Section */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 py-24">
-                    <div className="text-center mb-20">
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6">AiZumenの4つの強み</h2>
-                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">紙中心の受発注業務をクラウド化し、圧倒的な精度とスピード、そして現場の情報共有を実現します。</p>
-                    </div>
-
-                    <div className="space-y-32">
-                        {/* Feature 1: AI Analysis */}
-                        <div className="grid md:grid-cols-2 gap-12 items-center">
-                            <div className="order-2 md:order-1">
-                                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6">
-                                    <Brain className="w-6 h-6 text-blue-400" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {[
+                                { icon: Clock, title: '見積回答の遅延', desc: '過去の図面を探すだけで1時間。受注機会を逃している。', accent: 'bg-red-500/10 text-[#ff6b6b]' },
+                                { icon: Users, title: 'ベテランへの依存', desc: '「あの図面、前いくらだった？」がベテランにしか分からない。', accent: 'bg-indigo-500/10 text-indigo-400' },
+                                { icon: FileText, title: '紙・FAXの山', desc: '紙図面やFAXでの依頼がデジタル化されず、管理が限界。', accent: 'bg-blue-500/10 text-blue-400' },
+                                { icon: BarChart3, title: '利益の不透明性', desc: '見積と実績の乖離が分からず、「儲からない仕事」を無意識に受けている。', accent: 'bg-amber-500/10 text-amber-400' },
+                            ].map((item, i) => (
+                                <div key={i} className="p-10 rounded-[2.5rem] bg-[#0a0a0a] border border-white/5 hover:border-white/10 transition-all group">
+                                    <div className={`w-16 h-16 rounded-2xl ${item.accent} flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}>
+                                        <item.icon className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-4">{item.title}</h3>
+                                    <p className="text-lp-text-sub leading-relaxed font-medium">{item.desc}</p>
                                 </div>
-                                <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">複雑な注文書もAIが一括解析</h3>
-                                <p className="text-slate-400 leading-relaxed mb-8">
-                                    複数のPDF注文書をシステムへ一括投入。AIが品名、材質、数量、納期などの重要項目を最短数秒でデータ化します。手作業による入力ミスの不安から解放され、営業担当者はより付加価値の高い業務へ集中できます。
-                                </p>
-                                <ul className="space-y-3">
-                                    {['多種多様なフォーマットに対応', '材質・寸法・単価を精度高く抽出', '一括アップロードで待ち時間をゼロに'].map((item, i) => (
-                                        <li key={i} className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-                                            <Check className="w-5 h-5 text-blue-500" /> {item}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="order-1 md:order-2 relative group">
-                                <div className="absolute -inset-4 bg-blue-500/10 rounded-[2.5rem] blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
-                                <img
-                                    src="/assets/lp/feature-ai-ocr.png"
-                                    className="relative rounded-2xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]"
-                                    alt="AI解析機能"
-                                />
-                                <p className="mt-2 text-right text-xs text-slate-400/80 italic">※画面はテストデータを用いた開発中のものです。</p>
-                            </div>
+                            ))}
                         </div>
 
-                        {/* Feature 2: Similar Search */}
-                        <div className="grid md:grid-cols-2 gap-12 items-center">
-                            <div className="relative group">
-                                <div className="absolute -inset-4 bg-indigo-500/10 rounded-[2.5rem] blur-2xl group-hover:bg-indigo-500/20 transition-colors"></div>
-                                <img
-                                    src="/assets/lp/feature-search.png"
-                                    className="relative rounded-2xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]"
-                                    alt="類似図面検索機能"
-                                />
-                                <p className="mt-2 text-left text-xs text-slate-400/80 italic">※画面はテストデータを用いた開発中のものです。</p>
+                        <div className="mt-20 max-w-3xl mx-auto p-8 rounded-3xl bg-[#ff6b6b]/5 border border-[#ff6b6b]/10 text-center">
+                            <p className="text-xl md:text-2xl font-bold leading-relaxed text-white">
+                                見積業務は、製造業の「入口」です。<br />
+                                ここが遅い、属人化している、不透明だと、全社の経営効率が落ちます。
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section 3: Solution */}
+                <section className="py-32 px-6 md:px-12 relative overflow-hidden" id="解決策">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-lp-accent/5 blur-[120px] pointer-events-none" />
+
+                    <div className="max-w-7xl mx-auto relative z-10">
+                        <div className="text-center mb-24">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold text-white mb-8">
+                                AiZumenが、すべてを変えます。
+                            </h2>
+                            <p className="text-xl text-lp-text-sub font-medium max-w-3xl mx-auto">
+                                技術は背景に。経営者が必要なのは「複雑な説明」ではなく、「確実な結果」です。
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                            {[
+                                {
+                                    icon: Rocket, title: '「探す」時間をゼロに',
+                                    desc: 'AI自動解析で、図面から必要な情報を瞬時に抽出。過去の類似図面を1秒で検索。'
+                                },
+                                {
+                                    icon: BarChart3, title: '「判断」の質を最大化',
+                                    desc: 'データに基づいた正確な見積で、利益を確実に確保。'
+                                },
+                                {
+                                    icon: Users, title: '組織力を強化',
+                                    desc: '若手でもベテラン並みの見積が可能。属人化を解消。'
+                                },
+                            ].map((item, i) => (
+                                <div key={i} className="text-center group">
+                                    <div className="w-24 h-24 rounded-[2rem] bg-lp-accent/5 border border-lp-accent/20 flex items-center justify-center mx-auto mb-8 shadow-[0_0_40px_rgba(0,229,255,0.05)] group-hover:shadow-[0_0_60px_rgba(0,229,255,0.15)] transition-all">
+                                        <item.icon className="w-12 h-12 text-lp-accent" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-6">{item.title}</h3>
+                                    <p className="text-lp-text-sub text-lg leading-relaxed font-medium">{item.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-32 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                            <div className="p-10 rounded-[3rem] bg-gradient-to-br from-lp-accent/10 to-transparent border border-lp-accent/20 text-center">
+                                <div className="text-5xl md:text-7xl font-bold text-lp-accent mb-2">90%</div>
+                                <div className="text-xl font-black text-white uppercase tracking-widest">見積作業時間を削減</div>
+                            </div>
+                            <div className="p-10 rounded-[3rem] bg-gradient-to-br from-lp-accent/10 to-transparent border border-lp-accent/20 text-center text-white">
+                                <div className="text-5xl md:text-7xl font-bold text-lp-accent mb-2">90%</div>
+                                <div className="text-xl font-black text-white uppercase tracking-widest">入力工数を削減</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section 4: Features */}
+                <section className="py-24 px-6 md:px-12 bg-white/[0.01]" id="機能">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-32">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold text-white">
+                                AiZumenの3つのコア機能
+                            </h2>
+                        </div>
+
+                        <div className="space-y-48">
+                            {/* Feature 1 */}
+                            <div className="grid md:grid-cols-2 gap-20 items-center">
+                                <div>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lp-accent/10 border border-lp-accent/20 text-lp-accent text-xs font-black mb-6 uppercase tracking-widest">
+                                        Feature 01: AI Vision
+                                    </div>
+                                    <h3 className="text-3xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                                        紙図面やFAXも読み解く、<br />AI Vision テクノロジー。
+                                    </h3>
+                                    <p className="text-xl text-lp-text-sub font-medium leading-relaxed mb-10">
+                                        スマホで撮った紙図面や、複合機から届くFAX。ドラッグ&ドロップするだけでAIが品名、材質、納期、手書き指示まで自動抽出。転記作業から解放されます。
+                                    </p>
+                                    <div className="p-8 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-lp-text-sub font-bold uppercase tracking-widest mb-1">導入効果</span>
+                                            <span className="text-3xl font-black text-lp-accent">データ入力工数 90% 削減</span>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-full bg-lp-accent/20 flex items-center justify-center">
+                                            <TrendingUp className="w-6 h-6 text-lp-accent" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="relative group">
+                                    <div className="absolute -inset-1 bg-lp-accent rounded-[2.5rem] blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
+                                    <img src="/assets/lp/feature-ai-ocr.png" alt="AI自動解析" className="relative rounded-[2rem] border border-white/10 shadow-2xl transition-transform group-hover:scale-[1.01]" />
+                                </div>
+                            </div>
+
+                            {/* Feature 2 */}
+                            <div className="grid md:grid-cols-2 gap-20 items-center">
+                                <div className="order-2 md:order-1 relative group">
+                                    <div className="absolute -inset-1 bg-blue-500 rounded-[2.5rem] blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
+                                    <img src="/assets/lp/feature-search.png" alt="形状検索" className="relative rounded-[2rem] border border-white/10 shadow-2xl transition-transform group-hover:scale-[1.01]" />
+                                </div>
+                                <div className="order-1 md:order-2">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-black mb-6 uppercase tracking-widest">
+                                        Feature 02: pgvector
+                                    </div>
+                                    <h3 className="text-3xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                                        「あの時の図面」を、<br />もう迷わず呼び出す。
+                                    </h3>
+                                    <p className="text-xl text-lp-text-sub font-medium leading-relaxed mb-10">
+                                        完全一致なら<strong>1秒</strong>、AIによる類似形状検索なら<strong>数十秒</strong>。過去の見積データを瞬時に提示。もうベテランを探し回る必要はありません。
+                                    </p>
+                                    <div className="p-8 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-lp-text-sub font-bold uppercase tracking-widest mb-1">導入効果</span>
+                                            <span className="text-3xl font-black text-blue-400">検索時間 99% 削減</span>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                            <Search className="w-6 h-6 text-blue-400" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Feature 3 */}
+                            <div className="grid md:grid-cols-2 gap-20 items-center">
+                                <div>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-black mb-6 uppercase tracking-widest">
+                                        Feature 03: Analytics
+                                    </div>
+                                    <h3 className="text-3xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                                        「儲かる仕事」を可視化し、<br />経営判断をデータで支える。
+                                    </h3>
+                                    <p className="text-xl text-lp-text-sub font-medium leading-relaxed mb-10">
+                                        見積vs実績の乖離を自動計算。AIが推奨見積額を提案。経営ダッシュボードで利益体質への転換と迅速な意思決定を支援します。
+                                    </p>
+                                    <div className="p-8 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-lp-text-sub font-bold uppercase tracking-widest mb-1">導入効果</span>
+                                            <span className="text-3xl font-black text-emerald-400">利益体質への転換</span>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                            <LayoutDashboard className="w-6 h-6 text-emerald-400" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="relative group">
+                                    <div className="absolute -inset-1 bg-emerald-500 rounded-[2.5rem] blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
+                                    <img src="/assets/lp/feature-analysis.png" alt="経営分析" className="relative rounded-[2rem] border border-white/10 shadow-2xl transition-transform group-hover:scale-[1.01]" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section 5: ROI */}
+                <section className="py-32 px-6 md:px-12 bg-white/[0.02]">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-24">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold text-white mb-6">
+                                年間160万円以上のコスト削減。<br className="hidden lg:block" />
+                                AiZumenは「プラス」の投資です。
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                            <div className="space-y-8">
+                                <div className="p-10 rounded-3xl bg-[#0a0a0a] border border-white/5 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-lp-accent/5 blur-3xl rounded-full" />
+                                    <div className="text-lp-text-sub font-bold uppercase tracking-widest mb-4">見積作業時間（1件あたり）</div>
+                                    <div className="flex items-end gap-6 text-white mb-8">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold opacity-50">従来</span>
+                                            <span className="text-4xl font-black">15分</span>
+                                        </div>
+                                        <ArrowRight className="w-10 h-10 mb-2 text-lp-accent" />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-lp-accent">AiZumen</span>
+                                            <span className="text-6xl font-black text-lp-accent">1.5分</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full bg-white/5 h-4 rounded-full overflow-hidden">
+                                        <div className="bg-lp-accent h-full w-[10%] shadow-[0_0_10px_rgba(0,229,255,0.5)]" />
+                                    </div>
+                                    <p className="mt-4 text-lp-accent font-black text-right tracking-widest">90% 削減</p>
+                                </div>
+
+                                <div className="p-10 rounded-3xl bg-lp-accent text-black overflow-hidden relative group">
+                                    <div className="absolute -right-10 -bottom-10 opacity-10 blur-xl transition-transform group-hover:scale-110">
+                                        <TrendingUp size={200} />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <div className="font-black text-lg uppercase tracking-widest mb-2 opacity-70">年間想定人件費削減（1日10件、時給3,000円換算）</div>
+                                        <div className="text-7xl md:text-8xl font-black tracking-tighter mb-4">
+                                            <span className="text-4xl">¥</span>1,620,000
+                                        </div>
+                                        <p className="font-bold text-xl opacity-80 italic">初期投資0円。初月から、人件費削減が始まります。</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                {[
+                                    { title: '見積回答スピード向上による「受注機会」の最大化', desc: '早い回答が、お客様からの信頼と成約に直結します。' },
+                                    { title: '手戻り・修正の削減による「品質向上」', desc: 'AIによる自動抽出で入力ミスを排除します。' },
+                                    { title: '属人化の解消による「組織の安定性」', desc: 'ベテランがいなくても業務が止まらない体制を構築。' },
+                                ].map((item, i) => (
+                                    <div key={i} className="flex gap-6 items-start">
+                                        <div className="w-10 h-10 rounded-full bg-lp-accent flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/20">
+                                            <Check className="w-6 h-6 text-black" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-black text-white mb-2 tracking-tight">{item.title}</h4>
+                                            <p className="text-lp-text-sub font-medium leading-relaxed">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section 6: Security & Trust */}
+                <section className="py-32 px-6 md:px-12 relative overflow-hidden" id="セキュリティ">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-20">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold text-white mb-8">
+                                大手SIerの知見を活かした、<br />最高レベルのデータ保護。
+                            </h2>
+                            <p className="text-xl text-lp-text-sub font-medium max-w-2xl mx-auto">
+                                「ITは不安」という懸念は、もう必要ありません。現場を知り、技術を知る経営者が作ったからこそ、安心して任せられます。
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-20">
+                            <div className="p-12 rounded-[3.5rem] bg-gradient-to-br from-indigo-500/10 to-transparent border border-white/10 flex flex-col items-center text-center">
+                                <ShieldCheck className="w-20 h-20 text-indigo-400 mb-8" />
+                                <h3 className="text-3xl font-black text-white mb-6 tracking-tight">徹底したデータ保護</h3>
+                                <div className="space-y-4 text-lp-text-sub font-medium text-lg text-left">
+                                    <p className="flex items-center gap-3"><Check className="text-indigo-400" /> 日本国内リージョンでのデータ運用</p>
+                                    <p className="flex items-center gap-3"><Check className="text-indigo-400" /> 通信および保存データの強力な暗号化</p>
+                                    <p className="flex items-center gap-3"><Check className="text-indigo-400" /> AI学習へのデータ非使用を徹底</p>
+                                </div>
+                                <p className="mt-8 text-indigo-300 font-bold">機密性の高い図面データを、<br />鉄壁のセキュリティで守ります。</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6">
+                                {[
+                                    { icon: ShieldCheck, title: '完全なるデータ分離', desc: 'PostgreSQL RLSによる完全なデータ分離により、他社との混入を物理的に防ぎます。' },
+                                    { icon: FileText, title: '監査ログの完全記録', desc: 'いつ、誰が、何をしたか、すべての操作を漏らさず記録。不正アクセスを許しません。' },
+                                    { icon: Lock, title: '多要素認証（管理機能）', desc: 'システム管理者（SU）向けには多要素認証（MFA）を導入し、権限を厳格に保護。' },
+                                ].map((item, i) => (
+                                    <div key={i} className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center gap-6">
+                                        <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center shrink-0">
+                                            <item.icon className="w-7 h-7 text-indigo-400" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-bold text-white mb-1 group-hover:text-lp-accent transition-colors">{item.title}</h4>
+                                            <p className="text-lp-text-sub text-sm font-medium leading-relaxed">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section 7: Pricing */}
+                <section className="py-32 px-6 md:px-12 relative overflow-hidden bg-white/[0.01]" id="料金">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-lp-accent/30 to-transparent" />
+
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-24">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold text-white mb-8">
+                                初期費用0円から。
+                            </h2>
+                            <p className="text-xl text-lp-text-sub font-medium max-w-3xl mx-auto">
+                                「高い初期投資」は不要です。無料トライアルで効果を実感してから、本導入を決めてください。
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch pt-12">
+                            {[
+                                { name: 'Lite', price: '10,000', users: '2名', credit: '100', storage: '5GB', desc: '少人数向け' },
+                                { name: 'Plus', price: '30,000', users: '10名', credit: '500', storage: '20GB', popular: true, desc: '標準的なチーム運用向け' },
+                                { name: 'Pro', price: '50,000', users: '20名', credit: '1,000', storage: '100GB', desc: '大規模・詳細分析向け' },
+                            ].map((plan, i) => (
+                                <div key={i} className={`p-10 rounded-[2.5rem] bg-[#0a0a0a] border ${plan.popular ? 'border-lp-accent shadow-[0_0_40px_rgba(0,229,255,0.1)]' : 'border-white/10'} flex flex-col relative`}>
+                                    {plan.popular && (
+                                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-lp-accent text-black text-xs font-black px-6 py-1.5 rounded-full uppercase tracking-tighter shadow-lg">
+                                            圧倒的人気
+                                        </div>
+                                    )}
+                                    <h3 className="text-2xl font-['Roboto_Mono'] font-bold text-white mb-2">{plan.name}</h3>
+                                    <p className="text-lp-text-sub font-medium mb-8 text-sm">{plan.desc}</p>
+
+                                    <div className="flex items-baseline gap-1 mb-10">
+                                        <span className="text-5xl font-black text-white">¥{plan.price}</span>
+                                        <span className="text-sm font-bold text-lp-text-sub">/ 月 (税込)</span>
+                                    </div>
+
+                                    <div className="w-full h-px bg-white/10 mb-10" />
+
+                                    <ul className="space-y-6 mb-12 flex-1">
+                                        <li className="flex items-center gap-3 text-sm font-medium"><Check className="w-5 h-5 text-lp-accent" /> 最大 {plan.users} 利用可能</li>
+                                        <li className="flex items-center gap-3 text-sm font-medium"><Check className="w-5 h-5 text-lp-accent" /> 毎月 {plan.credit} クレジット付与</li>
+                                        <li className="flex items-center gap-3 text-sm font-medium"><Check className="w-5 h-5 text-lp-accent" /> ストレージ {plan.storage}</li>
+                                        <li className="flex items-center gap-3 text-sm font-medium text-lp-text-sub/50"><Check className="w-5 h-5" /> バックアップ対応</li>
+                                        {plan.name === 'Pro' && (
+                                            <li className="flex items-center gap-3 text-sm font-medium"><Check className="w-5 h-5 text-lp-accent" /> 高度な経営分析機能</li>
+                                        )}
+                                    </ul>
+
+                                    <Link to="/signup" className={`w-full py-5 rounded-2xl font-black text-lg transition-all text-center ${plan.popular ? 'bg-lp-accent text-black hover:scale-[1.03]' : 'bg-white/5 text-white hover:bg-white/10 border border-white/10'}`}>
+                                        無料で試す
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+                
+                {/* Section 08: Onboarding Flow & Support */}
+                <section className="py-32 px-6 md:px-12 relative overflow-hidden bg-white/[0.02]">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-24">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold text-white mb-8">
+                                導入は、驚くほどスムーズです。
+                            </h2>
+                            <p className="text-xl text-lp-text-sub font-medium max-w-2xl mx-auto">
+                                ITの専門知識は不要です。町工場の現場を知り尽くしたスタッフが、あなたの会社のDXを最初から最後まで伴走支援します。
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+                            {/* Connectors (Desktop) */}
+                            <div className="hidden md:block absolute top-12 left-[30%] right-[30%] h-[2px] bg-gradient-to-r from-lp-accent/50 via-lp-accent/20 to-lp-accent/50 z-0" />
+
+                            {[
+                                { step: '01', title: 'アカウント作成', desc: 'わずか3分で登録完了。クレジットカードは不要です。', icon: Users },
+                                { step: '02', title: '図面アップロード', desc: '既存の図面をアップロード。AIが自動で解析・データ化します。', icon: Upload },
+                                { step: '03', title: '運用開始', desc: '過去検索やAI見積を、その日から体感いただけます。', icon: Rocket },
+                            ].map((item, i) => (
+                                <div key={i} className="relative z-10 flex flex-col items-center text-center group">
+                                    <div className="w-24 h-24 rounded-[2rem] bg-[#0a0a0a] border-2 border-lp-accent/30 flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(0,229,255,0.1)] group-hover:border-lp-accent transition-all duration-500">
+                                        <item.icon className="w-10 h-10 text-lp-accent" />
+                                        <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-lp-accent text-black font-black flex items-center justify-center text-lg shadow-lg">
+                                            {item.step}
+                                        </div>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-4">{item.title}</h3>
+                                    <p className="text-lp-text-sub text-lg leading-relaxed font-medium">{item.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-24 p-12 rounded-[4rem] bg-gradient-to-br from-white/5 to-transparent border border-white/10 flex flex-col md:flex-row items-center gap-12">
+                            <div className="w-24 h-24 rounded-full bg-lp-accent/10 flex items-center justify-center shrink-0">
+                                <Users className="w-12 h-12 text-lp-accent" />
                             </div>
                             <div>
-                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6">
-                                    <Search className="w-6 h-6 text-indigo-400" />
-                                </div>
-                                <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">過去の図面から類似箇所を瞬時に発見</h3>
-                                <p className="text-slate-400 leading-relaxed mb-8">
-                                    膨大な過去の図面データから、検討中の形状と一致する箇所をAIが高速検索。熟練者の知識に頼ることなく、過去の工数実績や見積根拠を素早く参照でき、精度の高い工数予測と説得力のある価格交渉をサポートします。
+                                <h4 className="text-2xl font-bold text-white mb-4">知見が循環する「ユーザーコミュニティ」</h4>
+                                <p className="text-lp-text-sub text-lg leading-relaxed font-medium">
+                                    専任スタッフによるサポートに加え、導入企業同士が活用ノウハウを直接共有できる専用フォーラムをご用意。
+                                    「現場のこの課題、どう解決した？」といったリアルな知見を、同じ製造業の仲間と交換し、共に成長できる環境を提供します。
                                 </p>
-                                <ul className="space-y-3">
-                                    {['ドラッグ操作で検索範囲を直感的に指定', '一致率のスコアリングと類似箇所の強調表示', '過去の見積や実績データへ即座にアクセス'].map((item, i) => (
-                                        <li key={i} className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-                                            <Check className="w-5 h-5 text-indigo-500" /> {item}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* Feature 2: Gantt / Sharing */}
-                        <div className="grid md:grid-cols-2 gap-12 items-center">
-                            <div className="relative group">
-                                <div className="absolute -inset-4 bg-cyan-500/10 rounded-[2.5rem] blur-2xl group-hover:bg-cyan-500/20 transition-colors"></div>
-                                <img
-                                    src="/assets/lp/feature-gantt.png"
-                                    className="relative rounded-2xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]"
-                                    alt="ガントチャート機能"
-                                />
-                                <p className="mt-2 text-left text-xs text-slate-400/80 italic">※画面はテストデータを用いた開発中のものです。</p>
-                            </div>
-                            <div>
-                                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-6">
-                                    <CalendarDays className="w-6 h-6 text-cyan-400" />
-                                </div>
-                                <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">工程と図面が、いつでも現場で。</h3>
-                                <p className="text-slate-400 leading-relaxed mb-8">
-                                    案件登録と同時に、作業予定はガントチャートへ自動反映。現場のタブレットから直接図面を参照できるため、重たい図面ファイルを探し回る時間はもう必要ありません。情報共有のロスが、納期遅延を防ぐ最大の防御になります。
-                                </p>
-                                <ul className="space-y-3">
-                                    {['クリック一つで関連図面を瞬時に表示', 'ガントチャートで全体の負荷を可視化', '現場での完了入力を事務所へ即時共有'].map((item, i) => (
-                                        <li key={i} className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-                                            <Check className="w-5 h-5 text-cyan-500" /> {item}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* Feature 3: Analysis */}
-                        <div className="grid md:grid-cols-2 gap-12 items-center">
-                            <div className="order-2 md:order-1">
-                                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6">
-                                    <TrendingUp className="w-6 h-6 text-emerald-400" />
-                                </div>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <h3 className="text-2xl md:text-3xl font-bold text-white">蓄積されたデータが経営を導く</h3>
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest">Proプラン専用</span>
-                                </div>
-                                <p className="text-slate-400 leading-relaxed mb-8">
-                                    過去の受注データと実績工数をリアルタイムに集計。顧客ごとの収益性や案件の不採算理由を可視化し、次なる見積の精度向上や価格交渉の確かな根拠を提供します。「経験と勘」を「データに基づいた経営」へ。
-                                </p>
-                                <ul className="space-y-3">
-                                    {['顧客別の収益性ランキング表示', '月別・案件別の原価構成を自動分析', '受注率の推移をダッシュボードで把握'].map((item, i) => (
-                                        <li key={i} className="flex items-center gap-3 text-slate-300 text-sm font-medium">
-                                            <Check className="w-5 h-5 text-emerald-500" /> {item}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="order-1 md:order-2 relative group">
-                                <div className="absolute -inset-4 bg-emerald-500/10 rounded-[2.5rem] blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
-                                <img
-                                    src="/assets/lp/feature-analysis.png"
-                                    className="relative rounded-2xl border border-white/10 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]"
-                                    alt="データ分析機能"
-                                />
-                                <p className="mt-2 text-right text-xs text-slate-400/80 italic">※画面はテストデータを用いた開発中のものです。</p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Security Section (Updated for real specs) */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 py-24 border-t border-white/5 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] pointer-events-none"></div>
-                    <div className="text-center mb-16 relative z-10">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold mb-4">
-                            <Shield className="w-4 h-4 text-indigo-400" />
-                            SECURITY & PRIVACY
+
+                {/* Section 10: FAQ */}
+                <section className="py-32 px-6 md:px-12" id="faq">
+                    <div className="max-w-4xl mx-auto text-white">
+                        <div className="text-center mb-20 text-white">
+                            <h2 className="text-4xl md:text-6xl font-['Roboto_Mono'] font-bold mb-6 text-white">よくある質問</h2>
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6">機密情報を守る、万全のデータ保護体制</h2>
-                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                            製造業の重要資産である図面や注文データを、最新のクラウド技術と厳格な運用ポリシーで保護します。
+
+                        <div className="space-y-4">
+                            {[
+                                { q: '導入に、どのくらいの期間がかかりますか？', a: 'アカウント作成後すぐにご利用いただけます。初期設定を含めても、多くのお客様が数時間から1日で本稼働を開始されています。' },
+                                { q: '既存の生産管理システムと連携できますか？', a: 'CSVインポート/エクスポート機能を標準搭載しています。' },
+                                { q: 'セキュリティは大丈夫ですか？', a: 'はい、日本国内リージョンでのデータ管理、最新の暗号化技術、AI学習への不使用を徹底しており、企業の機密情報を強固に保護します。' },
+                                { q: '初期費用が0円というのは本当ですか？', a: '本当です。導入時のツール費用や設定費用は一切かかりません。月額のサブスクリプション料金のみでご利用いただけます。' },
+                                { q: '無料トライアルの期間は？', a: '30日間、すべての機能を無料でお試しいただけます。クレジットカード登録も不要ですので、お気軽にお試しください。' },
+                            ].map((faq, i) => (
+                                <details key={i} className="group p-8 rounded-2xl bg-white/[0.03] border border-white/10 [&_summary::-webkit-details-marker]:hidden">
+                                    <summary className="flex items-center justify-between cursor-pointer focus:outline-none">
+                                        <h3 className="text-xl font-bold flex items-center gap-4">
+                                            <span className="text-lp-accent font-black text-2xl">Q.</span>
+                                            {faq.q}
+                                        </h3>
+                                        <ChevronRight className="w-6 h-6 text-lp-text-sub transition-transform group-open:rotate-90" />
+                                    </summary>
+                                    <div className="mt-6 pl-10 text-lp-text-sub leading-relaxed font-medium border-l-2 border-lp-accent/30">
+                                        {faq.a}
+                                    </div>
+                                </details>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section 11: Final CTA */}
+                <section className="py-32 px-6 md:px-12 mb-20">
+                    <div className="max-w-5xl mx-auto rounded-[4rem] bg-gradient-to-br from-indigo-900/60 to-blue-900/40 p-16 md:p-24 text-center border border-white/10 shadow-3xl shadow-blue-900/40 relative overflow-hidden group">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-lp-accent/10 blur-[150px] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+
+                        <h2 className="text-4xl md:text-7xl font-['Roboto_Mono'] font-bold text-white mb-8 relative z-10 leading-tight">
+                            今すぐ業務を<br className="md:hidden" />効率化しよう。
+                        </h2>
+                        <p className="text-xl md:text-2xl text-blue-200 mb-12 relative z-10 max-w-2xl mx-auto font-medium">
+                            30日間の完全無料トライアル。クレジットカード不要。あなたの工場のDXは、ここから始まります。
                         </p>
-                    </div>
 
-                    <div className="grid md:grid-cols-3 gap-8 relative z-10">
-                        {/* Security Point 1 */}
-                        <div className="p-8 rounded-3xl bg-slate-900/50 border border-white/5 hover:border-indigo-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-6">
-                                <MapPin className="w-6 h-6 text-indigo-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-4">国内リージョンの採用</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
-                                すべてのデータは、信頼性の高いクラウドプラットフォーム（Supabase / AWS）の**日本国内リージョン**で管理。法規制を遵守し、セキュアな環境を提供します。
-                            </p>
-                        </div>
-
-                        {/* Security Point 2 */}
-                        <div className="p-8 rounded-3xl bg-slate-900/50 border border-white/5 hover:border-blue-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6">
-                                <ShieldCheck className="w-6 h-6 text-blue-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-4">AI学習へのデータ不使用</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
-                                解析に使用するAI（Gemini API）は、**入力されたデータを学習に使用しない**エンタープライズ設定を採用。機密図面がAIに学習されることはありません。
-                            </p>
-                        </div>
-
-                        {/* Security Point 3 */}
-                        <div className="p-8 rounded-3xl bg-slate-900/50 border border-white/5 hover:border-cyan-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-6">
-                                <Lock className="w-6 h-6 text-cyan-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-4">高度な暗号化通信</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
-                                すべての通信はSSL/TLSによって高度に暗号化。保存された画像やPDFデータも厳重なアクセス制御下で保護され、許可されたユーザー以外は閲覧できません。
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Pricing Section */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 pt-10 pb-24 relative">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-blue-600/10 blur-[100px] pointer-events-none"></div>
-                    <div className="text-center mb-16 relative z-10">
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6">シンプルな料金プラン</h2>
-                        <p className="text-lg text-slate-400">会社の規模と利用頻度に合わせて選べる3つのプランをご用意しました。<br className="hidden md:block" />まずは無料体験でお試しください。</p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-8 relative z-10 items-center">
-                        {/* Lite */}
-                        <div className="p-8 rounded-3xl bg-slate-800/40 border border-slate-700/80 hover:border-slate-500 transition-all flex flex-col md:min-h-[520px]">
-                            <div className="mb-6">
-                                <h3 className="text-2xl font-bold text-white mb-1">Lite</h3>
-                                <p className="text-sm text-slate-400 mb-6 h-5">少人数向け</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black text-white">¥10,000</span>
-                                    <span className="text-sm text-slate-500">/ 月 (税込)</span>
-                                </div>
-                            </div>
-                            <div className="w-full h-px bg-slate-700/50 mb-6"></div>
-                            <ul className="space-y-4 mb-8 flex-1">
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 最大2ユーザー利用可能</li>
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 毎月100 AIクレジット付与</li>
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> ストレージ 5GB (約1万枚)</li>
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> バックアップ 7日間保持</li>
-                            </ul>
-                            <Link to="/signup" className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-center transition-all border border-white/5">無料で試す</Link>
-                        </div>
-
-                        {/* Plus */}
-                        <div className="p-10 rounded-[2.5rem] bg-indigo-900/30 border border-indigo-500/50 shadow-2xl shadow-indigo-500/20 flex flex-col relative transform md:-translate-y-4 md:min-h-[580px] z-20 backdrop-blur-xl">
-                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-blue-500/30">
-                                圧倒的人気
-                            </div>
-                            <div className="mb-6">
-                                <h3 className="text-2xl font-bold text-white mb-1">Plus</h3>
-                                <p className="text-sm text-indigo-300 mb-6 h-5">標準的なチーム運用向け</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-5xl font-black text-white drop-shadow-md">¥30,000</span>
-                                    <span className="text-sm text-indigo-300 font-medium">/ 月 (税込)</span>
-                                </div>
-                            </div>
-                            <div className="w-full h-px bg-indigo-500/30 mb-6"></div>
-                            <ul className="space-y-4 mb-8 flex-1">
-                                <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> 最大10ユーザー利用可能</li>
-                                <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> 毎月500 AIクレジット付与</li>
-                                <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> ストレージ 20GB (約4万枚)</li>
-                                <li className="flex items-start gap-3 text-sm text-white font-medium"><Check className="w-5 h-5 text-cyan-400 shrink-0" /> バックアップ 7日間保持</li>
-                            </ul>
-                            <Link to="/signup" className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-center transition-all shadow-xl shadow-blue-500/30 text-lg">
-                                30日間の無料体験を始める
+                        <div className="flex flex-col sm:flex-row gap-6 justify-center relative z-10">
+                            <Link to="/signup" className="px-12 py-6 bg-lp-accent text-black font-black text-2xl rounded-3xl shadow-[0_0_40px_rgba(0,229,255,0.4)] hover:shadow-[0_0_60px_rgba(0,229,255,0.6)] transition-all hover:scale-105 active:scale-95">
+                                無料トライアルを始める
                             </Link>
                         </div>
-
-                        {/* Pro */}
-                        <div className="p-8 rounded-3xl bg-slate-800/40 border border-slate-700/80 hover:border-slate-500 transition-all flex flex-col md:min-h-[520px]">
-                            <div className="mb-6">
-                                <h3 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">Pro <Zap className="w-5 h-5 text-amber-400" /></h3>
-                                <p className="text-sm text-slate-400 mb-6 h-5">大容量・多人数による大規模運用へ</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black text-white">¥50,000</span>
-                                    <span className="text-sm text-slate-500">/ 月 (税込)</span>
-                                </div>
-                            </div>
-                            <div className="w-full h-px bg-slate-700/50 mb-6"></div>
-                            <ul className="space-y-4 mb-8 flex-1">
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 最大20ユーザー利用可能</li>
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> 毎月1,000 AIクレジット付与</li>
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> ストレージ 100GB (約20万枚)</li>
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> バックアップ 30日間保持</li>
-                                <li className="flex items-start gap-3 text-sm text-slate-300 font-medium"><Check className="w-5 h-5 text-emerald-400 shrink-0" /> フル機能・高度な分析レポート</li>
-                            </ul>
-                            <Link to="/signup" className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-center transition-all border border-white/5">無料で試す</Link>
+                        <div className="mt-10 flex items-center justify-center gap-8 text-blue-200/60 font-bold uppercase tracking-[0.2em] text-sm relative z-10">
+                            <span>No Credit Card</span>
+                            <span className="w-1 h-1 rounded-full bg-blue-200/20" />
+                            <span>Full Features</span>
+                            <span className="w-1 h-1 rounded-full bg-blue-200/20" />
+                            <span>Cancel Anytime</span>
                         </div>
-                    </div>
-                </section>
-
-                {/* AI Credits Section for Public View */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 py-20 border-t border-white/5 relative">
-                    <div className="absolute top-1/2 left-0 w-64 h-64 bg-amber-500/5 blur-[100px] pointer-events-none"></div>
-                    <div className="text-center mb-12 relative z-10">
-                        <h2 className="text-2xl md:text-3xl font-black text-white mb-4 flex items-center justify-center gap-3">
-                            <Zap className="w-8 h-8 text-amber-400" />
-                            AIクレジットの追加購入
-                        </h2>
-                        <p className="text-slate-400 max-w-2xl mx-auto">
-                            月間の付与分を超えて解析を行いたい場合は、必要な分だけクレジットを追加購入できます。<br className="hidden md:block" />
-                            購入したクレジットに有効期限はありません。
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto relative z-10">
-                        {[
-                            { name: '200クレジット', price: '2,000' },
-                            { name: '1200クレジット', bonus: '(+200ボーナス)', price: '10,000' },
-                            { name: '2500クレジット', bonus: '(+500ボーナス)', price: '20,000' },
-                        ].map((pack, i) => (
-                            <div key={i} className="p-6 rounded-2xl bg-slate-900/50 border border-white/5 hover:border-amber-500/30 transition-all text-center group">
-                                <div className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">{pack.name} {pack.bonus && <span className="text-amber-500/80 text-[10px]">{pack.bonus}</span>}</div>
-                                <div className="text-3xl font-black text-white mb-0 flex items-baseline justify-center gap-1">
-                                    <span className="text-sm font-medium text-slate-400">¥</span>
-                                    {pack.price}
-                                    <span className="text-xs font-medium text-slate-500">(税込)</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* Detailed Feature Comparison */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 py-20 border-t border-white/5 bg-slate-900/20">
-                    <div className="text-center mb-12">
-                        <h2 className="text-2xl md:text-4xl font-black text-white mb-4">プラン別詳細比較</h2>
-                        <p className="text-slate-400">各プランの制限と提供機能の詳細をご確認いただけます。</p>
-                    </div>
-
-                    <div className="overflow-x-auto rounded-3xl border border-white/5 bg-slate-900/40 backdrop-blur-sm">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-white/10">
-                                    <th className="p-6 text-sm font-bold text-slate-400 uppercase tracking-widest">機能・リソース</th>
-                                    <th className="p-6 text-xl font-bold text-white text-center">Lite</th>
-                                    <th className="p-6 text-xl font-bold text-indigo-400 text-center">Plus</th>
-                                    <th className="p-6 text-xl font-bold text-white text-center">Pro</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                <tr>
-                                    <td className="p-6 text-slate-300 font-medium">最大ユーザー数</td>
-                                    <td className="p-6 text-white text-center font-bold">2 名</td>
-                                    <td className="p-6 text-white text-center font-bold">10 名</td>
-                                    <td className="p-6 text-white text-center font-bold">20 名</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-6 text-slate-300 font-medium">月間AIクレジット</td>
-                                    <td className="p-6 text-white text-center font-bold">100</td>
-                                    <td className="p-6 text-indigo-300 text-center font-bold">500</td>
-                                    <td className="p-6 text-white text-center font-bold">1,000</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-6 text-slate-300 font-medium">データバックアップ期間</td>
-                                    <td className="p-6 text-white text-center">7 日間</td>
-                                    <td className="p-6 text-white text-center">7 日間</td>
-                                    <td className="p-6 text-amber-400 text-center font-bold">30 日間</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-6 text-slate-300 font-medium">ストレージ容量</td>
-                                    <td className="p-6 text-white text-center">5 GB<br /><span className="text-[10px] text-slate-500">(約1万枚相当)</span></td>
-                                    <td className="p-6 text-white text-center">20 GB<br /><span className="text-[10px] text-slate-500">(約4万枚相当)</span></td>
-                                    <td className="p-6 text-amber-400 text-center font-bold">100 GB<br /><span className="text-[10px] text-amber-900/60 font-medium">(約20万枚相当)</span></td>
-                                </tr>
-                                <tr>
-                                    <td className="p-6 text-slate-300 font-medium">注文書自動OCR解析</td>
-                                    <td className="p-6 text-center"><Check className="mx-auto w-5 h-5 text-emerald-400" /></td>
-                                    <td className="p-6 text-center"><Check className="mx-auto w-5 h-5 text-emerald-400" /></td>
-                                    <td className="p-6 text-center"><Check className="mx-auto w-5 h-5 text-emerald-400" /></td>
-                                </tr>
-                                <tr>
-                                    <td className="p-6 text-slate-300 font-medium">図面・工程管理機能</td>
-                                    <td className="p-6 text-center"><Check className="mx-auto w-5 h-5 text-emerald-400" /></td>
-                                    <td className="p-6 text-center"><Check className="mx-auto w-5 h-5 text-emerald-400" /></td>
-                                    <td className="p-6 text-center"><Check className="mx-auto w-5 h-5 text-emerald-400" /></td>
-                                </tr>
-                                <tr>
-                                    <td className="p-6 text-slate-300 font-medium">高度なデータ分析・レポート</td>
-                                    <td className="p-6 text-center"><span className="text-slate-600">-</span></td>
-                                    <td className="p-6 text-center"><span className="text-slate-600">-</span></td>
-                                    <td className="p-6 text-center"><Check className="mx-auto w-5 h-5 text-emerald-400" /></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                {/* Role Permissions Section */}
-                <section className="max-w-7xl mx-auto px-4 md:px-8 py-20 border-t border-white/5">
-                    <div className="flex flex-col md:flex-row gap-12 items-center">
-                        <div className="flex-1">
-                            <h2 className="text-2xl md:text-4xl font-black text-white mb-6">組織に合わせた柔軟な権限設定</h2>
-                            <p className="text-slate-400 leading-relaxed mb-8">
-                                一般ユーザー、管理者、システム管理者の3段階の権限をご用意。現場担当者からIT責任者まで、それぞれの役割に合わせた最適なアクセス制御を実現します。
-                            </p>
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center font-bold text-white text-xs">一般</div>
-                                        <h4 className="font-bold text-white">一般ユーザー</h4>
-                                    </div>
-                                    <p className="text-xs text-slate-400">図面の閲覧、担当案件の実績入力・工程更新など、日常的なオペレーションを担当します。※図面登録や解析は行えません。</p>
-                                </div>
-                                <div className="p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs">管理</div>
-                                        <h4 className="font-bold text-white">管理者</h4>
-                                    </div>
-                                    <p className="text-xs text-slate-400">一般機能に加え、AI読取項目のマッピング設定や自社情報の編集、案件の集約管理など、現場の運用管理を行います。</p>
-                                </div>
-                                <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-xs">全能</div>
-                                        <h4 className="font-bold text-white">システム管理者</h4>
-                                    </div>
-                                    <p className="text-xs text-slate-400">自社内の全設定、ユーザーの招待・削除・**パスワードリセット**、プランの変更、全データの一括出力が可能な、社内の最上位権限者です。</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex-1 w-full max-w-lg">
-                            <div className="p-1 rounded-3xl border border-indigo-500/30 bg-indigo-500/5">
-                                <div className="p-6 md:p-8 rounded-[1.4rem] bg-slate-900 shadow-2xl">
-                                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 border-b border-white/5 pb-4">権限マトリクス</h4>
-                                    <ul className="space-y-4">
-                                        {[
-                                            { action: '注文書・図面の解析/登録', roles: [false, true, true] },
-                                            { action: 'IT設定・マッピング管理', roles: [false, true, true] },
-                                            { action: 'ユーザー管理・パスワード更新', roles: [false, false, true] },
-                                            { action: '自社データの一括出力', roles: [false, false, true] },
-                                            { action: '契約プラン・支払い管理', roles: [false, false, true] }
-                                        ].map((item, i) => (
-                                            <li key={i} className="flex items-center justify-between py-1">
-                                                <span className="text-sm text-slate-300 font-medium">{item.action}</span>
-                                                <div className="flex gap-4">
-                                                    {item.roles.map((r, ri) => (
-                                                        <div key={ri} className={`w-3 h-3 rounded-full ${r ? (ri === 2 ? 'bg-blue-500' : ri === 1 ? 'bg-indigo-500' : 'bg-slate-500') : 'bg-white/5'}`}></div>
-                                                    ))}
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <div className="mt-8 flex justify-center gap-6">
-                                        <div className="flex items-center gap-2 text-[10px] text-slate-500"><div className="w-2 h-2 rounded-full bg-slate-500"></div>一般</div>
-                                        <div className="flex items-center gap-2 text-[10px] text-slate-500"><div className="w-2 h-2 rounded-full bg-indigo-500"></div>管理</div>
-                                        <div className="flex items-center gap-2 text-[10px] text-slate-500"><div className="w-2 h-2 rounded-full bg-blue-500"></div>システム</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* CTA */}
-                <section className="max-w-4xl mx-auto px-4 md:px-8 py-20">
-                    <div className="p-12 rounded-[2.5rem] bg-indigo-900/40 border border-white/10 text-center relative overflow-hidden">
-                        {/* Noise overlay could be added here if desired */}
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-6 relative z-10">今すぐ業務を効率化しよう</h2>
-                        <p className="text-lg text-slate-300 mb-10 relative z-10">30日間の無料トライアルで、AiZumenの一部機能をお試しいただけます。</p>
-                        <Link
-                            to="/signup"
-                            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-slate-900 font-bold text-lg hover:bg-slate-100 transition-all shadow-xl relative z-10"
-                        >
-                            無料で始める
-                            <ChevronRight className="w-5 h-5" />
-                        </Link>
                     </div>
                 </section>
             </main>
 
-            <footer className="border-t border-white/10 py-8 text-center text-slate-500 text-sm relative z-10">
-                <div className="flex justify-center items-center gap-2 mb-4">
-                    <Zap className="w-4 h-4 text-cyan-400" />
-                    <span className="font-bold text-slate-300">AiZumen</span>
+            {/* Footer */}
+            <footer className="border-t border-white/10 pt-24 pb-12 px-6 md:px-12 text-white">
+                <div className="max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
+                        <div className="col-span-1 md:col-span-2">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 bg-lp-accent rounded-xl flex items-center justify-center">
+                                    <Zap className="w-6 h-6 text-black" />
+                                </div>
+                                <span className="text-2xl font-['Roboto_Mono'] font-bold tracking-tighter text-white">
+                                    AiZumen
+                                </span>
+                            </div>
+                            <p className="text-lp-text-sub font-medium max-w-sm mb-10 leading-relaxed text-lg">
+                                見積を1時間から1.5分へ。Google Gemini AIと pgvector を活用した、製造業・町工場のための次世代図面管理・見積支援システム。
+                            </p>
+                            <div className="flex gap-4">
+                                {['Twitter', 'LinkedIn', 'Facebook'].map(social => (
+                                    <a key={social} href="#" className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-lp-accent hover:text-black transition-all">
+                                        <Info className="w-6 h-6 shrink-0" />
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-black text-sm uppercase tracking-widest text-lp-accent mb-8">サービス</h4>
+                            <ul className="space-y-6 text-lp-text-sub font-medium">
+                                <li><a href="#機能" className="hover:text-lp-accent transition-colors">機能紹介</a></li>
+                                <li><a href="#解決策" className="hover:text-lp-accent transition-colors">解決策</a></li>
+                                <li><a href="#料金" className="hover:text-lp-accent transition-colors">料金プラン</a></li>
+                                <li><Link to="/login" className="hover:text-lp-accent transition-colors">ログイン</Link></li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h4 className="font-black text-sm uppercase tracking-widest text-lp-accent mb-8">サポート</h4>
+                            <ul className="space-y-6 text-lp-text-sub font-medium">
+                                <li><a href="#faq" className="hover:text-lp-accent transition-colors">よくある質問</a></li>
+                                <li><a href="#セキュリティ" className="hover:text-lp-accent transition-colors">セキュリティ</a></li>
+                                <li><Link to="/site-policy" className="hover:text-lp-accent transition-colors">個人情報保護方針</Link></li>
+                                <li><Link to="/agreement" className="hover:text-lp-accent transition-colors">利用規約</Link></li>
+                                <li><Link to="/commerce" className="hover:text-lp-accent transition-colors">特定商取引法に基づく表記</Link></li>
+                                <li><Link to="/protection" className="hover:text-lp-accent transition-colors">情報セキュリティ方針</Link></li>
+                                <li><a href="mailto:info@aizumen.com" className="hover:text-lp-accent transition-colors">お問い合わせ</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-white/5 gap-8">
+                        <p className="text-lp-text-sub text-sm font-medium">&copy; {new Date().getFullYear()} AiZumen Project. Developed by a Manufacturer for Manufacturers.</p>
+                        <div className="text-lp-text-sub text-xs font-bold leading-relaxed max-w-lg md:text-right">
+                            ※当サービスは Google Gemini API を利用していますが、Google社とは独立した企業・プロジェクトによって運営されています。
+                        </div>
+                    </div>
                 </div>
-                <div className="flex flex-wrap justify-center gap-4 mb-4">
-                    <Link to="/agreement" className="hover:text-slate-300 transition-colors">利用規約</Link>
-                    <Link to="/site-policy" className="hover:text-slate-300 transition-colors">プライバシーポリシー</Link>
-                    <Link to="/commerce" className="hover:text-slate-300 transition-colors">特定商取引法に基づく表記</Link>
-                    <Link to="/protection" className="hover:text-slate-300 transition-colors">データ保護方針</Link>
-                </div>
-                <p>&copy; {new Date().getFullYear()} AiZumen. All rights reserved.</p>
             </footer>
 
+            {/* Global Keyframes & Overwrites */}
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @keyframes fade-in-up {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
+                    from { opacity: 0; transform: translateY(40px) scale(0.98); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
                 }
+                .font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+                html { scroll-behavior: smooth; }
             `}} />
         </div>
     );

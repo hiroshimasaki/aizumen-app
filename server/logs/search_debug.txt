@@ -1125,3 +1125,33 @@ Raw: ```json
   }
 ]
 ```
+[2026-03-17T07:18:01.988Z] [DrawingSearch] Starting hybrid search for tenant: c94934bf-d5b4-4e94-8987-60d07db7c022
+[2026-03-17T07:18:01.993Z] [DrawingSearch] Input params: hasPdfFile=true, fileId=null
+[2026-03-17T07:18:02.458Z] [SearchPerformance] pHash from PDF pipeline: 463ms, hash: 0000000000000000, threshold: 15
+[2026-03-17T07:18:02.567Z] [SearchPerformance] pHash DB Match (RPC): 108ms, hits: 0
+[2026-03-17T07:18:02.571Z] [DrawingSearch] RPC returned 0 hits. Checking quotation_files table directly...
+[2026-03-17T07:18:02.676Z] [DrawingSearch] Found 2 matches by direct scan. Best dist: 0
+[2026-03-17T07:18:02.679Z]   [pHash] file: 44047328... hamming: 0
+[2026-03-17T07:18:02.681Z]   [pHash] file: 90ee86c2... hamming: 13
+[2026-03-17T07:18:02.684Z] [DrawingSearch] ★ pHash FAST PATH (dist <= 2): 1 file(s). Skipping Gemini.
+[2026-03-17T07:18:02.775Z] [SearchPerformance] Total (FAST PATH): 779ms
+[2026-03-17T07:25:36.417Z] [DrawingSearch] Starting hybrid search for tenant: c94934bf-d5b4-4e94-8987-60d07db7c022
+[2026-03-17T07:25:36.421Z] [DrawingSearch] Input params: hasPdfFile=true, fileId=null
+[2026-03-17T07:25:36.904Z] [SearchPerformance] pHash from PDF pipeline: 482ms, hash: 0000000000000000, threshold: 15
+[2026-03-17T07:25:36.973Z] [SearchPerformance] pHash DB Match (RPC): 67ms, hits: 0
+[2026-03-17T07:25:36.976Z] [DrawingSearch] RPC returned 0 hits. Checking quotation_files table directly...
+[2026-03-17T07:25:37.130Z] [DrawingSearch] Found 3 matches by direct scan. Best dist: 0
+[2026-03-17T07:25:37.133Z]   [pHash] file: 44047328... hamming: 0
+[2026-03-17T07:25:37.136Z]   [pHash] file: 141e264b... hamming: 0
+[2026-03-17T07:25:37.138Z]   [pHash] file: 90ee86c2... hamming: 13
+[2026-03-17T07:25:37.140Z] [DrawingSearch] ★ pHash FAST PATH (dist <= 2): 2 file(s). Skipping Gemini.
+[2026-03-17T07:25:37.230Z] [SearchPerformance] Total (FAST PATH): 808ms
+[2026-03-17T07:42:26.718Z] [DrawingSearch] Starting hybrid search for tenant: c94934bf-d5b4-4e94-8987-60d07db7c022
+[2026-03-17T07:42:26.722Z] [DrawingSearch] Input params: hasPdfFile=true, fileId=null
+[2026-03-17T07:42:27.363Z] [SearchPerformance] pHash from PDF pipeline: 641ms, hash: 0d0d154d4d142420, threshold: 15
+[2026-03-17T07:42:27.428Z] [SearchPerformance] pHash DB Match (RPC): 63ms, hits: 0
+[2026-03-17T07:42:27.429Z] [DrawingSearch] RPC returned 0 hits. Checking quotation_files table directly...
+[2026-03-17T07:42:27.529Z] [DrawingSearch] Found 1 matches by direct scan. Best dist: 0
+[2026-03-17T07:42:27.533Z]   [pHash] file: 7f27c26c... hamming: 0
+[2026-03-17T07:42:27.536Z] [DrawingSearch] ★ pHash FAST PATH (dist <= 2): 1 file(s). Skipping Gemini.
+[2026-03-17T07:42:27.625Z] [SearchPerformance] Total (FAST PATH): 902ms

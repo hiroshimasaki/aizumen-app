@@ -26,6 +26,7 @@ const upload = multer({
  * 実際のファイルを FormData で受け取り、Gemini APIで解析して構造化データを返します。
  */
 router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload.single('file'), checkStorageLimit, async (req, res, next) => {
+    console.log(`[OCR] Request received for tenant: ${req.tenantId}, user: ${req.user?.id}`);
     try {
         if (!req.file) {
             throw new AppError('No file provided for analysis', 400, 'NO_FILE');
@@ -59,8 +60,16 @@ router.post('/analyze', authMiddleware, checkTrialLimit, checkCredits(1), upload
             fileName: originalName, 
             mimeType: req.file.mimetype,
             mapping: ocrMapping,
-            learningHints: ai_learning_hints
+            learningHints: ai_learning_hints,
+            tenantName,
+            tenantId: req.tenantId
         });
+
+        if (!process.env.GEMINI_API_KEY) {
+            console.error('[OCR] GEMINI_API_KEY is missing');
+            throw new AppError('Gemini API key is not configured', 500, 'CONFIG_ERROR');
+        }
+
         const analysisResult = await aiService.analyzeDocument(req.file.buffer, req.file.mimetype, { ocrMapping, ai_learning_hints, name: tenantName });
 
         // クレジット消費処理
