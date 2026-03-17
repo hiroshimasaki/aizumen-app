@@ -125,14 +125,28 @@ class AIService {
 
     /**
      * Common method to generate text results
+     * Supports multiple images (for reranking etc.)
      */
-    async generateText(prompt, fileBuffer = null, mimeType = null) {
+    async generateText(prompt, mainFileBuffer = null, mainMimeType = null, extraImages = []) {
         if (!this.initialized) throw new Error('AIService is not initialized');
 
         try {
             let parts = [{ text: prompt }];
-            if (fileBuffer && mimeType) {
-                parts.push(this._formatInlineData(fileBuffer.toString('base64'), mimeType));
+            
+            // Add main image if provided
+            if (mainFileBuffer && mainMimeType) {
+                parts.push(this._formatInlineData(mainFileBuffer.toString('base64'), mainMimeType));
+            }
+
+            // Add extra images (e.g., candidates for reranking)
+            if (Array.isArray(extraImages)) {
+                for (const img of extraImages) {
+                    const buffer = img.buffer || img; // Can be object with buffer or raw buffer
+                    const mimeType = img.mimeType || 'image/png';
+                    if (buffer) {
+                        parts.push(this._formatInlineData(buffer.toString('base64'), mimeType));
+                    }
+                }
             }
 
             const result = await this.model.generateContent({
@@ -140,12 +154,13 @@ class AIService {
             });
             const text = await this._extractTextFromResult(result);
 
-            logService.debug('AI Text Generated', { textPreview: text.substring(0, 100) });
+            logService.debug('AI Text Generated', { textPreview: text?.substring(0, 100) });
             return text;
         } catch (error) {
             logService.error({
                 message: error.message,
-                source: 'server_ai_service_generateText'
+                source: 'server_ai_service_generateText',
+                stack: error.stack
             });
             throw error;
         }
