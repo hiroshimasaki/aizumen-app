@@ -228,10 +228,28 @@ class AIService {
   "companyName": "...",
   "orderNumber": "...",
   "constructionNumber": "...",
+  "drawingNumber": "...",
   "notes": "...",
   "systemNotes": "...",
-  "pageClassifications": [],
-  "items": []
+  "pageClassifications": [
+    { "page": 1, "type": "order_form", "label": "注文書" }
+  ],
+  "items": [
+    {
+      "name": "...",
+      "material": "...",
+      "processingMethod": "...",
+      "surface_treatment": "...",
+      "quantity": 1,
+      "unit": "...",
+      "processingCost": 0,
+      "materialCost": 0,
+      "otherCost": 0,
+      "dueDate": "YYYY-MM-DD",
+      "dimensions": "...",
+      "requiresVerification": false
+    }
+  ]
 }
 \`\`\`
 日本語で回答してください。JSON以外の説明テキストは一切含めないでください。日付は可能な限り現在の年（2026年）を補完して回答してください。`;
