@@ -1,6 +1,6 @@
 {
     "name": "aizumen-hotfolder",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "AiZumen HotFolder Monitoring Client",
     "main": "main.js",
     "scripts": {
@@ -28,7 +28,7 @@
         "productName": "AiZumen-HotFolder",
         "copyright": "Copyright © 2024 AiZumen Team",
         "directories": {
-            "output": "dist"
+            "output": "C:\\AiZumenBuild"
         },
         "win": {
             "target": [

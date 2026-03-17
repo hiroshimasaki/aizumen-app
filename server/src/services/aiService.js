@@ -28,7 +28,9 @@ class AIService {
             const types = Array.isArray(mimeTypes) ? mimeTypes : [mimeTypes];
 
             const map = tenantSettings?.ocrMapping || {};
-            const tenantExcludeInstruction = tenantSettings?.name ? `（${tenantSettings.name}を除く）` : '';
+            const tenantExcludeInstruction = tenantSettings?.name 
+                ? `（「${tenantSettings.name}」および、その略称や表記揺れ（例：（株）、(株)、株、株式会社 など）を含む自社名は、顧客名として決して抽出しないでください）` 
+                : '';
 
             const mappingData = {
                 itemNameLabel: map.itemNameLabel || '品名, 図番, 品番',

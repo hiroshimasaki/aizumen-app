@@ -152,6 +152,49 @@ async function startAutoAnalysisIfPossible() {
 }
 
 /**
+ * 通信リトライ用のラッパー関数
+ */
+async function withRetry(fn, maxRetries = 3, initialDelay = 1000) {
+    let lastError;
+    for (let i = 0; i <= maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastError = err;
+            const status = err.response?.status;
+            const isRateLimit = status === 429;
+            const isNetworkError = !status || status >= 500 || err.code === 'ECONNRESET';
+            
+            if (i < maxRetries && (isRateLimit || isNetworkError)) {
+                const delay = isRateLimit ? 5000 : initialDelay * Math.pow(2, i);
+                logToRenderer(`リクエスト再試行 (${i + 1}/${maxRetries}) ${delay}ms後... (Error: ${err.message})`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            throw err;
+        }
+    }
+}
+
+/**
+ * リストのクリーンアップ（完了済みを非表示にする等）
+ */
+function cleanupPendingFiles() {
+    // 完了から一定以上の件数を超えたら古い完了済みから削除する
+    if (pendingFiles.length > 50) {
+        const completed = pendingFiles.filter(f => f.status === 'completed');
+        if (completed.length > 10) {
+            const toKeepPaths = new Set(pendingFiles.filter(f => f.status !== 'completed').map(f => f.path));
+            // 完了済みの新しい方10件は残す
+            const completedToKeep = completed.slice(-10).map(f => f.path);
+            completedToKeep.forEach(p => toKeepPaths.add(p));
+            
+            pendingFiles = pendingFiles.filter(f => toKeepPaths.has(f.path));
+        }
+    }
+}
+
+/**
  * PDFを指定されたページで分割し、Bufferとして返す
  * @param {Buffer} originalBuffer 元のPDFデータのBuffer
  * @param {number[]} pageNumbers 抽出するページ番号の配列 (1-indexed)
@@ -187,52 +230,41 @@ async function processFile(file) {
         file.status = 'processing';
         mainWindow.webContents.send('update-file-list', pendingFiles);
 
-        // API URL の確認ログ
-        logToRenderer(`API Request to: ${apiBaseUrl}/api/ocr/analyze`);
+        // 処理間のウェイト（レートリミット対策 2秒）
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // 1. OCR解析
         const formData = new FormData();
         formData.append('file', fs.createReadStream(file.path));
 
-        let ocrResponse;
-        try {
-            ocrResponse = await axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                    'Authorization': `Bearer ${authToken}`,
-                    'X-Client-Type': 'hotfolder'
-                }
-            });
-        } catch (ocrErr) {
-            const status = ocrErr.response?.status;
-            const errorMsg = ocrErr.response?.data?.error || ocrErr.response?.data?.message || ocrErr.message;
-            if (status === 402) {
-                throw new Error(`[クレジット不足] AIクレジットが不足しているため解析できません。`);
-            }
-            throw new Error(`[OCR解析失敗] ${errorMsg}`);
-        }
-
-        if (ocrResponse.status !== 200) {
-            throw new Error(`[OCR解析失敗] ステータス: ${ocrResponse.status}`);
-        }
+        const ocrResponse = await withRetry(() => axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'Authorization': `Bearer ${authToken}`,
+                'X-Client-Type': 'hotfolder'
+            },
+            timeout: 180000 // 解析は時間がかかるため3分
+        }));
 
         const ocrData = ocrResponse.data;
 
         // 1.5 重複チェック (注文番号)
-        if (ocrData.orderNumber) {
-            logToRenderer(`Checking for duplicates: ${ocrData.orderNumber}`);
+        if (ocrData.orderNumber && ocrData.orderNumber.trim()) {
+            const orderNum = ocrData.orderNumber.trim();
+            logToRenderer(`Checking for duplicates: ${orderNum}`);
             try {
-                const dupResponse = await axios.get(`${apiBaseUrl}/api/quotations/check-duplicate`, {
-                    params: { orderNumber: ocrData.orderNumber },
+                const dupResponse = await withRetry(() => axios.get(`${apiBaseUrl}/api/quotations/check-duplicate`, {
+                    params: { orderNumber: orderNum },
                     headers: { 'Authorization': `Bearer ${authToken}` }
-                });
+                }));
                 if (dupResponse.data && dupResponse.data.duplicate) {
                     const match = dupResponse.data.matches?.[0];
-                    throw new Error(`[重複エラー] 注文番号 ${ocrData.orderNumber} は既に登録されています (ID: ${match?.displayId || '不明'})。`);
+                    throw new Error(`[重複エラー] 注文番号 ${orderNum} は既に登録されています (ID: ${match?.displayId || '不明'})。`);
                 }
             } catch (dupErr) {
                 if (dupErr.message.includes('[重複エラー]')) throw dupErr;
-                logToRenderer(`Duplicate check failed (ignoring): ${dupErr.message}`);
+                // 重複チェック自体が失敗した場合は、二重登録を防ぐためエラーとして扱う
+                throw new Error(`[重複チェック失敗] サーバーとの通信に失敗しました。二重登録防止のため停止します。`);
             }
         }
 
@@ -267,31 +299,22 @@ async function processFile(file) {
 
         const quotationPayload = {
             companyName: ocrData.companyName || '自動作成（ホットフォルダ）',
-            orderNumber: ocrData.orderNumber || '',
-            constructionNumber: ocrData.constructionNumber || '',
+            orderNumber: (ocrData.orderNumber || '').trim(),
+            constructionNumber: (ocrData.constructionNumber || '').trim(),
             status: 'ordered',
-            is_verified: false,
+            isVerified: false, // キー名を isVerified に修正
             notes: ocrData.notes || 'ホットフォルダから自動投入',
+            systemNotes: ocrData.systemNotes || '', // システム備考を追加
             items: items
         };
         logToRenderer(`Sending Quotation Payload for ${file.name}`, quotationPayload);
 
-        let quoteResponse;
-        try {
-            quoteResponse = await axios.post(`${apiBaseUrl}/api/quotations`, quotationPayload, {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'X-Client-Type': 'hotfolder'
-                }
-            });
-        } catch (quoteErr) {
-            const errorMsg = quoteErr.response?.data?.error || quoteErr.response?.data?.message || quoteErr.message;
-            throw new Error(`[案件登録失敗] ${errorMsg}`);
-        }
-
-        if (quoteResponse.status !== 200 && quoteResponse.status !== 201) {
-            throw new Error(`[案件登録失敗] ステータス: ${quoteResponse.status}`);
-        }
+        const quoteResponse = await withRetry(() => axios.post(`${apiBaseUrl}/api/quotations`, quotationPayload, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'X-Client-Type': 'hotfolder'
+            }
+        }));
 
         const newQuote = quoteResponse.data;
 
@@ -309,14 +332,13 @@ async function processFile(file) {
                 const orderFormPages = ocrData.pageClassifications.filter(p => p.type === 'order_form').map(p => p.page);
                 const drawingPages = ocrData.pageClassifications.filter(p => p.type === 'drawing').map(p => p.page);
 
-                const suffix = ocrData.orderNumber ? `_${ocrData.orderNumber}` : '';
+                const suffix = ocrData.orderNumber ? `_${ocrData.orderNumber.trim()}` : '';
 
                 if (orderFormPages.length > 0) {
                     const buffer = await splitPdfBuffer(fileBuffer, orderFormPages);
                     if (buffer) {
                         uploadFormData.append('files', buffer, { filename: `注文書${suffix}.pdf`, contentType: 'application/pdf' });
                         uploadedCount++;
-                        logToRenderer(`Order form split: ${orderFormPages.length} pages`);
                     }
                 }
                 if (drawingPages.length > 0) {
@@ -324,45 +346,31 @@ async function processFile(file) {
                     if (buffer) {
                         uploadFormData.append('files', buffer, { filename: `図面${suffix}.pdf`, contentType: 'application/pdf' });
                         uploadedCount++;
-                        logToRenderer(`Drawing split: ${drawingPages.length} pages`);
                     }
                 }
             }
 
-            // 分割されなかった、またはPDF以外の場合は元のファイルをそのまま送る
             if (uploadedCount === 0) {
                 uploadFormData.append('files', fs.createReadStream(file.path));
             }
 
-            try {
-                const uploadResponse = await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
-                    headers: {
-                        ...uploadFormData.getHeaders(),
-                        'Authorization': `Bearer ${authToken}`,
-                        'X-Client-Type': 'hotfolder'
-                    }
-                });
-
-                if (uploadResponse.status !== 201 && uploadResponse.status !== 200) {
-                    throw new Error(`ステータス: ${uploadResponse.status}`);
+            await withRetry(() => axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
+                headers: {
+                    ...uploadFormData.getHeaders(),
+                    'Authorization': `Bearer ${authToken}`,
+                    'X-Client-Type': 'hotfolder'
                 }
-            } catch (uploadErr) {
-                const errorMsg = uploadErr.response?.data?.error || uploadErr.response?.data?.message || uploadErr.message;
-                throw new Error(`[ファイル登録失敗] ${errorMsg}`);
-            }
+            }));
         }
 
         // 4. 後処理（移動）
-        try {
-            const processedPath = path.join(watchFolder, 'processed', file.name);
-            fs.renameSync(file.path, processedPath);
-            file.path = processedPath; // 移動後のパスに更新
-        } catch (moveErr) {
-            throw new Error(`[ファイル移動失敗] 移動先フォルダへのアクセス権限等を確認してください。`);
-        }
+        const processedPath = path.join(watchFolder, 'processed', file.name);
+        fs.renameSync(file.path, processedPath);
+        file.path = processedPath;
 
         file.status = 'completed';
         delete file.errorMessage;
+        cleanupPendingFiles(); // 定期クリーンアップ
     } catch (err) {
         console.error(`Error processing ${file.name}:`, err.message);
         file.status = 'error';
