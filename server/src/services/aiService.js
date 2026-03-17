@@ -12,6 +12,7 @@ class AIService {
 
         this.initialized = false;
         this.initError = null;
+        this.mode = null;
 
         // AIConfig (Common options)
         this.generationConfig = {
@@ -59,7 +60,6 @@ class AIService {
             } catch (err) {
                 this.initError = err;
                 console.error('[AIService] Failed to initialize Vertex AI:', err.message);
-                // Fallback to Gemini API if possible
             }
         }
 
@@ -84,6 +84,27 @@ class AIService {
     }
 
     /**
+     * Helper to format inline data based on SDK mode
+     */
+    _formatInlineData(base64Data, mimeType) {
+        if (this.mode === 'Vertex AI') {
+            return {
+                inline_data: {
+                    data: base64Data,
+                    mime_type: mimeType
+                }
+            };
+        } else {
+            return {
+                inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType
+                }
+            };
+        }
+    }
+
+    /**
      * Common method to generate text results
      */
     async generateText(prompt, fileBuffer = null, mimeType = null) {
@@ -93,12 +114,7 @@ class AIService {
             let parts = [{ text: prompt }];
 
             if (fileBuffer && mimeType) {
-                parts.push({
-                    inlineData: {
-                        data: fileBuffer.toString('base64'),
-                        mimeType: mimeType
-                    }
-                });
+                parts.push(this._formatInlineData(fileBuffer.toString('base64'), mimeType));
             }
 
             const result = await this.model.generateContent({
@@ -202,12 +218,7 @@ class AIService {
                     }
                 }
 
-                return {
-                    inlineData: {
-                        data: processedBuffer.toString('base64'),
-                        mimeType: mimeType
-                    }
-                };
+                return this._formatInlineData(processedBuffer.toString('base64'), mimeType);
             }));
 
             parts.push(...images);
@@ -221,6 +232,8 @@ class AIService {
         } catch (error) {
             logService.error({
                 message: error.message,
+                status: error.status,
+                code: error.code,
                 source: 'server_ai_service_analyzeDocument'
             });
             throw error;
@@ -252,4 +265,3 @@ class AIService {
 }
 
 module.exports = new AIService();
-
