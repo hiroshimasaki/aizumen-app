@@ -105,6 +105,31 @@ class AIService {
     }
 
     /**
+     * Helper to extract text from generateContent result
+     */
+    async _extractTextFromResult(result) {
+        try {
+            // Vertex AI SDK では response が Promise の場合があるため await する
+            const response = await result.response;
+            
+            // text() メソッドがある場合はそれを使用（Gemini SDK 互換）
+            if (typeof response.text === 'function') {
+                return response.text();
+            }
+            
+            // text() メソッドがない場合の絶対パスアクセス
+            if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
+                return response.candidates[0].content.parts[0].text || '';
+            }
+            
+            throw new Error('Could not extract text from AI response');
+        } catch (err) {
+            console.error('[AIService] Text extraction failed:', err);
+            throw err;
+        }
+    }
+
+    /**
      * Common method to generate text results
      */
     async generateText(prompt, fileBuffer = null, mimeType = null) {
@@ -120,8 +145,8 @@ class AIService {
             const result = await this.model.generateContent({
                 contents: [{ role: 'user', parts }]
             });
-            const response = await result.response;
-            const text = response.text();
+            
+            const text = await this._extractTextFromResult(result);
 
             logService.debug('AI Text Generated', { textPreview: text.substring(0, 100) });
             return text;
@@ -170,7 +195,7 @@ class AIService {
 添付されたドキュメントの全ページを詳細に確認し、指定されたフォーマットで回答してください。${learningInstruction}
 
 ### 【重要】ページ種別判定 (pageClassifications):
-添付されたPDFの全ページに対して、1ページ目から順に以下の種別を判定してください：
+添付されたPDF의 全ページに対して、1ページ目から順に以下の種別を判定してください：
 - **page**: ページ番号（数値）。
 - **type**: 「order_form」（注文書・発注書）、「drawing」（図面）、「other」（その他）のいずれか。
 - **label**: 日本語のラベル（「注文書」、「図面」など）。
@@ -226,7 +251,8 @@ class AIService {
             const result = await this.model.generateContent({
                 contents: [{ role: 'user', parts }]
             });
-            const responseText = result.response.text();
+            
+            const responseText = await this._extractTextFromResult(result);
             
             return this.parseJsonResponse(responseText);
         } catch (error) {
@@ -265,3 +291,4 @@ class AIService {
 }
 
 module.exports = new AIService();
+
