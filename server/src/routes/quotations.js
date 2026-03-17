@@ -466,26 +466,44 @@ router.post('/:id/restore', authMiddleware, checkTrialLimit, async (req, res, ne
  */
 router.delete('/:id/permanent', authMiddleware, checkTrialLimit, async (req, res, next) => {
     try {
-        // 管理者チェックを入れるのが望ましい
-        if (error) throw new AppError('Failed to permanently delete quotation', 500, 'DELETE_FAILED');
+        const { id } = req.params;
 
-        // 完全削除の履歴（親が消えると消える可能性があるが、ログとして残す試み）
-        await supabaseAdmin.from('quotation_history').insert({
-            quotation_id: req.params.id,
-            tenant_id: req.tenantId,
-            changed_by: req.user.id,
-            change_type: 'permanently_deleted',
-            changes: { message: '案件が完全に削除されました' },
-        });
+        // 1. 削除前にファイル情報を取得（Storage削除のため）
+        const { data: files } = await supabaseAdmin
+            .from('quotation_files')
+            .select('storage_path')
+            .eq('quotation_id', id)
+            .eq('tenant_id', req.tenantId);
 
+        // 2. 監査ログを記録（削除前に実行）
         await logService.audit({
             action: 'quotation_permanently_deleted',
             entityType: 'quotation',
-            entityId: req.params.id,
-            description: `案件を完全に削除しました`,
+            entityId: id,
+            description: `案件を完全に削除しました ID: ${id}`,
             tenantId: req.tenantId,
             userId: req.userId
         });
+
+        // 3. DBから案件を物理削除 (CASCADEにより関連データも削除される)
+        const { error: deleteError } = await supabaseAdmin
+            .from('quotations')
+            .delete()
+            .eq('id', id)
+            .eq('tenant_id', req.tenantId);
+
+        if (deleteError) throw new AppError('Failed to permanently delete quotation', 500, 'DELETE_FAILED');
+
+        // 4. Storage からファイルを削除 (バックグラウンド)
+        if (files && files.length > 0) {
+            const paths = files.map(f => f.storage_path);
+            supabaseAdmin.storage
+                .from('quotation-files')
+                .remove(paths)
+                .then(({ error: storageErr }) => {
+                    if (storageErr) console.error('[Quotations] Storage Cleanup Error:', storageErr);
+                });
+        }
 
         res.json({ message: 'Quotation permanently deleted' });
     } catch (err) {
