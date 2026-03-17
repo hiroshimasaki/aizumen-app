@@ -47,7 +47,7 @@ app.set('trust proxy', 1);
 // --- Rate Limiting ---
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分
-  max: 300, // 本番用の制限に戻す (2000 -> 300)
+  max: 2000, // 制限を緩和 (300 -> 2000)
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
