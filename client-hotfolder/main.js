@@ -187,21 +187,49 @@ async function processFile(file) {
 
         const ocrData = ocrResponse.data;
 
+        // 1.5 重複チェック (注文番号)
+        if (ocrData.orderNumber) {
+            logToRenderer(`Checking for duplicates: ${ocrData.orderNumber}`);
+            try {
+                const dupResponse = await axios.get(`${apiBaseUrl}/api/quotations/check-duplicate`, {
+                    params: { orderNumber: ocrData.orderNumber },
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (dupResponse.data && dupResponse.data.duplicate) {
+                    const match = dupResponse.data.matches?.[0];
+                    throw new Error(`[重複エラー] 注文番号 ${ocrData.orderNumber} は既に登録されています (ID: ${match?.displayId || '不明'})。`);
+                }
+            } catch (dupErr) {
+                if (dupErr.message.includes('[重複エラー]')) throw dupErr;
+                logToRenderer(`Duplicate check failed (ignoring): ${dupErr.message}`);
+            }
+        }
+
         // 2. 案件登録
         const items = (ocrData.items && ocrData.items.length > 0)
             ? ocrData.items.map(aiItem => ({
                 name: aiItem.name || file.name.split('.')[0],
                 quantity: aiItem.quantity || 1,
-                processingCost: aiItem.price || 0,
-                materialCost: 0,
-                dueDate: aiItem.dueDate || ''
+                processingCost: aiItem.processingCost || 0,
+                materialCost: aiItem.materialCost || 0,
+                otherCost: aiItem.otherCost || 0,
+                dueDate: aiItem.dueDate || '',
+                dimensions: aiItem.dimensions || '',
+                material: aiItem.material || '',
+                processingMethod: aiItem.processingMethod || '',
+                surfaceTreatment: aiItem.surface_treatment || ''
             }))
             : [{
                 name: file.name.split('.')[0],
                 quantity: 1,
                 processingCost: 0,
                 materialCost: 0,
-                dueDate: ''
+                otherCost: 0,
+                dueDate: '',
+                dimensions: '',
+                material: '',
+                processingMethod: '',
+                surfaceTreatment: ''
             }];
 
         const quotationPayload = {
