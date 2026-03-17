@@ -119,7 +119,7 @@ function mapErrorMessage(msg) {
 }
 
 // Debug log for initialization
-console.log('Renderer.js: Initializing v1.1.0...');
+console.log('Renderer.js: Initializing v1.2.0...');
 ipcRenderer.on('main-log', (event, { message, data }) => {
     console.log(`%c[Main Process] ${message}`, 'color: #3b82f6; font-weight: bold;', data || '');
 });
@@ -331,7 +331,17 @@ ipcRenderer.on('update-file-list', (event, files) => {
             case 'detected': statusBadge = '<div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.6)]"></span><span class="text-blue-400">待機中</span></div>'; break;
             case 'processing': statusBadge = '<div class="flex items-center gap-1.5"><div class="w-3.5 h-3.5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div><span class="text-amber-400">解析中...</span></div>'; break;
             case 'completed': statusBadge = '<div class="flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><path d="M20 6 9 17l-5-5"/></svg><span class="text-emerald-500">完了</span></div>'; break;
-            case 'error': statusBadge = `<div class="flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span class="text-red-500" title="${file.errorMessage || ''}">エラー</span></div>`; break;
+            case 'error': 
+                statusBadge = `
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <span class="text-red-500 font-bold">エラー</span>
+                        </div>
+                        <p class="text-[10px] text-red-400/90 bg-red-500/5 px-2 py-1 rounded border border-red-500/10 leading-tight break-all">${file.errorMessage || '不明なエラー'}</p>
+                    </div>
+                `; 
+                break;
         }
 
         return `

@@ -24,7 +24,7 @@ export default function HotFolderDownload() {
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2">
                             <a
-                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Setup.exe?v=1.1.0`}
+                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Setup.exe?v=1.2.0`}
                                 download
                                 className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-black rounded-2xl transition-all flex items-center gap-3 shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98]"
                             >
@@ -32,7 +32,7 @@ export default function HotFolderDownload() {
                                 インストーラー版をダウンロード
                             </a>
                             <a
-                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Portable.exe?v=1.1.0`}
+                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Portable.exe?v=1.2.0`}
                                 download
                                 className="px-8 py-4 bg-slate-800/80 text-slate-200 border border-slate-700 font-bold rounded-2xl transition-all flex items-center gap-3 hover:bg-slate-800 hover:text-white"
                             >
@@ -41,7 +41,7 @@ export default function HotFolderDownload() {
                             </a>
                         </div>
                         <p className="text-[10px] text-slate-500">
-                            Version 1.1.0 (Windows 10/11対応) | 最新更新: 2026-03-16
+                            Version 1.2.0 (Windows 10/11対応) | 最新更新: 2026-03-17
                         </p>
                     </div>
 

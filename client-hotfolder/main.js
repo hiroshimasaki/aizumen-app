@@ -163,16 +163,26 @@ async function processFile(file) {
         const formData = new FormData();
         formData.append('file', fs.createReadStream(file.path));
 
-        const ocrResponse = await axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
-            headers: {
-                ...formData.getHeaders(),
-                'Authorization': `Bearer ${authToken}`,
-                'X-Client-Type': 'hotfolder'
+        let ocrResponse;
+        try {
+            ocrResponse = await axios.post(`${apiBaseUrl}/api/ocr/analyze`, formData, {
+                headers: {
+                    ...formData.getHeaders(),
+                    'Authorization': `Bearer ${authToken}`,
+                    'X-Client-Type': 'hotfolder'
+                }
+            });
+        } catch (ocrErr) {
+            const status = ocrErr.response?.status;
+            const errorMsg = ocrErr.response?.data?.error || ocrErr.response?.data?.message || ocrErr.message;
+            if (status === 402) {
+                throw new Error(`[クレジット不足] AIクレジットが不足しているため解析できません。`);
             }
-        });
+            throw new Error(`[OCR解析失敗] ${errorMsg}`);
+        }
 
         if (ocrResponse.status !== 200) {
-            throw new Error(ocrResponse.data?.error || `OCR解析エラー (Status: ${ocrResponse.status})`);
+            throw new Error(`[OCR解析失敗] ステータス: ${ocrResponse.status}`);
         }
 
         const ocrData = ocrResponse.data;
@@ -205,15 +215,21 @@ async function processFile(file) {
         };
         logToRenderer(`Sending Quotation Payload for ${file.name}`, quotationPayload);
 
-        const quoteResponse = await axios.post(`${apiBaseUrl}/api/quotations`, quotationPayload, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'X-Client-Type': 'hotfolder'
-            }
-        });
+        let quoteResponse;
+        try {
+            quoteResponse = await axios.post(`${apiBaseUrl}/api/quotations`, quotationPayload, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'X-Client-Type': 'hotfolder'
+                }
+            });
+        } catch (quoteErr) {
+            const errorMsg = quoteErr.response?.data?.error || quoteErr.response?.data?.message || quoteErr.message;
+            throw new Error(`[案件登録失敗] ${errorMsg}`);
+        }
 
         if (quoteResponse.status !== 200 && quoteResponse.status !== 201) {
-            throw new Error(quoteResponse.data?.error || `案件登録エラー (Status: ${quoteResponse.status})`);
+            throw new Error(`[案件登録失敗] ステータス: ${quoteResponse.status}`);
         }
 
         const newQuote = quoteResponse.data;
@@ -224,33 +240,41 @@ async function processFile(file) {
             uploadFormData.append('quotationId', newQuote.id);
             uploadFormData.append('files', fs.createReadStream(file.path));
 
-            const uploadResponse = await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
-                headers: {
-                    ...uploadFormData.getHeaders(),
-                    'Authorization': `Bearer ${authToken}`,
-                    'X-Client-Type': 'hotfolder'
-                }
-            });
+            try {
+                const uploadResponse = await axios.post(`${apiBaseUrl}/api/files/upload`, uploadFormData, {
+                    headers: {
+                        ...uploadFormData.getHeaders(),
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-Client-Type': 'hotfolder'
+                    }
+                });
 
-            if (uploadResponse.status !== 201 && uploadResponse.status !== 200) {
-                throw new Error(uploadResponse.data?.error || `ファイル登録エラー (Status: ${uploadResponse.status})`);
+                if (uploadResponse.status !== 201 && uploadResponse.status !== 200) {
+                    throw new Error(`ステータス: ${uploadResponse.status}`);
+                }
+            } catch (uploadErr) {
+                const errorMsg = uploadErr.response?.data?.error || uploadErr.response?.data?.message || uploadErr.message;
+                throw new Error(`[ファイル登録失敗] ${errorMsg}`);
             }
         }
 
         // 4. 後処理（移動）
-        const processedPath = path.join(watchFolder, 'processed', file.name);
-        fs.renameSync(file.path, processedPath);
+        try {
+            const processedPath = path.join(watchFolder, 'processed', file.name);
+            fs.renameSync(file.path, processedPath);
+            file.path = processedPath; // 移動後のパスに更新
+        } catch (moveErr) {
+            throw new Error(`[ファイル移動失敗] 移動先フォルダへのアクセス権限等を確認してください。`);
+        }
 
         file.status = 'completed';
-        file.path = processedPath; // 移動後のパスに更新
         delete file.errorMessage;
     } catch (err) {
-        console.error(`Error processing ${file.name}:`, err.response?.data || err.message);
+        console.error(`Error processing ${file.name}:`, err.message);
         file.status = 'error';
-        file.errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+        file.errorMessage = err.message;
         logToRenderer(`Error processing ${file.name}`, { 
-            errorData: err.response?.data,
-            status: err.response?.status
+            message: err.message
         });
     } finally {
         mainWindow.webContents.send('update-file-list', pendingFiles);
