@@ -10,6 +10,9 @@ docs/secret_key.md
 # Build
 client/dist/
 client-hotfolder/dist/
+C:/AiZumenBuild/
+*.exe
+*.blockmap
 
 # Temporary files
 tmp/
@@ -34,3 +37,6 @@ Thumbs.db
 server/backups/
 server/uploads/
 server/scanned_pool/
+*.exe
+*.zip
+*.msi

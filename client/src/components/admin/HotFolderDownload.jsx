@@ -24,16 +24,14 @@ export default function HotFolderDownload() {
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-2">
                             <a
-                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Setup.exe?v=1.2.3`}
-                                download
+                                href="https://github.com/hiroshimasaki/AiZumen/releases/download/v1.2.3/AiZumen-HotFolder-Setup.exe"
                                 className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-black rounded-2xl transition-all flex items-center gap-3 shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98]"
                             >
                                 <Download size={20} />
                                 インストーラー版をダウンロード
                             </a>
                             <a
-                                href={`${import.meta.env.VITE_API_URL}/apps/AiZumen-HotFolder-Portable.exe?v=1.2.3`}
-                                download
+                                href="https://github.com/hiroshimasaki/AiZumen/releases/download/v1.2.3/AiZumen-HotFolder-Portable.exe"
                                 className="px-8 py-4 bg-slate-800/80 text-slate-200 border border-slate-700 font-bold rounded-2xl transition-all flex items-center gap-3 hover:bg-slate-800 hover:text-white"
                             >
                                 <Download size={20} />
