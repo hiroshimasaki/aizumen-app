@@ -10,47 +10,74 @@ class AIService {
         this.location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
         this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID || 'aizumen';
 
-        // Vertex AI (Google Cloud) の初期化を試行
-        if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-            try {
-                this.vertexAI = new VertexAI({
-                    project: this.projectId,
-                    location: this.location
-                });
-                this.model = this.vertexAI.getGenerativeModel({
-                    model: this.modelName,
-                    generationConfig: {
-                        temperature: 0.1,
-                        topP: 0.8,
-                        topK: 40,
-                        maxOutputTokens: 8192,
-                        responseMimeType: 'application/json'
-                    }
-                });
-                console.log(`[AIService] Initialized with Vertex AI (Model: ${this.modelName})`);
-            } catch (err) {
-                console.error('[AIService] Failed to initialize Vertex AI:', err.message);
-                this.initializeGeminiOnly();
-            }
-        } else {
-            this.initializeGeminiOnly();
-        }
+        this.initialized = false;
+        this.initError = null;
+
+        // AIConfig (Common options)
+        this.generationConfig = {
+            temperature: 0.1,
+            topP: 0.8,
+            topK: 40,
+            maxOutputTokens: 8192,
+            responseMimeType: 'application/json'
+        };
+
+        this.initialize();
     }
 
-    initializeGeminiOnly() {
-        if (process.env.GEMINI_API_KEY) {
-            this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            this.model = this.genAI.getGenerativeModel({
-                model: this.modelName,
-                generationConfig: {
-                    temperature: 0.1,
-                    topP: 0.8,
-                    topK: 40,
-                    maxOutputTokens: 8192,
-                    responseMimeType: 'application/json'
+    initialize() {
+        const hasCredentialsJson = !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+        const hasCredentialsFile = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+        if (hasCredentialsJson || hasCredentialsFile) {
+            try {
+                let vertexOptions = {
+                    project: this.projectId,
+                    location: this.location
+                };
+
+                if (hasCredentialsJson) {
+                    try {
+                        const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+                        vertexOptions.googleAuthOptions = { credentials };
+                        if (!vertexOptions.project) vertexOptions.project = credentials.project_id;
+                        console.log('[AIService] Using JSON credentials from environment variable');
+                    } catch (pErr) {
+                        console.error('[AIService] Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', pErr.message);
+                    }
                 }
-            });
-            console.log(`[AIService] Initialized with Gemini API (Model: ${this.modelName})`);
+
+                this.vertexAI = new VertexAI(vertexOptions);
+                this.model = this.vertexAI.getGenerativeModel({
+                    model: this.modelName,
+                    generationConfig: this.generationConfig
+                });
+                this.initialized = true;
+                this.mode = 'Vertex AI';
+                console.log(`[AIService] Initialized with ${this.mode} (Model: ${this.modelName}, Project: ${vertexOptions.project})`);
+                return;
+            } catch (err) {
+                this.initError = err;
+                console.error('[AIService] Failed to initialize Vertex AI:', err.message);
+                // Fallback to Gemini API if possible
+            }
+        }
+
+        // Gemini API Fallback
+        if (process.env.GEMINI_API_KEY) {
+            try {
+                this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                this.model = this.genAI.getGenerativeModel({
+                    model: this.modelName,
+                    generationConfig: this.generationConfig
+                });
+                this.initialized = true;
+                this.mode = 'Gemini API';
+                console.log(`[AIService] Initialized with ${this.mode} (Model: ${this.modelName})`);
+            } catch (err) {
+                this.initError = err;
+                console.error('[AIService] Failed to initialize Gemini API:', err.message);
+            }
         } else {
             console.warn('[AIService] No AI configuration found (Missing Vertex AI credentials or Gemini API key)');
         }
@@ -58,9 +85,10 @@ class AIService {
 
     /**
      * Common method to generate text results
-     * Used by aiReportService and drawingSearchService
      */
     async generateText(prompt, fileBuffer = null, mimeType = null) {
+        if (!this.initialized) throw new Error('AIService is not initialized');
+
         try {
             let parts = [{ text: prompt }];
 
@@ -73,7 +101,9 @@ class AIService {
                 });
             }
 
-            const result = await this.model.generateContent(parts);
+            const result = await this.model.generateContent({
+                contents: [{ role: 'user', parts }]
+            });
             const response = await result.response;
             const text = response.text();
 
@@ -92,6 +122,8 @@ class AIService {
      * Analyze document content (OCR)
      */
     async analyzeDocument(fileBuffers, mimeTypes, tenantSettings = null) {
+        if (!this.initialized) throw new Error(`AIService is not initialized. Error: ${this.initError?.message || 'Unknown'}`);
+
         try {
             const buffers = Array.isArray(fileBuffers) ? fileBuffers : [fileBuffers];
             const types = Array.isArray(mimeTypes) ? mimeTypes : [mimeTypes];
@@ -118,7 +150,7 @@ class AIService {
                 ? `\n### 【重要】以前の修正に基づく補足命令 (学習事項):\n${learningHints.map(h => `- ${h}`).join('\n')}\n`
                 : '';
 
-            const prompt = `あなたは製造業の注文書・図面解析のエキスパートです。
+            const promptText = `あなたは製造業の注文書・図面解析のエキスパートです。
 添付されたドキュメントの全ページを詳細に確認し、指定されたフォーマットで回答してください。${learningInstruction}
 
 ### 【重要】ページ種別判定 (pageClassifications):
@@ -150,6 +182,8 @@ class AIService {
 \`\`\`
 日本語で回答してください。JSON以外の説明テキストは一切含めないでください。`;
 
+            const parts = [{ text: promptText }];
+
             const images = await Promise.all(buffers.map(async (buffer, i) => {
                 const mimeType = types[i] || 'application/pdf';
                 let processedBuffer = buffer;
@@ -176,7 +210,11 @@ class AIService {
                 };
             }));
 
-            const result = await this.model.generateContent([prompt, ...images]);
+            parts.push(...images);
+
+            const result = await this.model.generateContent({
+                contents: [{ role: 'user', parts }]
+            });
             const responseText = result.response.text();
             
             return this.parseJsonResponse(responseText);
@@ -202,8 +240,9 @@ class AIService {
 
     getStatus() {
         return {
-            initialized: !!this.model,
-            mode: this.vertexAI ? 'Vertex AI' : (this.genAI ? 'Gemini API' : 'Not Initialized'),
+            initialized: this.initialized,
+            mode: this.mode || 'Not Initialized',
+            error: this.initError?.message || null,
             config: {
                 model: this.modelName,
                 location: this.location
@@ -213,3 +252,4 @@ class AIService {
 }
 
 module.exports = new AIService();
+
