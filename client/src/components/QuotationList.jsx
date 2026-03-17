@@ -452,7 +452,8 @@ function QuotationCard({
                                                 <>
                                                     <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1 items-center">
                                                         <span className="text-[10px] bg-blue-900/40 text-blue-300 px-1.5 py-0.5 rounded font-medium border border-blue-800/50">加工: ¥{(Number(item.processingCost) || 0).toLocaleString()}</span>
-                                                        <span className="text-[10px] bg-emerald-900/40 text-emerald-300 px-1.5 py-0.5 rounded font-medium border border-emerald-800/50">材料: ¥{(Number(item.materialCost) || 0).toLocaleString()}</span>
+                                                        <span className="text-[10px] bg-emerald-900/40 text-emerald-300 px-1.5 py-0.5 rounded font-medium border border-emerald-800/50">材料: ¥{(Number(item.material_cost || item.materialCost) || 0).toLocaleString()}</span>
+                                                        <span className="text-[10px] bg-slate-800/60 text-slate-400 px-1.5 py-0.5 rounded font-medium border border-slate-700/50">その他: ¥{(Number(item.other_cost || item.otherCost) || 0).toLocaleString()}</span>
                                                         <span className="text-[10px] text-slate-500 font-medium flex items-center">× {item.quantity || 1}</span>
                                                         {(item.material || item.processingMethod || item.surfaceTreatment) && (
                                                             <span className="text-[10px] text-slate-400 font-medium ml-1">
