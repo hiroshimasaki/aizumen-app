@@ -109,19 +109,13 @@ class AIService {
      */
     async _extractTextFromResult(result) {
         try {
-            // Vertex AI SDK では response が Promise の場合があるため await する
             const response = await result.response;
-            
-            // text() メソッドがある場合はそれを使用（Gemini SDK 互換）
             if (typeof response.text === 'function') {
                 return response.text();
             }
-            
-            // text() メソッドがない場合の絶対パスアクセス
             if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
                 return response.candidates[0].content.parts[0].text || '';
             }
-            
             throw new Error('Could not extract text from AI response');
         } catch (err) {
             console.error('[AIService] Text extraction failed:', err);
@@ -137,7 +131,6 @@ class AIService {
 
         try {
             let parts = [{ text: prompt }];
-
             if (fileBuffer && mimeType) {
                 parts.push(this._formatInlineData(fileBuffer.toString('base64'), mimeType));
             }
@@ -145,7 +138,6 @@ class AIService {
             const result = await this.model.generateContent({
                 contents: [{ role: 'user', parts }]
             });
-            
             const text = await this._extractTextFromResult(result);
 
             logService.debug('AI Text Generated', { textPreview: text.substring(0, 100) });
@@ -195,7 +187,7 @@ class AIService {
 添付されたドキュメントの全ページを詳細に確認し、指定されたフォーマットで回答してください。${learningInstruction}
 
 ### 【重要】ページ種別判定 (pageClassifications):
-添付されたPDF의 全ページに対して、1ページ目から順に以下の種別を判定してください：
+添付されたPDFの全ページに対して、1ページ目から順に以下の種別を判定してください：
 - **page**: ページ番号（数値）。
 - **type**: 「order_form」（注文書・発注書）、「drawing」（図面）、「other」（その他）のいずれか。
 - **label**: 日本語のラベル（「注文書」、「図面」など）。
@@ -205,9 +197,30 @@ class AIService {
 2. **注文番号 (orderNumber)**: 「${mappingData.orderNumberLabel}」に該当する項目。
 3. **工事番号 (constructionNumber)**: 「${mappingData.constructionNumberLabel}」に該当する項目。
 4. **特記事項 (notes)**: 書類に記載されている注意事項、納期・支払条件など。
-5. **システム備考 (systemNotes)**: 検算の結果判明した疑義、AIによる補足説明、注意喚起など。
-6. **図番 (drawingNumber)**: 図面に記載されている図面番号。
-7. **明細 (items)**: 品名、材質、加工方法、表面処理、数量、単価、納期、寸法を抽出してください。
+5. **システム備考 (systemNotes)**: 検算の結果判明した疑義、AIによる補足説明、注意喚起など（書類に直接記載されていない内容）。
+6. **図番 (drawingNumber)**: 図面に記載されている図面番号。「${mappingData.itemNameLabel}」に該当する項目も参考にしてください。
+7. **明細 (items)**: 以下の項目をリストで抽出してください：
+    - **name**: 品名や品番。「${mappingData.itemNameLabel}」に該当する項目から抽出してください。
+    - **material**: 材質（例: SS400, SUS304, AL, 樹脂等）。
+    - **processingMethod**: 主要な加工方法（例: 旋盤, フライス, レーザー, ベンダー等）。
+    - **surface_treatment**: 表面処理（例: メッキ, 焼入, 塗装, 黒染等）。
+    - **quantity**: 数量（数値のみ）。「${mappingData.quantityLabel}」に該当する項目から抽出してください。
+    - **unit**: 単位。
+    - **processingCost**: 加工費。「${mappingData.processingCostLabel}」に該当する項目から、必ず「1個あたりの単価」を抽出してください。
+    - **materialCost**: 材料費。「${mappingData.materialCostLabel}」に該当する項目から、必ず「1個あたりの単価」を抽出してください。
+    - **otherCost**: その他費用。「${mappingData.otherCostLabel}」に該当する項目から、必ず「1個あたりの単価」を抽出してください。
+    - **dueDate**: 納期。形式は **YYYY-MM-DD**。「${mappingData.deadlineLabel}」に該当する項目から抽出してください。
+    - **dimensions**: 寸法（例：100x200, Φ50など）。「${mappingData.dimensionsLabel}」に該当する項目から抽出してください。
+    - **requiresVerification**: 検算フラグ（boolean）。後述のルールに基づき設定。
+
+### 検算・判別ルール:
+- **単価と小計の区別**: 書類に「単価」と「金額/発注金額（小計）」の両方が記載されている場合、必ず「単価」行の数値を抽出してください。
+- **検算**: 「(processingCost + materialCost + otherCost) × quantity = 書類上の明細合計金額」が成り立つか確認してください。
+- **フラグ (requiresVerification)**: 以下のいずれかに該当する場合、true に設定してください。
+    1. 計算が一致しない場合。
+    2. 書類に単価の記載がなく、合計金額（小計）を数量で割って単価を算出した場合。
+    3. 「単価」として抽出した数値が、実は「合計金額」である疑いが高い場合。
+- 疑義がある場合は、その理由を全体の **systemNotes** 欄に記載してください。
 
 ### 出力フォーマット (JSONのみ):
 \`\`\`json
@@ -221,7 +234,7 @@ class AIService {
   "items": []
 }
 \`\`\`
-日本語で回答してください。JSON以外の説明テキストは一切含めないでください。`;
+日本語で回答してください。JSON以外の説明テキストは一切含めないでください。日付は可能な限り現在の年（2026年）を補完して回答してください。`;
 
             const parts = [{ text: promptText }];
 
@@ -251,7 +264,6 @@ class AIService {
             const result = await this.model.generateContent({
                 contents: [{ role: 'user', parts }]
             });
-            
             const responseText = await this._extractTextFromResult(result);
             
             return this.parseJsonResponse(responseText);
@@ -291,4 +303,3 @@ class AIService {
 }
 
 module.exports = new AIService();
-
