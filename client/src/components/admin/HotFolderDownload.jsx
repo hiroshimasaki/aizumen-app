@@ -39,7 +39,7 @@ export default function HotFolderDownload() {
                             </a>
                         </div>
                         <p className="text-[10px] text-slate-500">
-                            Version 1.2.3 (Windows 10/11対応) | 最新更新: 2026-03-17
+                            Version 1.2.4 (Windows 10/11対応) | 最新更新: 2026-03-18
                         </p>
                     </div>
 
