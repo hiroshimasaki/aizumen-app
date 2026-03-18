@@ -119,7 +119,7 @@ function mapErrorMessage(msg) {
 }
 
 // Debug log for initialization
-console.log('Renderer.js: Initializing v1.2.3...');
+console.log('Renderer.js: Initializing v1.2.4...');
 ipcRenderer.on('main-log', (event, { message, data }) => {
     console.log(`%c[Main Process] ${message}`, 'color: #3b82f6; font-weight: bold;', data || '');
 });
