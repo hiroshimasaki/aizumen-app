@@ -16,6 +16,8 @@ let watchFolder = null;
 let tray = null; // トレイアイコン用
 let minimizeOnClose = true; // 閉じるボタンで最小化するかどうか
 let autoAnalysis = false; // 自動解析モード
+let processingQueue = [];
+let isProcessingQueueRunning = false;
 
 if (app) {
     app.isQuiting = false; // 終了フラグの初期化
@@ -147,7 +149,39 @@ async function startAutoAnalysisIfPossible() {
     logToRenderer(`Found ${filesToProcess.length} files to auto-process.`);
     
     for (const file of filesToProcess) {
+        enqueueFile(file);
+    }
+}
+
+/**
+ * 解析キューへの追加と順次実行
+ */
+function enqueueFile(file) {
+    if (file.status !== 'detected' && file.status !== 'error') return;
+    
+    // 重複チェック
+    if (!processingQueue.some(f => f.path === file.path)) {
+        processingQueue.push(file);
+        logToRenderer(`Queued: ${file.name} (Waiting: ${processingQueue.length})`);
+    }
+    
+    processNextInQueue();
+}
+
+async function processNextInQueue() {
+    if (isProcessingQueueRunning || processingQueue.length === 0) return;
+    
+    isProcessingQueueRunning = true;
+    const file = processingQueue.shift();
+    
+    try {
         await processFile(file);
+    } catch (err) {
+        logToRenderer(`Queue entry failed: ${file.name} - ${err.message}`);
+    } finally {
+        isProcessingQueueRunning = false;
+        // サーバー負荷軽減のため 1秒待機して次へ
+        setTimeout(processNextInQueue, 1000);
     }
 }
 
@@ -165,6 +199,11 @@ async function withRetry(fn, maxRetries = 3, initialDelay = 1000) {
             const isRateLimit = status === 429;
             const isNetworkError = !status || status >= 500 || err.code === 'ECONNRESET';
             
+            if (status === 401) {
+                logToRenderer(`[Auth Error] 認証の有効期限が切れた可能性があります。一旦ログアウトし、再度ログインし直してください。`);
+                throw new Error('認証エラー(401): 再ログインが必要です。');
+            }
+
             if (i < maxRetries && (isRateLimit || isNetworkError)) {
                 const delay = isRateLimit ? 5000 : initialDelay * Math.pow(2, i);
                 logToRenderer(`リクエスト再試行 (${i + 1}/${maxRetries}) ${delay}ms後... (Error: ${err.message})`);
@@ -273,15 +312,15 @@ async function processFile(file) {
             ? ocrData.items.map(aiItem => ({
                 name: aiItem.name || file.name.split('.')[0],
                 quantity: aiItem.quantity || 1,
-                processingCost: aiItem.processingCost || 0,
-                materialCost: aiItem.materialCost || 0,
-                otherCost: aiItem.otherCost || 0,
-                dueDate: aiItem.dueDate || '',
+                processingCost: Number(aiItem.processing_cost || aiItem.processingCost) || 0,
+                materialCost: Number(aiItem.material_cost || aiItem.materialCost) || 0,
+                otherCost: Number(aiItem.other_cost || aiItem.otherCost) || 0,
+                dueDate: aiItem.due_date || aiItem.dueDate || '',
                 dimensions: aiItem.dimensions || '',
                 material: aiItem.material || '',
-                processingMethod: aiItem.processingMethod || '',
+                processingMethod: aiItem.processing_method || aiItem.processingMethod || '',
                 surface_treatment: aiItem.surface_treatment || aiItem.surfaceTreatment || '',
-                requiresVerification: aiItem.requiresVerification || false
+                requiresVerification: aiItem.requires_verification || aiItem.requiresVerification || false
             }))
             : [{
                 name: file.name.split('.')[0],
@@ -517,15 +556,15 @@ ipcMain.on('set-watch-folder', (event, folderPath) => {
                     }).show();
                 }
 
-                // 準備完了後なら即座に送信
-                if (isReady) {
-                    mainWindow.webContents.send('update-file-list', pendingFiles);
-                    
-                    // 自動解析モードがONかつログイン中かつトークンがある場合、即座に解析開始
-                    if (autoAnalysis && isLoggedIn && authToken) {
-                        processFile(newFile);
+                    // 準備完了後なら即座に送信
+                    if (isReady) {
+                        mainWindow.webContents.send('update-file-list', pendingFiles);
+                        
+                        // 自動解析モードがONかつログイン中かつトークンがある場合、キューに追加
+                        if (autoAnalysis && isLoggedIn && authToken) {
+                            enqueueFile(newFile);
+                        }
                     }
-                }
             }
         }
     });
@@ -584,11 +623,11 @@ ipcMain.on('start-bulk-analysis', async (event, token) => {
     const filesToProcess = pendingFiles.filter(f => f.status === 'detected' || f.status === 'error');
 
     for (const file of filesToProcess) {
-        await processFile(file);
+        enqueueFile(file);
     }
 
     new Notification({
-        title: '一括解析完了',
-        body: '選択されたファイルの処理が終了しました。',
+        title: '一括解析を開始しました',
+        body: `${filesToProcess.length} 件のファイルをキューに追加しました。順番に解析を行います。`,
     }).show();
 });
